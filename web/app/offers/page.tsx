@@ -22,8 +22,10 @@ export default function OffersPage() {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [reserving, setReserving] = useState<string | null>(null);
+  const [confirmations, setConfirmations] = useState<Record<string, string>>({});
 
-  useEffect(() => {
+  const loadOffers = () => {
     fetch("http://localhost:4000/offers")
       .then((res) => res.json())
       .then((data) => {
@@ -34,11 +36,50 @@ export default function OffersPage() {
         setError("Impossible de charger les offres");
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    loadOffers();
   }, []);
 
   const formatTime = (iso: string) => {
     const date = new Date(iso);
     return date.toLocaleTimeString("fr-CA", { hour: "2-digit", minute: "2-digit" });
+  };
+
+  const handleReserve = async (offerId: string) => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setConfirmations((prev) => ({ ...prev, [offerId]: "Vous devez être connecté pour réserver" }));
+      return;
+    }
+
+    setReserving(offerId);
+
+    try {
+      const res = await fetch("http://localhost:4000/orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ offerId }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setConfirmations((prev) => ({ ...prev, [offerId]: data.message || "Erreur lors de la réservation" }));
+        return;
+      }
+
+      setConfirmations((prev) => ({ ...prev, [offerId]: "Réservation confirmée !" }));
+      loadOffers();
+    } catch {
+      setConfirmations((prev) => ({ ...prev, [offerId]: "Impossible de contacter le serveur" }));
+    } finally {
+      setReserving(null);
+    }
   };
 
   return (
@@ -95,9 +136,17 @@ export default function OffersPage() {
                 {offer.quantity} disponible{offer.quantity > 1 ? "s" : ""}
               </p>
 
-              <button className="mt-2 bg-green-700 text-white rounded p-2 font-semibold hover:bg-green-800">
-                Réserver
+              <button
+                onClick={() => handleReserve(offer.id)}
+                disabled={reserving === offer.id || offer.quantity < 1}
+                className="mt-2 bg-green-700 text-white rounded p-2 font-semibold hover:bg-green-800 disabled:bg-gray-300"
+              >
+                {reserving === offer.id ? "Réservation..." : "Réserver"}
               </button>
+
+              {confirmations[offer.id] && (
+                <p className="text-sm text-green-700 mt-1">{confirmations[offer.id]}</p>
+              )}
             </div>
           );
         })}

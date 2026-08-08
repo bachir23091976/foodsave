@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import authRoutes from "./routes/auth.routes";
 import merchantRoutes from "./routes/merchant.routes";
 import offerRoutes from "./routes/offer.routes";
+import orderRoutes from "./routes/order.routes";
 
 dotenv.config();
 
@@ -16,6 +17,7 @@ app.use(express.json());
 app.use("/auth", authRoutes);
 app.use("/merchants", merchantRoutes);
 app.use("/offers", offerRoutes);
+app.use("/orders", orderRoutes);
 
 app.get("/", (req, res) => {
   res.json({ message: "FoodSave API is running" });
