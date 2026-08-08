@@ -26,7 +26,7 @@ export const register = async (req: Request, res: Response) => {
         password: hashedPassword,
         firstName,
         lastName,
-        role: role === "RESTAURANT" ? "RESTAURANT" : "CLIENT",
+        role: role === "MERCHANT" ? "MERCHANT" : "CLIENT",
       },
     });
 

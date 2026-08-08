@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import authRoutes from "./routes/auth.routes";
-import restaurantRoutes from "./routes/restaurant.routes";
+import merchantRoutes from "./routes/merchant.routes";
 
 dotenv.config();
 
@@ -13,7 +13,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use("/auth", authRoutes);
-app.use("/restaurants", restaurantRoutes);
+app.use("/merchants", merchantRoutes);
 
 app.get("/", (req, res) => {
   res.json({ message: "FoodSave API is running" });
