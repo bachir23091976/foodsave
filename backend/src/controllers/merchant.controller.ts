@@ -2,6 +2,26 @@ import { Response } from "express";
 import { prisma } from "../lib/prisma";
 import { AuthRequest } from "../middleware/auth.middleware";
 
+async function geocodeAddress(address: string, city: string, province: string): Promise<{ lat: number; lng: number } | null> {
+  try {
+    const query = encodeURIComponent(`${address}, ${city}, ${province}, Canada`);
+    const url = `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`;
+
+    const res = await fetch(url, {
+      headers: { "User-Agent": "FoodSaveApp/1.0" },
+    });
+
+    const data = await res.json();
+
+    if (data && data.length > 0) {
+      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export const createMerchantProfile = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId;
@@ -16,6 +36,8 @@ export const createMerchantProfile = async (req: AuthRequest, res: Response) => 
       return res.status(400).json({ message: "Ce compte a déjà un commerce" });
     }
 
+    const coords = await geocodeAddress(address, city, province);
+
     const merchant = await prisma.merchant.create({
       data: {
         name,
@@ -26,6 +48,8 @@ export const createMerchantProfile = async (req: AuthRequest, res: Response) => 
         province,
         postalCode,
         phone,
+        latitude: coords?.lat,
+        longitude: coords?.lng,
         ownerId: userId as string,
       },
     });

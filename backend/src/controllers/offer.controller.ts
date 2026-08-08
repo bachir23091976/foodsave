@@ -71,3 +71,46 @@ export const getAllOffers = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ message: "Erreur serveur" });
   }
 };
+
+function distanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+export const getNearbyOffers = async (req: AuthRequest, res: Response) => {
+  try {
+    const lat = parseFloat(req.query.lat as string);
+    const lng = parseFloat(req.query.lng as string);
+
+    if (isNaN(lat) || isNaN(lng)) {
+      return res.status(400).json({ message: "lat et lng requis" });
+    }
+
+    const offers = await prisma.offer.findMany({
+      where: { quantity: { gt: 0 } },
+      include: { merchant: true },
+    });
+
+    const offersWithDistance = offers
+      .filter((offer) => offer.merchant.latitude && offer.merchant.longitude)
+      .map((offer) => ({
+        ...offer,
+        distanceKm: distanceKm(lat, lng, offer.merchant.latitude as number, offer.merchant.longitude as number),
+      }))
+      .sort((a, b) => a.distanceKm - b.distanceKm);
+
+    res.json({ offers: offersWithDistance });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Erreur serveur" });
+  }
+};
