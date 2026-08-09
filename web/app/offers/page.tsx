@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import NotificationBell from "../components/NotificationBell";
+import LoyaltyBanner from "../components/LoyaltyBanner";
 
 interface Offer {
   id: string;
@@ -176,7 +177,7 @@ export default function OffersPage() {
         </h1>
         <NotificationBell />
       </div>
-
+      
       <div className="max-w-2xl mx-auto mb-6 flex gap-2">
         <input
           type="text"
@@ -187,7 +188,7 @@ export default function OffersPage() {
         />
         <button
           onClick={handleSearchNearby}
-          disabled={searching}
+         disabled={searching}
           className="bg-green-700 text-white rounded px-4 font-semibold hover:bg-green-800 disabled:bg-gray-300"
         >
           {searching ? "..." : "Chercher"}
@@ -275,3 +276,5 @@ export default function OffersPage() {
     </main>
   );
 }
+
+
