@@ -7,6 +7,7 @@ import offerRoutes from "./routes/offer.routes";
 import orderRoutes from "./routes/order.routes";
 import adminRoutes from "./routes/admin.routes";
 import notificationRoutes from "./routes/notification.routes";
+import locationRoutes from "./routes/location.routes";
 
 dotenv.config();
 
@@ -22,6 +23,7 @@ app.use("/offers", offerRoutes);
 app.use("/orders", orderRoutes);
 app.use("/admin", adminRoutes);
 app.use("/notifications", notificationRoutes);
+app.use("/locations", locationRoutes);
 
 app.get("/", (req, res) => {
   res.json({ message: "FoodSave API is running" });

@@ -1,6 +1,44 @@
 import { Response } from "express";
 import { prisma } from "../lib/prisma";
 import { AuthRequest } from "../middleware/auth.middleware";
+import { createNotification } from "./notification.controller";
+
+const NEARBY_RADIUS_KM = 5;
+
+function distanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+async function notifyNearbyUsers(merchantLat: number, merchantLng: number, merchantName: string, offerTitle: string) {
+  try {
+    const allLocations = await prisma.savedLocation.findMany();
+
+    const nearbyUserIds = new Set<string>();
+
+    for (const loc of allLocations) {
+      const dist = distanceKm(merchantLat, merchantLng, loc.latitude, loc.longitude);
+      if (dist <= NEARBY_RADIUS_KM) {
+        nearbyUserIds.add(loc.userId);
+      }
+    }
+
+    for (const userId of nearbyUserIds) {
+      await createNotification(userId, `Nouvelle offre près de chez vous : "${offerTitle}" chez ${merchantName}`);
+    }
+  } catch (error) {
+    console.error("Erreur notification proximité:", error);
+  }
+}
 
 export const createOffer = async (req: AuthRequest, res: Response) => {
   try {
@@ -28,6 +66,10 @@ export const createOffer = async (req: AuthRequest, res: Response) => {
         merchantId: merchant.id,
       },
     });
+
+    if (merchant.latitude && merchant.longitude) {
+      notifyNearbyUsers(merchant.latitude, merchant.longitude, merchant.name, offer.title);
+    }
 
     res.status(201).json({ message: "Offre créée avec succès", offer });
   } catch (error) {
@@ -71,20 +113,6 @@ export const getAllOffers = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ message: "Erreur serveur" });
   }
 };
-
-function distanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
 
 export const getNearbyOffers = async (req: AuthRequest, res: Response) => {
   try {
