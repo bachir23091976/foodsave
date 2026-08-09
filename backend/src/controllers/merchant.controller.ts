@@ -34,7 +34,7 @@ export const createMerchantProfile = async (req: AuthRequest, res: Response) => 
 
     const existing = await prisma.merchant.findUnique({ where: { ownerId: userId } });
     if (existing) {
-      return res.status(400).json({ message: "Ce compte a déjà un commerce" });
+      return res.status(400).json({ message: "Ce compte a deja un commerce" });
     }
 
     const coords = await geocodeAddress(address, city, province);
@@ -55,7 +55,7 @@ export const createMerchantProfile = async (req: AuthRequest, res: Response) => 
       },
     });
 
-    res.status(201).json({ message: "Commerce créé avec succès", merchant });
+    res.status(201).json({ message: "Commerce cree avec succes", merchant });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Erreur serveur" });
@@ -69,7 +69,7 @@ export const getMyMerchant = async (req: AuthRequest, res: Response) => {
     const merchant = await prisma.merchant.findUnique({ where: { ownerId: userId } });
 
     if (!merchant) {
-      return res.status(404).json({ message: "Aucun commerce trouvé" });
+      return res.status(404).json({ message: "Aucun commerce trouve" });
     }
 
     res.json({ merchant });
@@ -85,7 +85,7 @@ export const connectStripe = async (req: AuthRequest, res: Response) => {
 
     const merchant = await prisma.merchant.findUnique({ where: { ownerId: userId } });
     if (!merchant) {
-      return res.status(404).json({ message: "Aucun commerce trouvé" });
+      return res.status(404).json({ message: "Aucun commerce trouve" });
     }
 
     let stripeAccountId = merchant.stripeAccountId;
@@ -119,6 +119,61 @@ export const connectStripe = async (req: AuthRequest, res: Response) => {
     res.json({ url: accountLink.url });
   } catch (error: any) {
     console.error(error);
-    res.status(500).json({ message: "Erreur lors de la connexion à Stripe", detail: error.message });
+    res.status(500).json({ message: "Erreur lors de la connexion a Stripe", detail: error.message });
+  }
+};
+
+export const getMySales = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId;
+
+    const merchant = await prisma.merchant.findUnique({ where: { ownerId: userId } });
+    if (!merchant) {
+      return res.status(404).json({ message: "Aucun commerce trouve" });
+    }
+
+    const orders = await prisma.order.findMany({
+      where: {
+        offer: { merchantId: merchant.id },
+        status: "COMPLETED",
+      },
+      include: { offer: true },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const COMMISSION_PERCENT = 15;
+    let totalRevenue = 0;
+    let totalCommission = 0;
+
+    const sales = orders.map((order) => {
+      const commission = Math.round(order.totalPrice * (COMMISSION_PERCENT / 100) * 100) / 100;
+      const net = Math.round((order.totalPrice - commission) * 100) / 100;
+      totalRevenue += order.totalPrice;
+      totalCommission += commission;
+
+      return {
+        id: order.id,
+        title: order.offer.title,
+        totalPrice: order.totalPrice,
+        commission,
+        net,
+        date: order.createdAt,
+      };
+    });
+
+    const totalNet = Math.round((totalRevenue - totalCommission) * 100) / 100;
+
+    res.json({
+      sales,
+      summary: {
+        totalSales: orders.length,
+        totalRevenue: Math.round(totalRevenue * 100) / 100,
+        totalCommission: Math.round(totalCommission * 100) / 100,
+        totalNet,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Erreur serveur" });
   }
 };
