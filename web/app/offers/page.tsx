@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import NotificationBell from "../components/NotificationBell";
 
-interface Offer {
+ interface Offer {
   id: string;
   title: string;
   description: string | null;
@@ -122,9 +123,12 @@ export default function OffersPage() {
 
   return (
     <main className="min-h-screen p-8">
-      <h1 className="text-3xl font-bold text-green-700 mb-6 text-center">
-        Offres disponibles
-      </h1>
+      <div className="flex justify-between items-center max-w-2xl mx-auto mb-6">
+        <h1 className="text-3xl font-bold text-green-700 text-center flex-1">
+          Offres disponibles
+        </h1>
+        <NotificationBell />
+      </div>
 
       <div className="max-w-2xl mx-auto mb-6 flex gap-2">
         <input
