@@ -3,6 +3,7 @@ import QRCode from "qrcode";
 import { prisma } from "../lib/prisma";
 import { stripe } from "../lib/stripe";
 import { AuthRequest } from "../middleware/auth.middleware";
+import { createNotification } from "./notification.controller";
 
 const COMMISSION_PERCENT = 15;
 
@@ -99,7 +100,7 @@ export const confirmOrder = async (req: AuthRequest, res: Response) => {
       return res.json({ message: "Commande déjà confirmée", order: existingOrder, qrCodeImage });
     }
 
-    const offer = await prisma.offer.findUnique({ where: { id: offerId } });
+    const offer = await prisma.offer.findUnique({ where: { id: offerId }, include: { merchant: true } });
     if (!offer || offer.quantity < 1) {
       return res.status(400).json({ message: "Offre indisponible" });
     }
@@ -121,6 +122,12 @@ export const confirmOrder = async (req: AuthRequest, res: Response) => {
 
       return newOrder;
     });
+
+    await createNotification(userId, `Votre réservation pour "${offer.title}" est confirmée !`);
+    await createNotification(
+      offer.merchant.ownerId,
+      `Nouvelle commande reçue pour "${offer.title}"`
+    );
 
     const qrCodeImage = await QRCode.toDataURL(order.pickupCode);
 
@@ -177,6 +184,8 @@ export const validatePickup = async (req: AuthRequest, res: Response) => {
       where: { id: order.id },
       data: { status: "COMPLETED" },
     });
+
+    await createNotification(order.userId, `Votre commande "${order.offer.title}" a été récupérée avec succès`);
 
     res.json({ message: "Commande validée avec succès", order: updatedOrder });
   } catch (error) {
