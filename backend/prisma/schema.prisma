@@ -33,20 +33,21 @@ enum DietaryTag {
 }
 
 model User {
-  id                  String       @id @default(uuid())
-  email               String       @unique
-  password            String
-  firstName           String
-  lastName            String
-  role                Role         @default(CLIENT)
-  dietaryPreferences  DietaryTag[]
-  createdAt           DateTime     @default(now())
-  updatedAt           DateTime     @updatedAt
+  id                 String       @id @default(uuid())
+  email              String       @unique
+  password           String
+  firstName          String
+  lastName           String
+  role               Role         @default(CLIENT)
+  dietaryPreferences DietaryTag[]
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
 
   merchant       Merchant?
   orders         Order[]
   notifications  Notification[]
   savedLocations SavedLocation[]
+  favorites      Favorite[]
 }
 
 model Merchant {
@@ -69,7 +70,8 @@ model Merchant {
   owner   User   @relation(fields: [ownerId], references: [id])
   ownerId String @unique
 
-  offers Offer[]
+  offers    Offer[]
+  favoredBy Favorite[]
 }
 
 model Offer {
@@ -126,6 +128,19 @@ model SavedLocation {
 
   user   User   @relation(fields: [userId], references: [id])
   userId String
+}
+
+model Favorite {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+
+  merchant   Merchant @relation(fields: [merchantId], references: [id])
+  merchantId String
+
+  @@unique([userId, merchantId])
 }
 
 enum OrderStatus {
