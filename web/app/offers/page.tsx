@@ -107,16 +107,15 @@ export default function OffersPage() {
 
       const data = await res.json();
 
-      if (!res.ok) {
+      if (!res.ok || !data.checkoutUrl) {
         setConfirmations((prev) => ({ ...prev, [offerId]: data.message || "Erreur lors de la réservation" }));
+        setReserving(null);
         return;
       }
 
-      setConfirmations((prev) => ({ ...prev, [offerId]: "Réservation confirmée !" }));
-      loadOffers();
+      window.location.href = data.checkoutUrl;
     } catch {
       setConfirmations((prev) => ({ ...prev, [offerId]: "Impossible de contacter le serveur" }));
-    } finally {
       setReserving(null);
     }
   };
@@ -204,11 +203,11 @@ export default function OffersPage() {
                 disabled={reserving === offer.id || offer.quantity < 1}
                 className="mt-2 bg-green-700 text-white rounded p-2 font-semibold hover:bg-green-800 disabled:bg-gray-300"
               >
-                {reserving === offer.id ? "Réservation..." : "Réserver"}
+                {reserving === offer.id ? "Redirection..." : "Réserver"}
               </button>
 
               {confirmations[offer.id] && (
-                <p className="text-sm text-green-700 mt-1">{confirmations[offer.id]}</p>
+                <p className="text-sm text-red-600 mt-1">{confirmations[offer.id]}</p>
               )}
             </div>
           );
