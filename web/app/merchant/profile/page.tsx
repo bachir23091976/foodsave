@@ -12,6 +12,8 @@ export default function MerchantProfilePage() {
   const [postalCode, setPostalCode] = useState("");
   const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("");
+  const [profileCreated, setProfileCreated] = useState(false);
+  const [connectingStripe, setConnectingStripe] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,8 +43,39 @@ export default function MerchantProfilePage() {
       }
 
       setMessage("Profil de commerce créé avec succès !");
+      setProfileCreated(true);
     } catch {
       setMessage("Impossible de contacter le serveur");
+    }
+  };
+
+  const handleConnectStripe = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    setConnectingStripe(true);
+
+    try {
+      const res = await fetch("http://localhost:4000/merchants/connect-stripe", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({}),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.url) {
+        window.location.href = data.url;
+      } else {
+        setMessage(data.message || "Erreur lors de la connexion à Stripe");
+      }
+    } catch {
+      setMessage("Impossible de contacter le serveur");
+    } finally {
+      setConnectingStripe(false);
     }
   };
 
@@ -132,6 +165,16 @@ export default function MerchantProfilePage() {
       </form>
 
       {message && <p className="mt-4 text-gray-700">{message}</p>}
+
+      {profileCreated && (
+        <button
+          onClick={handleConnectStripe}
+          disabled={connectingStripe}
+          className="mt-4 bg-blue-600 text-white rounded p-2 px-6 font-semibold hover:bg-blue-700 disabled:bg-gray-300"
+        >
+          {connectingStripe ? "Connexion..." : "Connecter mon compte Stripe"}
+        </button>
+      )}
     </main>
   );
 }
