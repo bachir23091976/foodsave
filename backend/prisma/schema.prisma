@@ -48,6 +48,7 @@ model User {
   notifications  Notification[]
   savedLocations SavedLocation[]
   favorites      Favorite[]
+  loyaltyRewards LoyaltyReward[]
 }
 
 model Merchant {
@@ -141,6 +142,17 @@ model Favorite {
   merchantId String
 
   @@unique([userId, merchantId])
+}
+
+model LoyaltyReward {
+  id          String   @id @default(uuid())
+  code        String   @unique @default(uuid())
+  discountCad Float
+  isUsed      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
 }
 
 enum OrderStatus {

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import NotificationBell from "../components/NotificationBell";
 
- interface Offer {
+interface Offer {
   id: string;
   title: string;
   description: string | null;
@@ -14,6 +14,7 @@ import NotificationBell from "../components/NotificationBell";
   pickupEnd: string;
   distanceKm?: number;
   merchant: {
+    id: string;
     name: string;
     address: string;
     city: string;
@@ -29,6 +30,7 @@ export default function OffersPage() {
   const [addressInput, setAddressInput] = useState("");
   const [searching, setSearching] = useState(false);
   const [searchMessage, setSearchMessage] = useState("");
+  const [favoriteMerchantIds, setFavoriteMerchantIds] = useState<string[]>([]);
 
   const loadOffers = () => {
     fetch("http://localhost:4000/offers")
@@ -43,8 +45,24 @@ export default function OffersPage() {
       });
   };
 
+  const loadFavorites = () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    fetch("http://localhost:4000/favorites", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        const ids = (data.favorites || []).map((f: any) => f.merchantId);
+        setFavoriteMerchantIds(ids);
+      })
+      .catch(() => {});
+  };
+
   useEffect(() => {
     loadOffers();
+    loadFavorites();
   }, []);
 
   const formatTime = (iso: string) => {
@@ -121,6 +139,35 @@ export default function OffersPage() {
     }
   };
 
+  const toggleFavorite = async (merchantId: string) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    const isFavorite = favoriteMerchantIds.includes(merchantId);
+
+    if (isFavorite) {
+      await fetch("http://localhost:4000/favorites/remove", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ merchantId }),
+      });
+      setFavoriteMerchantIds((prev) => prev.filter((id) => id !== merchantId));
+    } else {
+      await fetch("http://localhost:4000/favorites", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ merchantId }),
+      });
+      setFavoriteMerchantIds((prev) => [...prev, merchantId]);
+    }
+  };
+
   return (
     <main className="min-h-screen p-8">
       <div className="flex justify-between items-center max-w-2xl mx-auto mb-6">
@@ -162,6 +209,7 @@ export default function OffersPage() {
           const percent = Math.round(
             ((offer.originalPrice - offer.discountedPrice) / offer.originalPrice) * 100
           );
+          const isFavorite = favoriteMerchantIds.includes(offer.merchant.id);
           return (
             <div
               key={offer.id}
@@ -170,11 +218,18 @@ export default function OffersPage() {
               <div className="flex justify-between items-start">
                 <div>
                   <h2 className="text-lg font-semibold">{offer.title}</h2>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-500 flex items-center gap-1">
                     {offer.merchant.name} — {offer.merchant.city}
                     {offer.distanceKm !== undefined && (
                       <span className="text-green-700 font-medium"> · {offer.distanceKm.toFixed(1)} km</span>
                     )}
+                    <button
+                      onClick={() => toggleFavorite(offer.merchant.id)}
+                      className="ml-1 text-lg"
+                      aria-label="Ajouter aux favoris"
+                    >
+                      {isFavorite ? "⭐" : "☆"}
+                    </button>
                   </p>
                 </div>
                 <span className="bg-green-700 text-white text-xs font-bold px-2 py-1 rounded">

@@ -4,6 +4,7 @@ import { prisma } from "../lib/prisma";
 import { stripe } from "../lib/stripe";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { createNotification } from "./notification.controller";
+import { checkAndCreateReward } from "./loyalty.controller";
 
 const COMMISSION_PERCENT = 15;
 
@@ -30,7 +31,7 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
     }
 
     if (!offer.merchant.stripeAccountId) {
-      return res.status(400).json({ message: "Ce commerce n'a pas encore configuré ses paiements" });
+      return res.status(400).json({ message: "Ce commerce n'a pas encore configure ses paiements" });
     }
 
     const amountInCents = Math.round(offer.discountedPrice * 100);
@@ -66,7 +67,7 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
     res.json({ checkoutUrl: session.url });
   } catch (error: any) {
     console.error(error);
-    res.status(500).json({ message: "Erreur lors de la création du paiement", detail: error.message });
+    res.status(500).json({ message: "Erreur lors de la creation du paiement", detail: error.message });
   }
 };
 
@@ -81,14 +82,14 @@ export const confirmOrder = async (req: AuthRequest, res: Response) => {
     const session = await stripe.checkout.sessions.retrieve(sessionId);
 
     if (session.payment_status !== "paid") {
-      return res.status(400).json({ message: "Paiement non confirmé" });
+      return res.status(400).json({ message: "Paiement non confirme" });
     }
 
     const offerId = session.metadata?.offerId;
     const userId = session.metadata?.userId;
 
     if (!offerId || !userId) {
-      return res.status(400).json({ message: "Métadonnées manquantes" });
+      return res.status(400).json({ message: "Metadonnees manquantes" });
     }
 
     const existingOrder = await prisma.order.findFirst({
@@ -97,7 +98,7 @@ export const confirmOrder = async (req: AuthRequest, res: Response) => {
 
     if (existingOrder) {
       const qrCodeImage = await QRCode.toDataURL(existingOrder.pickupCode);
-      return res.json({ message: "Commande déjà confirmée", order: existingOrder, qrCodeImage });
+      return res.json({ message: "Commande deja confirmee", order: existingOrder, qrCodeImage });
     }
 
     const offer = await prisma.offer.findUnique({ where: { id: offerId }, include: { merchant: true } });
@@ -123,15 +124,15 @@ export const confirmOrder = async (req: AuthRequest, res: Response) => {
       return newOrder;
     });
 
-    await createNotification(userId, `Votre réservation pour "${offer.title}" est confirmée !`);
-    await createNotification(
-      offer.merchant.ownerId,
-      `Nouvelle commande reçue pour "${offer.title}"`
-    );
+    const clientMessage = "Votre reservation pour " + offer.title + " est confirmee";
+    await createNotification(userId, clientMessage);
+
+    const merchantMessage = "Nouvelle commande recue pour " + offer.title;
+    await createNotification(offer.merchant.ownerId, merchantMessage);
 
     const qrCodeImage = await QRCode.toDataURL(order.pickupCode);
 
-    res.status(201).json({ message: "Réservation confirmée", order, qrCodeImage });
+    res.status(201).json({ message: "Reservation confirmee", order, qrCodeImage });
   } catch (error: any) {
     console.error(error);
     res.status(500).json({ message: "Erreur serveur", detail: error.message });
@@ -173,11 +174,11 @@ export const validatePickup = async (req: AuthRequest, res: Response) => {
     }
 
     if (order.offer.merchant.ownerId !== req.userId) {
-      return res.status(403).json({ message: "Cette commande n'appartient pas à votre commerce" });
+      return res.status(403).json({ message: "Cette commande n'appartient pas a votre commerce" });
     }
 
     if (order.status === "COMPLETED") {
-      return res.status(400).json({ message: "Cette commande a déjà été récupérée" });
+      return res.status(400).json({ message: "Cette commande a deja ete recuperee" });
     }
 
     const updatedOrder = await prisma.order.update({
@@ -185,9 +186,12 @@ export const validatePickup = async (req: AuthRequest, res: Response) => {
       data: { status: "COMPLETED" },
     });
 
-    await createNotification(order.userId, `Votre commande "${order.offer.title}" a été récupérée avec succès`);
+    const pickupMessage = "Votre commande " + order.offer.title + " a ete recuperee avec succes";
+    await createNotification(order.userId, pickupMessage);
 
-    res.json({ message: "Commande validée avec succès", order: updatedOrder });
+    await checkAndCreateReward(order.userId);
+
+    res.json({ message: "Commande validee avec succes", order: updatedOrder });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Erreur serveur" });
