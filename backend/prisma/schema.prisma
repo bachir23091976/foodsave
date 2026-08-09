@@ -38,20 +38,21 @@ model User {
 }
 
 model Merchant {
-  id          String       @id @default(uuid())
-  name        String
-  type        MerchantType @default(RESTAURANT)
-  description String?
-  address     String
-  city        String
-  province    String
-  postalCode  String
-  phone       String?
-  latitude    Float?
-  longitude   Float?
-  isApproved  Boolean      @default(false)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id              String       @id @default(uuid())
+  name            String
+  type            MerchantType @default(RESTAURANT)
+  description     String?
+  address         String
+  city            String
+  province        String
+  postalCode      String
+  phone           String?
+  latitude        Float?
+  longitude       Float?
+  isApproved      Boolean      @default(false)
+  stripeAccountId String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 
   owner   User   @relation(fields: [ownerId], references: [id])
   ownerId String @unique
