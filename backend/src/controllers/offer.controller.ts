@@ -27,6 +27,17 @@ const FORBIDDEN_KEYWORDS = [
   "cognac",
   "tequila",
   "porto",
+  "porc",
+  "pork",
+  "jambon",
+  "ham",
+  "bacon",
+  "saucisse de porc",
+  "lardons",
+  "prosciutto",
+  "chorizo",
+  "pepperoni",
+  "salami",
 ];
 
 function containsForbiddenContent(text: string): boolean {
@@ -80,7 +91,7 @@ export const createOffer = async (req: AuthRequest, res: Response) => {
 
     if (containsForbiddenContent(title) || containsForbiddenContent(description || "")) {
       return res.status(400).json({
-        message: "Les produits alcoolisés ne sont pas autorisés sur FoodSave",
+        message: "Les produits alcoolisés ou à base de porc ne sont pas autorisés sur FoodSave",
       });
     }
 

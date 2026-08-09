@@ -23,15 +23,25 @@ enum MerchantType {
   OTHER
 }
 
+enum DietaryTag {
+  VEGETARIAN
+  VEGAN
+  HALAL
+  GLUTEN_FREE
+  DAIRY_FREE
+  NUT_FREE
+}
+
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  firstName String
-  lastName  String
-  role      Role     @default(CLIENT)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                  String       @id @default(uuid())
+  email               String       @unique
+  password            String
+  firstName           String
+  lastName            String
+  role                Role         @default(CLIENT)
+  dietaryPreferences  DietaryTag[]
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
 
   merchant       Merchant?
   orders         Order[]
@@ -63,7 +73,7 @@ model Merchant {
 }
 
 model Offer {
-  id              String   @id @default(uuid())
+  id              String       @id @default(uuid())
   title           String
   description     String?
   originalPrice   Float
@@ -71,8 +81,9 @@ model Offer {
   quantity        Int
   pickupStart     DateTime
   pickupEnd       DateTime
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  dietaryTags     DietaryTag[]
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 
   merchant   Merchant @relation(fields: [merchantId], references: [id])
   merchantId String

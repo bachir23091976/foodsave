@@ -15,7 +15,7 @@ export const register = async (req: Request, res: Response) => {
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
-      return res.status(400).json({ message: "Cet email est déjà utilisé" });
+      return res.status(400).json({ message: "Cet email est deja utilise" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -35,7 +35,7 @@ export const register = async (req: Request, res: Response) => {
     });
 
     res.status(201).json({
-      message: "Compte créé avec succès",
+      message: "Compte cree avec succes",
       token,
       user: {
         id: user.id,
@@ -74,7 +74,7 @@ export const login = async (req: Request, res: Response) => {
     });
 
     res.json({
-      message: "Connexion réussie",
+      message: "Connexion reussie",
       token,
       user: {
         id: user.id,
