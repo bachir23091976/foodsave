@@ -165,7 +165,9 @@ export default function MerchantProfilePage() {
       </form>
 
       {message && <p className="mt-4 text-gray-700">{message}</p>}
-
+       <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-sm text-sm text-blue-800">
+        🎁 FoodSave offre des réductions de fidélité à vos clients réguliers, entièrement financées par notre commission — sans aucun coût pour vous. Ça vous aide à fidéliser une clientèle qui revient régulièrement !
+      </div>
       {profileCreated && (
         <button
           onClick={handleConnectStripe}
