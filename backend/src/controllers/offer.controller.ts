@@ -5,6 +5,35 @@ import { createNotification } from "./notification.controller";
 
 const NEARBY_RADIUS_KM = 5;
 
+const FORBIDDEN_KEYWORDS = [
+  "bière",
+  "biere",
+  "vin",
+  "alcool",
+  "alcohol",
+  "beer",
+  "wine",
+  "whisky",
+  "whiskey",
+  "vodka",
+  "rhum",
+  "rum",
+  "gin",
+  "champagne",
+  "cidre",
+  "spiritueux",
+  "liqueur",
+  "cocktail",
+  "cognac",
+  "tequila",
+  "porto",
+];
+
+function containsForbiddenContent(text: string): boolean {
+  const lower = text.toLowerCase();
+  return FORBIDDEN_KEYWORDS.some((word) => lower.includes(word));
+}
+
 function distanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -47,6 +76,12 @@ export const createOffer = async (req: AuthRequest, res: Response) => {
 
     if (!title || !originalPrice || !discountedPrice || !quantity || !pickupStart || !pickupEnd) {
       return res.status(400).json({ message: "Champs manquants" });
+    }
+
+    if (containsForbiddenContent(title) || containsForbiddenContent(description || "")) {
+      return res.status(400).json({
+        message: "Les produits alcoolisés ne sont pas autorisés sur FoodSave",
+      });
     }
 
     const merchant = await prisma.merchant.findUnique({ where: { ownerId: userId } });
