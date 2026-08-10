@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import NotificationBell from "../components/NotificationBell";
@@ -8,6 +8,7 @@ interface Offer {
   id: string;
   title: string;
   description: string | null;
+  imageUrl: string | null;
   originalPrice: number;
   discountedPrice: number;
   quantity: number;
@@ -35,12 +36,12 @@ export default function OffersPage() {
 
   const loadOffers = () => {
     fetch("http://localhost:4000/offers")
-      .then((res) => res.json())
-      .then((data) => {
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
         setOffers(data.offers || []);
         setLoading(false);
       })
-      .catch(() => {
+      .catch(function () {
         setError("Impossible de charger les offres");
         setLoading(false);
       });
@@ -51,14 +52,14 @@ export default function OffersPage() {
     if (!token) return;
 
     fetch("http://localhost:4000/favorites", {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: "Bearer " + token },
     })
-      .then((res) => res.json())
-      .then((data) => {
-        const ids = (data.favorites || []).map((f: any) => f.merchantId);
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        const ids = (data.favorites || []).map(function (f: any) { return f.merchantId; });
         setFavoriteMerchantIds(ids);
       })
-      .catch(() => {});
+      .catch(function () {});
   };
 
   useEffect(() => {
@@ -79,12 +80,12 @@ export default function OffersPage() {
 
     try {
       const geoRes = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addressInput)}&format=json&limit=1`
+        "https://nominatim.openstreetmap.org/search?q=" + encodeURIComponent(addressInput) + "&format=json&limit=1"
       );
       const geoData = await geoRes.json();
 
       if (!geoData || geoData.length === 0) {
-        setSearchMessage("Adresse introuvable, essayez une adresse plus précise");
+        setSearchMessage("Adresse introuvable, essayez une adresse plus precise");
         setSearching(false);
         return;
       }
@@ -92,12 +93,12 @@ export default function OffersPage() {
       const lat = geoData[0].lat;
       const lng = geoData[0].lon;
 
-      const res = await fetch(`http://localhost:4000/offers/nearby?lat=${lat}&lng=${lng}`);
+      const res = await fetch("http://localhost:4000/offers/nearby?lat=" + lat + "&lng=" + lng);
       const data = await res.json();
       setOffers(data.offers || []);
 
       if (!data.offers || data.offers.length === 0) {
-        setSearchMessage("Aucune offre trouvée près de cette adresse");
+        setSearchMessage("Aucune offre trouvee pres de cette adresse");
       }
     } catch {
       setSearchMessage("Erreur lors de la recherche");
@@ -109,7 +110,7 @@ export default function OffersPage() {
   const handleReserve = async (offerId: string) => {
     const token = localStorage.getItem("token");
     if (!token) {
-      setConfirmations((prev) => ({ ...prev, [offerId]: "Vous devez être connecté pour réserver" }));
+      setConfirmations((prev) => ({ ...prev, [offerId]: "Vous devez etre connecte pour reserver" }));
       return;
     }
 
@@ -120,7 +121,7 @@ export default function OffersPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          Authorization: "Bearer " + token,
         },
         body: JSON.stringify({ offerId }),
       });
@@ -128,7 +129,7 @@ export default function OffersPage() {
       const data = await res.json();
 
       if (!res.ok || !data.checkoutUrl) {
-        setConfirmations((prev) => ({ ...prev, [offerId]: data.message || "Erreur lors de la réservation" }));
+        setConfirmations((prev) => ({ ...prev, [offerId]: data.message || "Erreur lors de la reservation" }));
         setReserving(null);
         return;
       }
@@ -151,7 +152,7 @@ export default function OffersPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          Authorization: "Bearer " + token,
         },
         body: JSON.stringify({ merchantId }),
       });
@@ -161,7 +162,7 @@ export default function OffersPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          Authorization: "Bearer " + token,
         },
         body: JSON.stringify({ merchantId }),
       });
@@ -177,7 +178,9 @@ export default function OffersPage() {
         </h1>
         <NotificationBell />
       </div>
-      
+
+      <LoyaltyBanner />
+
       <div className="max-w-2xl mx-auto mb-6 flex gap-2">
         <input
           type="text"
@@ -188,7 +191,7 @@ export default function OffersPage() {
         />
         <button
           onClick={handleSearchNearby}
-         disabled={searching}
+          disabled={searching}
           className="bg-green-700 text-white rounded px-4 font-semibold hover:bg-green-800 disabled:bg-gray-300"
         >
           {searching ? "..." : "Chercher"}
@@ -214,61 +217,71 @@ export default function OffersPage() {
           return (
             <div
               key={offer.id}
-              className="border border-gray-200 rounded-lg p-4 shadow-sm flex flex-col gap-1"
+              className="border border-gray-200 rounded-lg overflow-hidden shadow-sm flex flex-col gap-1"
             >
-              <div className="flex justify-between items-start">
-                <div>
-                  <h2 className="text-lg font-semibold">{offer.title}</h2>
-                  <p className="text-sm text-gray-500 flex items-center gap-1">
-                    {offer.merchant.name} — {offer.merchant.city}
-                    {offer.distanceKm !== undefined && (
-                      <span className="text-green-700 font-medium"> · {offer.distanceKm.toFixed(1)} km</span>
-                    )}
-                    <button
-                      onClick={() => toggleFavorite(offer.merchant.id)}
-                      className="ml-1 text-lg"
-                      aria-label="Ajouter aux favoris"
-                    >
-                      {isFavorite ? "⭐" : "☆"}
-                    </button>
-                  </p>
+              {offer.imageUrl && (
+                <img
+                  src={offer.imageUrl}
+                  alt={offer.title}
+                  className="w-full h-40 object-cover"
+                />
+              )}
+
+              <div className="p-4 flex flex-col gap-1">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h2 className="text-lg font-semibold">{offer.title}</h2>
+                    <p className="text-sm text-gray-500 flex items-center gap-1">
+                      {offer.merchant.name} - {offer.merchant.city}
+                      {offer.distanceKm !== undefined && (
+                        <span className="text-green-700 font-medium"> - {offer.distanceKm.toFixed(1)} km</span>
+                      )}
+                      <button
+                        onClick={() => toggleFavorite(offer.merchant.id)}
+                        className="ml-1 text-lg"
+                        aria-label="Ajouter aux favoris"
+                      >
+                        {isFavorite ? "[*]" : "[ ]"}
+                      </button>
+                    </p>
+                  </div>
+                  <span className="bg-green-700 text-white text-xs font-bold px-2 py-1 rounded">
+                    -{percent}%
+                  </span>
                 </div>
-                <span className="bg-green-700 text-white text-xs font-bold px-2 py-1 rounded">
-                  -{percent}%
-                </span>
+
+                {offer.description && (
+                  <p className="text-sm text-gray-600">{offer.description}</p>
+                )}
+
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="line-through text-gray-400 text-sm">
+                    {offer.originalPrice.toFixed(2)} $
+                  </span>
+                  <span className="text-green-700 font-bold text-lg">
+                    {offer.discountedPrice.toFixed(2)} $
+                  </span>
+                </div>
+
+                <p className="text-sm text-gray-600">
+                  Recuperation : {formatTime(offer.pickupStart)} - {formatTime(offer.pickupEnd)}
+                </p>
+                <p className="text-sm text-gray-500">
+                  {offer.quantity} disponible{offer.quantity > 1 ? "s" : ""}
+                </p>
+
+                <button
+                  onClick={() => handleReserve(offer.id)}
+                  disabled={reserving === offer.id || offer.quantity < 1}
+                  className="mt-2 bg-green-700 text-white rounded p-2 font-semibold hover:bg-green-800 disabled:bg-gray-300"
+                >
+                  {reserving === offer.id ? "Redirection..." : "Reserver"}
+                </button>
+
+                {confirmations[offer.id] && (
+                  <p className="text-sm text-red-600 mt-1">{confirmations[offer.id]}</p>
+                )}
               </div>
-
-              {offer.description && (
-                <p className="text-sm text-gray-600">{offer.description}</p>
-              )}
-
-              <div className="flex items-baseline gap-2 mt-1">
-                <span className="line-through text-gray-400 text-sm">
-                  {offer.originalPrice.toFixed(2)} $
-                </span>
-                <span className="text-green-700 font-bold text-lg">
-                  {offer.discountedPrice.toFixed(2)} $
-                </span>
-              </div>
-
-              <p className="text-sm text-gray-600">
-                Récupération : {formatTime(offer.pickupStart)} - {formatTime(offer.pickupEnd)}
-              </p>
-              <p className="text-sm text-gray-500">
-                {offer.quantity} disponible{offer.quantity > 1 ? "s" : ""}
-              </p>
-
-              <button
-                onClick={() => handleReserve(offer.id)}
-                disabled={reserving === offer.id || offer.quantity < 1}
-                className="mt-2 bg-green-700 text-white rounded p-2 font-semibold hover:bg-green-800 disabled:bg-gray-300"
-              >
-                {reserving === offer.id ? "Redirection..." : "Réserver"}
-              </button>
-
-              {confirmations[offer.id] && (
-                <p className="text-sm text-red-600 mt-1">{confirmations[offer.id]}</p>
-              )}
             </div>
           );
         })}
@@ -276,5 +289,3 @@ export default function OffersPage() {
     </main>
   );
 }
-
-

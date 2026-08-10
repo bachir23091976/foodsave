@@ -11,6 +11,7 @@ import locationRoutes from "./routes/location.routes";
 import userRoutes from "./routes/user.routes";
 import favoriteRoutes from "./routes/favorite.routes";
 import loyaltyRoutes from "./routes/loyalty.routes";
+import uploadRoutes from "./routes/upload.routes";
 
 dotenv.config();
 
@@ -30,6 +31,7 @@ app.use("/locations", locationRoutes);
 app.use("/users", userRoutes);
 app.use("/favorites", favoriteRoutes);
 app.use("/loyalty", loyaltyRoutes);
+app.use("/upload", uploadRoutes);
 
 app.get("/", (req, res) => {
   res.json({ message: "FoodSave API is running" });

@@ -79,6 +79,7 @@ model Offer {
   id              String       @id @default(uuid())
   title           String
   description     String?
+  imageUrl        String?
   originalPrice   Float
   discountedPrice Float
   quantity        Int

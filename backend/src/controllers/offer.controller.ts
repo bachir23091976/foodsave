@@ -6,7 +6,6 @@ import { createNotification } from "./notification.controller";
 const NEARBY_RADIUS_KM = 5;
 
 const FORBIDDEN_KEYWORDS = [
-  "bière",
   "biere",
   "vin",
   "alcool",
@@ -32,7 +31,6 @@ const FORBIDDEN_KEYWORDS = [
   "jambon",
   "ham",
   "bacon",
-  "saucisse de porc",
   "lardons",
   "prosciutto",
   "chorizo",
@@ -73,10 +71,10 @@ async function notifyNearbyUsers(merchantLat: number, merchantLng: number, merch
     }
 
     for (const userId of nearbyUserIds) {
-      await createNotification(userId, `Nouvelle offre près de chez vous : "${offerTitle}" chez ${merchantName}`);
+      await createNotification(userId, "Nouvelle offre pres de chez vous : " + offerTitle + " chez " + merchantName);
     }
   } catch (error) {
-    console.error("Erreur notification proximité:", error);
+    console.error("Erreur notification proximite:", error);
   }
 }
 
@@ -91,19 +89,20 @@ export const createOffer = async (req: AuthRequest, res: Response) => {
 
     if (containsForbiddenContent(title) || containsForbiddenContent(description || "")) {
       return res.status(400).json({
-        message: "Les produits alcoolisés ou à base de porc ne sont pas autorisés sur FoodSave",
+        message: "Les produits alcoolises ou a base de porc ne sont pas autorises sur FoodSave",
       });
     }
 
     const merchant = await prisma.merchant.findUnique({ where: { ownerId: userId } });
     if (!merchant) {
-      return res.status(404).json({ message: "Aucun commerce trouvé pour ce compte" });
+      return res.status(404).json({ message: "Aucun commerce trouve pour ce compte" });
     }
 
     const offer = await prisma.offer.create({
       data: {
         title,
         description,
+        imageUrl: imageUrl || null,
         originalPrice,
         discountedPrice,
         quantity,
@@ -117,7 +116,7 @@ export const createOffer = async (req: AuthRequest, res: Response) => {
       notifyNearbyUsers(merchant.latitude, merchant.longitude, merchant.name, offer.title);
     }
 
-    res.status(201).json({ message: "Offre créée avec succès", offer });
+    res.status(201).json({ message: "Offre creee avec succes", offer });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Erreur serveur" });
@@ -130,7 +129,7 @@ export const getMyOffers = async (req: AuthRequest, res: Response) => {
 
     const merchant = await prisma.merchant.findUnique({ where: { ownerId: userId } });
     if (!merchant) {
-      return res.status(404).json({ message: "Aucun commerce trouvé pour ce compte" });
+      return res.status(404).json({ message: "Aucun commerce trouve pour ce compte" });
     }
 
     const offers = await prisma.offer.findMany({
