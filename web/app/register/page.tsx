@@ -1,46 +1,63 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function RegisterPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [message, setMessage] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [referralCode, setReferralCode] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setMessage("");
+    setError("");
+    setLoading(true);
 
     try {
       const res = await fetch("http://localhost:4000/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, firstName, lastName, role: "CLIENT" }),
+        body: JSON.stringify({
+          firstName,
+          lastName,
+          email,
+          password,
+          role: "CLIENT",
+          referralCode,
+        }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        setMessage(data.message || "Une erreur est survenue");
+        setError(data.message || "Erreur lors de l inscription");
+        setLoading(false);
         return;
       }
 
-      setMessage("Compte créé avec succès ! Vous pouvez maintenant vous connecter.");
+      localStorage.setItem("token", data.token);
+      router.push("/offers");
     } catch {
-      setMessage("Impossible de contacter le serveur");
+      setError("Impossible de contacter le serveur");
+      setLoading(false);
     }
   };
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-8">
-      <h1 className="text-3xl font-bold text-green-700 mb-6">Créer un compte</h1>
+    <main className="min-h-screen flex flex-col items-center p-8">
+      <h1 className="text-3xl font-bold text-green-700 mb-6">
+        Creer un compte
+      </h1>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full max-w-sm">
         <input
           type="text"
-          placeholder="Prénom"
+          placeholder="Prenom"
           value={firstName}
           onChange={(e) => setFirstName(e.target.value)}
           className="border border-gray-300 rounded p-2"
@@ -55,8 +72,15 @@ export default function RegisterPage() {
           required
         />
         <input
+          type="text"
+          placeholder="Code de parrainage (optionnel)"
+          value={referralCode}
+          onChange={(e) => setReferralCode(e.target.value)}
+          className="border border-gray-300 rounded p-2"
+        />
+        <input
           type="email"
-          placeholder="Email"
+          placeholder="Courriel"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="border border-gray-300 rounded p-2"
@@ -70,15 +94,17 @@ export default function RegisterPage() {
           className="border border-gray-300 rounded p-2"
           required
         />
+
         <button
           type="submit"
-          className="bg-green-700 text-white rounded p-2 font-semibold hover:bg-green-800"
+          disabled={loading}
+          className="bg-green-700 text-white rounded p-2 font-semibold hover:bg-green-800 disabled:bg-gray-300"
         >
-          S&apos;inscrire
+          {loading ? "Creation..." : "Creer mon compte"}
         </button>
       </form>
 
-      {message && <p className="mt-4 text-gray-700">{message}</p>}
+      {error && <p className="mt-4 text-red-600">{error}</p>}
     </main>
   );
 }
