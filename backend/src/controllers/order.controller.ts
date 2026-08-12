@@ -1,4 +1,4 @@
-import { Response } from "express";
+﻿import { Response } from "express";
 import QRCode from "qrcode";
 import { prisma } from "../lib/prisma";
 import { stripe } from "../lib/stripe";
@@ -7,6 +7,27 @@ import { createNotification } from "./notification.controller";
 import { checkAndCreateReward } from "./loyalty.controller";
 
 const COMMISSION_PERCENT = 15;
+const REFERRAL_DISCOUNT_PERCENT = 15;
+
+async function checkAndRewardReferral(userId: string) {
+  try {
+    const completedCount = await prisma.order.count({
+      where: { userId, status: "COMPLETED" },
+    });
+    if (completedCount !== 1) { return; }
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { referredById: true },
+    });
+    if (!user?.referredById) { return; }
+    await prisma.loyaltyReward.create({ data: { userId: user.referredById, discountCad: REFERRAL_DISCOUNT_PERCENT } });
+    await prisma.loyaltyReward.create({ data: { userId, discountCad: REFERRAL_DISCOUNT_PERCENT } });
+    await createNotification(user.referredById, "Votre filleul a complete sa premiere commande, vous avez recu une recompense");
+    await createNotification(userId, "Merci d avoir utilise un code de parrainage, vous avez recu une recompense");
+  } catch (error) {
+    console.error("Erreur recompense parrainage:", error);
+  }
+}
 
 export const createOrder = async (req: AuthRequest, res: Response) => {
   try {
@@ -190,6 +211,7 @@ export const validatePickup = async (req: AuthRequest, res: Response) => {
     await createNotification(order.userId, pickupMessage);
 
     await checkAndCreateReward(order.userId);
+    await checkAndRewardReferral(order.userId);
 
     res.json({ message: "Commande validee avec succes", order: updatedOrder });
   } catch (error) {
@@ -197,3 +219,5 @@ export const validatePickup = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ message: "Erreur serveur" });
   }
 };
+
+
