@@ -1,13 +1,14 @@
-import { Request, Response } from "express";
+﻿import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { prisma } from "../lib/prisma";
+import { checkAndCreateReward } from "./loyalty.controller";
 
 const JWT_SECRET = process.env.JWT_SECRET || "changez-moi-en-production";
 
 export const register = async (req: Request, res: Response) => {
   try {
-    const { email, password, firstName, lastName, role } = req.body;
+    const { email, password, firstName, lastName, role, referralCode } = req.body;
 
     if (!email || !password || !firstName || !lastName) {
       return res.status(400).json({ message: "Champs manquants" });
@@ -16,6 +17,15 @@ export const register = async (req: Request, res: Response) => {
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
       return res.status(400).json({ message: "Cet email est deja utilise" });
+    }
+
+    let referredById: string | null = null;
+
+    if (referralCode) {
+      const referrer = await prisma.user.findUnique({ where: { referralCode } });
+      if (referrer) {
+        referredById = referrer.id;
+      }
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -27,6 +37,7 @@ export const register = async (req: Request, res: Response) => {
         firstName,
         lastName,
         role: role === "MERCHANT" ? "MERCHANT" : "CLIENT",
+        referredById,
       },
     });
 
