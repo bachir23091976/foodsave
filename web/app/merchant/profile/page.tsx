@@ -1,6 +1,24 @@
 "use client";
 
 import { useState } from "react";
+import { Bebas_Neue, Space_Grotesk } from "next/font/google";
+import Navbar from "../../components/Navbar";
+import Footer from "../../components/Footer";
+import FoodSaveImage from "../../components/FoodSaveImage";
+
+const display = Bebas_Neue({ subsets: ["latin"], weight: "400" });
+const body = Space_Grotesk({ subsets: ["latin"], weight: ["400", "500", "700"] });
+
+const bg = "#06110C";
+const amber = "#FFB100";
+const jade = "#17C989";
+const dim = "#8FA396";
+
+const inputStyle = {
+  backgroundColor: "#0D1912",
+  border: "1px solid rgba(255,255,255,0.15)",
+  color: "#F5F1E8",
+};
 
 export default function MerchantProfilePage() {
   const [name, setName] = useState("");
@@ -80,103 +98,149 @@ export default function MerchantProfilePage() {
   };
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-8">
-      <h1 className="text-3xl font-bold text-green-700 mb-6">
-        Créer mon profil de commerce
-      </h1>
+    <main className={body.className} style={{ backgroundColor: bg, color: "#F5F1E8", minHeight: "100vh" }}>
+      <Navbar />
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full max-w-sm">
-        <input
-          type="text"
-          placeholder="Nom du commerce"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="border border-gray-300 rounded p-2"
-          required
-        />
+      <section className="px-6 py-16 max-w-5xl mx-auto grid md:grid-cols-2 gap-12 items-start">
+        <div>
+          <p className="text-xs tracking-[0.4em] uppercase mb-4" style={{ color: jade }}>
+            Espace commerçant
+          </p>
+          <h1 className={display.className} style={{ fontSize: "clamp(2.2rem, 6vw, 3.8rem)", lineHeight: 1 }}>
+            GÉREZ VOTRE
+            <br />
+            <span style={{ color: amber }}>COMMERCE</span>
+          </h1>
+          <p className="mt-4" style={{ color: dim }}>
+            Créez votre profil commerce pour commencer à publier vos surplus sur FoodSave.
+          </p>
 
-        <select
-          value={type}
-          onChange={(e) => setType(e.target.value)}
-          className="border border-gray-300 rounded p-2"
-        >
-          <option value="RESTAURANT">Restaurant</option>
-          <option value="CAFE">Café</option>
-          <option value="BAKERY">Boulangerie</option>
-          <option value="GROCERY">Épicerie</option>
-          <option value="SUPERMARKET">Grande surface</option>
-          <option value="HOTEL">Hôtel</option>
-          <option value="OTHER">Autre</option>
-        </select>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-8">
+            <input
+              type="text"
+              placeholder="Nom du commerce"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="rounded-full px-5 py-3 outline-none"
+              style={inputStyle}
+              required
+            />
 
-        <textarea
-          placeholder="Description (optionnel)"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          className="border border-gray-300 rounded p-2"
-        />
+            <select
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+              className="rounded-full px-5 py-3 outline-none"
+              style={inputStyle}
+            >
+              <option value="RESTAURANT">Restaurant</option>
+              <option value="CAFE">Café</option>
+              <option value="BAKERY">Boulangerie</option>
+              <option value="GROCERY">Épicerie</option>
+              <option value="SUPERMARKET">Grande surface</option>
+              <option value="HOTEL">Hôtel</option>
+              <option value="OTHER">Autre</option>
+            </select>
 
-        <input
-          type="text"
-          placeholder="Adresse"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          className="border border-gray-300 rounded p-2"
-          required
-        />
-        <input
-          type="text"
-          placeholder="Ville"
-          value={city}
-          onChange={(e) => setCity(e.target.value)}
-          className="border border-gray-300 rounded p-2"
-          required
-        />
-        <input
-          type="text"
-          placeholder="Province"
-          value={province}
-          onChange={(e) => setProvince(e.target.value)}
-          className="border border-gray-300 rounded p-2"
-          required
-        />
-        <input
-          type="text"
-          placeholder="Code postal"
-          value={postalCode}
-          onChange={(e) => setPostalCode(e.target.value)}
-          className="border border-gray-300 rounded p-2"
-          required
-        />
-        <input
-          type="text"
-          placeholder="Téléphone (optionnel)"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          className="border border-gray-300 rounded p-2"
-        />
+            <textarea
+              placeholder="Description (optionnel)"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="rounded-2xl px-5 py-3 outline-none"
+              style={inputStyle}
+            />
 
-        <button
-          type="submit"
-          className="bg-green-700 text-white rounded p-2 font-semibold hover:bg-green-800"
-        >
-          Créer mon profil
-        </button>
-      </form>
+            <input
+              type="text"
+              placeholder="Adresse"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              className="rounded-full px-5 py-3 outline-none"
+              style={inputStyle}
+              required
+            />
+            <div className="grid grid-cols-2 gap-4">
+              <input
+                type="text"
+                placeholder="Ville"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                className="rounded-full px-5 py-3 outline-none"
+                style={inputStyle}
+                required
+              />
+              <input
+                type="text"
+                placeholder="Province"
+                value={province}
+                onChange={(e) => setProvince(e.target.value)}
+                className="rounded-full px-5 py-3 outline-none"
+                style={inputStyle}
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <input
+                type="text"
+                placeholder="Code postal"
+                value={postalCode}
+                onChange={(e) => setPostalCode(e.target.value)}
+                className="rounded-full px-5 py-3 outline-none"
+                style={inputStyle}
+                required
+              />
+              <input
+                type="text"
+                placeholder="Téléphone (optionnel)"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="rounded-full px-5 py-3 outline-none"
+                style={inputStyle}
+              />
+            </div>
 
-      {message && <p className="mt-4 text-gray-700">{message}</p>}
-       <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-sm text-sm text-blue-800">
-        🎁 FoodSave offre des réductions de fidélité à vos clients réguliers, entièrement financées par notre commission — sans aucun coût pour vous. Ça vous aide à fidéliser une clientèle qui revient régulièrement !
-      </div>
-      {profileCreated && (
-        <button
-          onClick={handleConnectStripe}
-          disabled={connectingStripe}
-          className="mt-4 bg-blue-600 text-white rounded p-2 px-6 font-semibold hover:bg-blue-700 disabled:bg-gray-300"
-        >
-          {connectingStripe ? "Connexion..." : "Connecter mon compte Stripe"}
-        </button>
-      )}
+            <button
+              type="submit"
+              className="rounded-full px-6 py-3 font-bold uppercase tracking-wide text-sm mt-2"
+              style={{ backgroundColor: amber, color: bg }}
+            >
+              Créer mon profil
+            </button>
+          </form>
+
+          {message && <p className="mt-4" style={{ color: dim }}>{message}</p>}
+
+          <div
+            className="mt-6 rounded-2xl p-5 text-sm"
+            style={{ backgroundColor: "#0D1912", border: "1px solid rgba(23,201,137,0.3)", color: "#F5F1E8" }}
+          >
+            <span style={{ color: jade }} className="font-bold">🎁 Programme de fidélité — </span>
+            <span style={{ color: dim }}>
+              FoodSave offre des réductions de fidélité à vos clients réguliers, entièrement financées par notre
+              commission — sans aucun coût pour vous. Ça vous aide à fidéliser une clientèle qui revient régulièrement !
+            </span>
+          </div>
+
+          {profileCreated && (
+            <button
+              onClick={handleConnectStripe}
+              disabled={connectingStripe}
+              className="mt-4 rounded-full px-6 py-3 font-bold uppercase tracking-wide text-sm"
+              style={{ backgroundColor: jade, color: bg }}
+            >
+              {connectingStripe ? "Connexion..." : "Connecter mon compte Stripe"}
+            </button>
+          )}
+        </div>
+
+        <div className="hidden md:block sticky top-24">
+          <FoodSaveImage url={null} alt={name || "Votre commerce"} variant="hero" merchantType={type} className="rounded-2xl" />
+          <p className="mt-4 text-sm text-center" style={{ color: dim }}>
+            Un aperçu qui s adapte au type de commerce que vous choisissez.
+          </p>
+        </div>
+      </section>
+
+      <Footer />
     </main>
   );
 }

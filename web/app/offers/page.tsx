@@ -1,12 +1,13 @@
 ﻿"use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { Bebas_Neue, Space_Grotesk } from "next/font/google";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import NotificationBell from "../components/NotificationBell";
 import LoyaltyBanner from "../components/LoyaltyBanner";
 import FoodSaveImage from "../components/FoodSaveImage";
+import ScrollReveal from "../components/ScrollReveal";
 
 const display = Bebas_Neue({ subsets: ["latin"], weight: "400" });
 const body = Space_Grotesk({ subsets: ["latin"], weight: ["400", "500", "700"] });
@@ -28,34 +29,6 @@ interface Offer {
   pickupEnd: string;
   distanceKm?: number;
   merchant: { id: string; name: string; address: string; city: string; type?: string };
-}
-
-function ScrollReveal({ children, index }: { children: React.ReactNode; index: number }) {
-  const [visible, setVisible] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const obs = new IntersectionObserver(
-      (entries) => { if (entries[0].isIntersecting) setVisible(true); },
-      { threshold: 0.15 }
-    );
-    if (ref.current) obs.observe(ref.current);
-    return () => obs.disconnect();
-  }, []);
-
-  return (
-    <div
-      ref={ref}
-      style={{
-        opacity: visible ? 1 : 0,
-        transform: visible ? "none" : "translateY(24px)",
-        transition: "opacity 0.6s ease, transform 0.6s ease",
-        transitionDelay: (index % 6) * 0.08 + "s",
-      }}
-    >
-      {children}
-    </div>
-  );
 }
 
 export default function OffersPage() {

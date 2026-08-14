@@ -1,6 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Bebas_Neue, Space_Grotesk } from "next/font/google";
+import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
+import ScrollReveal from "../components/ScrollReveal";
+
+const display = Bebas_Neue({ subsets: ["latin"], weight: "400" });
+const body = Space_Grotesk({ subsets: ["latin"], weight: ["400", "500", "700"] });
+
+const bg = "#06110C";
+const amber = "#FFB100";
+const jade = "#17C989";
+const dim = "#8FA396";
 
 const OPTIONS = [
   { value: "VEGETARIAN", label: "Végétarien" },
@@ -67,36 +79,60 @@ export default function PreferencesPage() {
   };
 
   return (
-    <main className="min-h-screen flex flex-col items-center p-8">
-      <h1 className="text-3xl font-bold text-green-700 mb-6">
-        Mes préférences alimentaires
-      </h1>
+    <main className={body.className} style={{ backgroundColor: bg, color: "#F5F1E8", minHeight: "100vh" }}>
+      <Navbar />
 
-      <div className="flex flex-col gap-3 w-full max-w-sm">
-        {OPTIONS.map((opt) => (
-          <label
-            key={opt.value}
-            className="flex items-center gap-3 border border-gray-200 rounded p-3 cursor-pointer"
-          >
-            <input
-              type="checkbox"
-              checked={selected.includes(opt.value)}
-              onChange={() => toggleOption(opt.value)}
-              className="w-5 h-5"
-            />
-            {opt.label}
-          </label>
-        ))}
+      <section className="px-6 pt-14 pb-6 text-center">
+        <p className="text-xs tracking-[0.4em] uppercase mb-3" style={{ color: jade }}>
+          Personnalisation
+        </p>
+        <h1 className={display.className} style={{ fontSize: "clamp(2.2rem, 6vw, 4rem)" }}>
+          MES PRÉFÉRENCES
+        </h1>
+        <p className="mt-3 max-w-md mx-auto" style={{ color: dim }}>
+          Selectionnez vos preferences alimentaires pour affiner les offres qui vous sont proposees.
+        </p>
+      </section>
+
+      <div className="flex flex-col gap-3 w-full max-w-sm mx-auto px-6">
+        {OPTIONS.map((opt, index) => {
+          const checked = selected.includes(opt.value);
+          return (
+            <ScrollReveal key={opt.value} index={index}>
+              <label
+                className="flex items-center gap-3 rounded-2xl p-4 cursor-pointer"
+                style={{
+                  backgroundColor: "#0D1912",
+                  border: checked ? `1px solid ${jade}` : "1px solid rgba(255,255,255,0.1)",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => toggleOption(opt.value)}
+                  className="w-5 h-5"
+                  style={{ accentColor: jade }}
+                />
+                <span>{opt.label}</span>
+              </label>
+            </ScrollReveal>
+          );
+        })}
       </div>
 
-      <button
-        onClick={handleSave}
-        className="mt-6 bg-green-700 text-white rounded p-2 px-6 font-semibold hover:bg-green-800"
-      >
-        Enregistrer mes préférences
-      </button>
+      <div className="text-center px-6 pb-20">
+        <button
+          onClick={handleSave}
+          className="mt-8 rounded-full px-8 py-3 font-bold uppercase tracking-wide text-sm"
+          style={{ backgroundColor: amber, color: bg }}
+        >
+          Enregistrer mes préférences
+        </button>
 
-      {message && <p className="mt-4 text-gray-700">{message}</p>}
+        {message && <p className="mt-4" style={{ color: dim }}>{message}</p>}
+      </div>
+
+      <Footer />
     </main>
   );
 }

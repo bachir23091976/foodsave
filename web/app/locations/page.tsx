@@ -1,6 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Bebas_Neue, Space_Grotesk } from "next/font/google";
+import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
+import ScrollReveal from "../components/ScrollReveal";
+
+const display = Bebas_Neue({ subsets: ["latin"], weight: "400" });
+const body = Space_Grotesk({ subsets: ["latin"], weight: ["400", "500", "700"] });
+
+const bg = "#06110C";
+const amber = "#FFB100";
+const jade = "#17C989";
+const dim = "#8FA396";
+
+const inputStyle = {
+  backgroundColor: "#0D1912",
+  border: "1px solid rgba(255,255,255,0.15)",
+  color: "#F5F1E8",
+};
 
 interface SavedLocation {
   id: string;
@@ -89,18 +107,29 @@ export default function LocationsPage() {
   };
 
   return (
-    <main className="min-h-screen flex flex-col items-center p-8">
-      <h1 className="text-3xl font-bold text-green-700 mb-6">
-        Mes adresses
-      </h1>
+    <main className={body.className} style={{ backgroundColor: bg, color: "#F5F1E8", minHeight: "100vh" }}>
+      <Navbar />
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full max-w-sm mb-8">
+      <section className="px-6 pt-14 pb-6 text-center">
+        <p className="text-xs tracking-[0.4em] uppercase mb-3" style={{ color: jade }}>
+          A proximite
+        </p>
+        <h1 className={display.className} style={{ fontSize: "clamp(2.2rem, 6vw, 4rem)" }}>
+          MES ADRESSES
+        </h1>
+        <p className="mt-3 max-w-md mx-auto" style={{ color: dim }}>
+          Enregistrez vos adresses pour recevoir une alerte des qu une offre apparait pres de chez vous.
+        </p>
+      </section>
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full max-w-sm mx-auto px-6 mb-10">
         <input
           type="text"
           placeholder="Nom (ex: Domicile, Travail)"
           value={label}
           onChange={(e) => setLabel(e.target.value)}
-          className="border border-gray-300 rounded p-2"
+          className="rounded-full px-5 py-3 outline-none"
+          style={inputStyle}
           required
         />
         <input
@@ -108,39 +137,46 @@ export default function LocationsPage() {
           placeholder="Adresse"
           value={address}
           onChange={(e) => setAddress(e.target.value)}
-          className="border border-gray-300 rounded p-2"
+          className="rounded-full px-5 py-3 outline-none"
+          style={inputStyle}
           required
         />
         <button
           type="submit"
           disabled={loading}
-          className="bg-green-700 text-white rounded p-2 font-semibold hover:bg-green-800 disabled:bg-gray-300"
+          className="rounded-full px-6 py-3 font-bold uppercase tracking-wide text-sm"
+          style={{ backgroundColor: amber, color: bg, opacity: loading ? 0.6 : 1 }}
         >
           {loading ? "Enregistrement..." : "Enregistrer cette adresse"}
         </button>
       </form>
 
-      {message && <p className="text-gray-700 mb-4">{message}</p>}
+      {message && <p className="text-center mb-4" style={{ color: dim }}>{message}</p>}
 
-      <div className="w-full max-w-sm flex flex-col gap-2">
-        {locations.map((loc) => (
-          <div
-            key={loc.id}
-            className="flex justify-between items-center border border-gray-200 rounded p-3"
-          >
-            <div>
-              <p className="font-semibold">{loc.label}</p>
-              <p className="text-sm text-gray-500">{loc.address}</p>
-            </div>
-            <button
-              onClick={() => handleDelete(loc.id)}
-              className="text-red-600 text-sm hover:underline"
+      <div className="w-full max-w-sm mx-auto px-6 pb-20 flex flex-col gap-3">
+        {locations.map((loc, index) => (
+          <ScrollReveal key={loc.id} index={index}>
+            <div
+              className="flex justify-between items-center rounded-2xl p-4"
+              style={{ backgroundColor: "#0D1912", border: "1px solid rgba(255,255,255,0.1)" }}
             >
-              Supprimer
-            </button>
-          </div>
+              <div>
+                <p className="font-bold">{loc.label}</p>
+                <p className="text-sm" style={{ color: dim }}>{loc.address}</p>
+              </div>
+              <button
+                onClick={() => handleDelete(loc.id)}
+                className="text-sm"
+                style={{ color: "#FF6B6B" }}
+              >
+                Supprimer
+              </button>
+            </div>
+          </ScrollReveal>
         ))}
       </div>
+
+      <Footer />
     </main>
   );
 }
