@@ -1,9 +1,20 @@
 ﻿"use client";
 
 import { useEffect, useState, useRef } from "react";
+import { Bebas_Neue, Space_Grotesk } from "next/font/google";
+import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 import NotificationBell from "../components/NotificationBell";
 import LoyaltyBanner from "../components/LoyaltyBanner";
 import FoodSaveImage from "../components/FoodSaveImage";
+
+const display = Bebas_Neue({ subsets: ["latin"], weight: "400" });
+const body = Space_Grotesk({ subsets: ["latin"], weight: ["400", "500", "700"] });
+
+const bg = "#06110C";
+const amber = "#FFB100";
+const jade = "#17C989";
+const dim = "#8FA396";
 
 interface Offer {
   id: string;
@@ -16,13 +27,7 @@ interface Offer {
   pickupStart: string;
   pickupEnd: string;
   distanceKm?: number;
-  merchant: {
-    id: string;
-    name: string;
-    address: string;
-    city: string;
-    type?: string;
-  };
+  merchant: { id: string; name: string; address: string; city: string; type?: string };
 }
 
 function ScrollReveal({ children, index }: { children: React.ReactNode; index: number }) {
@@ -31,9 +36,7 @@ function ScrollReveal({ children, index }: { children: React.ReactNode; index: n
 
   useEffect(() => {
     const obs = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) setVisible(true);
-      },
+      (entries) => { if (entries[0].isIntersecting) setVisible(true); },
       { threshold: 0.15 }
     );
     if (ref.current) obs.observe(ref.current);
@@ -82,10 +85,7 @@ export default function OffersPage() {
   const loadFavorites = () => {
     const token = localStorage.getItem("token");
     if (!token) return;
-
-    fetch("http://localhost:4000/favorites", {
-      headers: { Authorization: "Bearer " + token },
-    })
+    fetch("http://localhost:4000/favorites", { headers: { Authorization: "Bearer " + token } })
       .then(function (res) { return res.json(); })
       .then(function (data) {
         const ids = (data.favorites || []).map(function (f: any) { return f.merchantId; });
@@ -106,29 +106,21 @@ export default function OffersPage() {
 
   const handleSearchNearby = async () => {
     if (!addressInput.trim()) return;
-
     setSearching(true);
     setSearchMessage("");
-
     try {
-      const geoRes = await fetch(
-        "https://nominatim.openstreetmap.org/search?q=" + encodeURIComponent(addressInput) + "&format=json&limit=1"
-      );
+      const geoRes = await fetch("https://nominatim.openstreetmap.org/search?q=" + encodeURIComponent(addressInput) + "&format=json&limit=1");
       const geoData = await geoRes.json();
-
       if (!geoData || geoData.length === 0) {
         setSearchMessage("Adresse introuvable, essayez une adresse plus precise");
         setSearching(false);
         return;
       }
-
       const lat = geoData[0].lat;
       const lng = geoData[0].lon;
-
       const res = await fetch("http://localhost:4000/offers/nearby?lat=" + lat + "&lng=" + lng);
       const data = await res.json();
       setOffers(data.offers || []);
-
       if (!data.offers || data.offers.length === 0) {
         setSearchMessage("Aucune offre trouvee pres de cette adresse");
       }
@@ -145,27 +137,19 @@ export default function OffersPage() {
       setConfirmations((prev) => ({ ...prev, [offerId]: "Vous devez etre connecte pour reserver" }));
       return;
     }
-
     setReserving(offerId);
-
     try {
       const res = await fetch("http://localhost:4000/orders", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + token,
-        },
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
         body: JSON.stringify({ offerId }),
       });
-
       const data = await res.json();
-
       if (!res.ok || !data.checkoutUrl) {
         setConfirmations((prev) => ({ ...prev, [offerId]: data.message || "Erreur lors de la reservation" }));
         setReserving(null);
         return;
       }
-
       window.location.href = data.checkoutUrl;
     } catch {
       setConfirmations((prev) => ({ ...prev, [offerId]: "Impossible de contacter le serveur" }));
@@ -176,26 +160,18 @@ export default function OffersPage() {
   const toggleFavorite = async (merchantId: string) => {
     const token = localStorage.getItem("token");
     if (!token) return;
-
     const isFavorite = favoriteMerchantIds.includes(merchantId);
-
     if (isFavorite) {
       await fetch("http://localhost:4000/favorites/remove", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + token,
-        },
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
         body: JSON.stringify({ merchantId }),
       });
       setFavoriteMerchantIds((prev) => prev.filter((id) => id !== merchantId));
     } else {
       await fetch("http://localhost:4000/favorites", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + token,
-        },
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
         body: JSON.stringify({ merchantId }),
       });
       setFavoriteMerchantIds((prev) => [...prev, merchantId]);
@@ -203,114 +179,117 @@ export default function OffersPage() {
   };
 
   return (
-    <main className="min-h-screen p-8">
-      <div className="flex justify-between items-center max-w-2xl mx-auto mb-6">
-        <h1 className="text-3xl font-bold text-green-700 text-center flex-1">
-          Offres disponibles
+    <main className={body.className} style={{ backgroundColor: bg, color: "#F5F1E8", minHeight: "100vh" }}>
+      <Navbar />
+
+      <section className="px-6 pt-14 pb-6 text-center">
+        <p className="text-xs tracking-[0.4em] uppercase mb-3" style={{ color: jade }}>
+          Ce soir a Ottawa
+        </p>
+        <h1 className={display.className} style={{ fontSize: "clamp(2.2rem, 6vw, 4rem)" }}>
+          OFFRES DISPONIBLES
         </h1>
+      </section>
+
+      <div className="max-w-2xl mx-auto px-6 flex justify-end mb-2">
         <NotificationBell />
       </div>
 
-      <LoyaltyBanner />
+      <div className="max-w-2xl mx-auto px-6">
+        <LoyaltyBanner />
+      </div>
 
-      <div className="max-w-2xl mx-auto mb-6 flex gap-2">
+      <div className="max-w-2xl mx-auto px-6 mb-8 flex gap-2">
         <input
           type="text"
           placeholder="Entrez une adresse pour voir les offres proches"
           value={addressInput}
           onChange={(e) => setAddressInput(e.target.value)}
-          className="border border-gray-300 rounded p-2 flex-1"
+          className="rounded-full px-5 py-3 outline-none flex-1"
+          style={{ backgroundColor: "#0D1912", border: "1px solid rgba(255,255,255,0.15)", color: "#F5F1E8" }}
         />
         <button
           onClick={handleSearchNearby}
           disabled={searching}
-          className="bg-green-700 text-white rounded px-4 font-semibold hover:bg-green-800 disabled:bg-gray-300"
+          className="rounded-full px-6 font-bold uppercase tracking-wide text-xs"
+          style={{ backgroundColor: amber, color: bg }}
         >
           {searching ? "..." : "Chercher"}
         </button>
       </div>
 
-      {searchMessage && (
-        <p className="text-center text-gray-600 mb-4">{searchMessage}</p>
-      )}
-
-      {loading && <p className="text-center text-gray-500">Chargement...</p>}
-      {error && <p className="text-center text-red-600">{error}</p>}
+      {searchMessage && <p className="text-center mb-4" style={{ color: dim }}>{searchMessage}</p>}
+      {loading && <p className="text-center" style={{ color: dim }}>Chargement...</p>}
+      {error && <p className="text-center" style={{ color: "#FF6B6B" }}>{error}</p>}
       {!loading && offers.length === 0 && !searchMessage && (
-        <p className="text-center text-gray-500">Aucune offre disponible pour le moment.</p>
+        <p className="text-center" style={{ color: dim }}>Aucune offre disponible pour le moment.</p>
       )}
 
-      <div className="grid gap-4 max-w-2xl mx-auto">
+      <div className="grid gap-4 max-w-2xl mx-auto px-6 pb-20">
         {offers.map((offer, index) => {
-          const percent = Math.round(
-            ((offer.originalPrice - offer.discountedPrice) / offer.originalPrice) * 100
-          );
+          const percent = Math.round(((offer.originalPrice - offer.discountedPrice) / offer.originalPrice) * 100);
           const isFavorite = favoriteMerchantIds.includes(offer.merchant.id);
           return (
             <ScrollReveal key={offer.id} index={index}>
-              <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm flex flex-col gap-1">
+              <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: "#0D1912", border: "1px solid rgba(255,255,255,0.1)" }}>
                 <FoodSaveImage url={offer.imageUrl} alt={offer.title} variant="offer" merchantType={offer.merchant.type} />
 
-                <div className="p-4 flex flex-col gap-1">
+                <div className="p-5 flex flex-col gap-1">
                   <div className="flex justify-between items-start">
                     <div>
-                      <h2 className="text-lg font-semibold">{offer.title}</h2>
-                      <p className="text-sm text-gray-500 flex items-center gap-1">
+                      <h2 className="text-lg font-bold">{offer.title}</h2>
+                      <p className="text-sm flex items-center gap-1" style={{ color: dim }}>
                         {offer.merchant.name} - {offer.merchant.city}
                         {offer.distanceKm !== undefined && (
-                          <span className="text-green-700 font-medium"> - {offer.distanceKm.toFixed(1)} km</span>
+                          <span style={{ color: jade }} className="font-medium"> - {offer.distanceKm.toFixed(1)} km</span>
                         )}
                         <button
                           onClick={() => toggleFavorite(offer.merchant.id)}
-                          className="ml-1 text-lg"
+                          className="ml-1"
+                          style={{ color: amber }}
                           aria-label="Ajouter aux favoris"
                         >
                           {isFavorite ? "[*]" : "[ ]"}
                         </button>
                       </p>
                     </div>
-                    <span className="bg-green-700 text-white text-xs font-bold px-2 py-1 rounded">
+                    <span className="text-xs font-bold px-2 py-1 rounded" style={{ backgroundColor: amber, color: bg }}>
                       -{percent}%
                     </span>
                   </div>
 
-                  {offer.description && (
-                    <p className="text-sm text-gray-600">{offer.description}</p>
-                  )}
+                  {offer.description && <p className="text-sm" style={{ color: dim }}>{offer.description}</p>}
 
                   <div className="flex items-baseline gap-2 mt-1">
-                    <span className="line-through text-gray-400 text-sm">
-                      {offer.originalPrice.toFixed(2)} $
-                    </span>
-                    <span className="text-green-700 font-bold text-lg">
-                      {offer.discountedPrice.toFixed(2)} $
-                    </span>
+                    <span className="line-through text-sm" style={{ color: dim }}>{offer.originalPrice.toFixed(2)} $</span>
+                    <span className="font-bold text-lg" style={{ color: amber }}>{offer.discountedPrice.toFixed(2)} $</span>
                   </div>
 
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm" style={{ color: dim }}>
                     Recuperation : {formatTime(offer.pickupStart)} - {formatTime(offer.pickupEnd)}
                   </p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm" style={{ color: dim }}>
                     {offer.quantity} disponible{offer.quantity > 1 ? "s" : ""}
                   </p>
 
                   <button
                     onClick={() => handleReserve(offer.id)}
                     disabled={reserving === offer.id || offer.quantity < 1}
-                    className="mt-2 bg-green-700 text-white rounded p-2 font-semibold hover:bg-green-800 disabled:bg-gray-300"
+                    className="mt-3 rounded-full py-3 font-bold uppercase tracking-wide text-sm"
+                    style={{ backgroundColor: jade, color: bg }}
                   >
                     {reserving === offer.id ? "Redirection..." : "Reserver"}
                   </button>
 
-                  {confirmations[offer.id] && (
-                    <p className="text-sm text-red-600 mt-1">{confirmations[offer.id]}</p>
-                  )}
+                  {confirmations[offer.id] && <p className="text-sm mt-1" style={{ color: "#FF6B6B" }}>{confirmations[offer.id]}</p>}
                 </div>
               </div>
             </ScrollReveal>
           );
         })}
       </div>
+
+      <Footer />
     </main>
   );
 }

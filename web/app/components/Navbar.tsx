@@ -17,9 +17,9 @@ export default function Navbar() {
         <div className="hidden md:flex items-center gap-7 text-sm" style={{ color: "#8FA396" }}>
           <Link href="/" className="hover:text-white">Accueil</Link>
           <Link href="/offers" className="hover:text-white">Offres</Link>
-          <Link href="/register-merchant" className="hover:text-white">Devenir partenaire</Link>
-          <Link href="#apropos" className="hover:text-white">A propos</Link>
-          <Link href="#contact" className="hover:text-white">Contact</Link>
+          <Link href="/partner" className="hover:text-white">Devenir partenaire</Link>
+          <Link href="/register" className="hover:text-white">S inscrire</Link>
+          <Link href="/#contact" className="hover:text-white">Contact</Link>
         </div>
 
         <Link
@@ -33,3 +33,5 @@ export default function Navbar() {
     </nav>
   );
 }
+
+

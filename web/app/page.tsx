@@ -161,35 +161,16 @@ export default function Home() {
             UNE BONNE NOURRITURE MERITE UNE SECONDE CHANCE
           </p>
           <p className="mt-4 max-w-xl mx-auto" style={{ color: dim }}>
-            Chaque commande passee sur FoodSave, c est un repas sauve et un commerce local soutenu.
+            Chaque commande passee sur FoodSave, c'est un repas sauve et un commerce local soutenu.
           </p>
         </div>
       </section>
 
-      <section id="apropos" className="px-6 py-24" style={{ backgroundColor: "#0D1912" }}>
-        <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-10 items-center">
-          <div>
-            <p className={display.className} style={{ fontSize: "clamp(1.8rem, 4vw, 2.8rem)", color: jade }}>
-              VOUS ETES UN COMMERCE ?
-            </p>
-            <p className="mt-3" style={{ color: dim }}>
-              Ne laissez plus vos invendus se perdre.
-            </p>
-            <ul className="mt-6 space-y-2" style={{ color: "#F5F1E8" }}>
-              <li>- Reduisez le gaspillage alimentaire</li>
-              <li>- Recuperez une partie de la valeur de vos invendus</li>
-              <li>- Attirez de nouveaux clients locaux</li>
-              <li>- Participez a une initiative locale a Ottawa</li>
-            </ul>
-            <Link href="/register-merchant" className="btn-primary inline-block mt-8 px-8 py-3 rounded-full font-bold uppercase tracking-wide text-sm" style={{ backgroundColor: jade, color: bg }}>
-              Devenir partenaire
-            </Link>
-          </div>
-          <div className="rounded-2xl h-64" style={{ backgroundColor: "#16261C", border: "1px solid rgba(23,201,137,0.25)" }} />
-        </div>
-      </section>
+      
 
       <Footer />
     </main>
   );
 }
+
+
