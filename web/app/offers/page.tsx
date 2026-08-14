@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import NotificationBell from "../components/NotificationBell";
 import LoyaltyBanner from "../components/LoyaltyBanner";
 import FoodSaveImage from "../components/FoodSaveImage";
@@ -21,7 +21,38 @@ interface Offer {
     name: string;
     address: string;
     city: string;
+    type?: string;
   };
+}
+
+function ScrollReveal({ children, index }: { children: React.ReactNode; index: number }) {
+  const [visible, setVisible] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) setVisible(true);
+      },
+      { threshold: 0.15 }
+    );
+    if (ref.current) obs.observe(ref.current);
+    return () => obs.disconnect();
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      style={{
+        opacity: visible ? 1 : 0,
+        transform: visible ? "none" : "translateY(24px)",
+        transition: "opacity 0.6s ease, transform 0.6s ease",
+        transitionDelay: (index % 6) * 0.08 + "s",
+      }}
+    >
+      {children}
+    </div>
+  );
 }
 
 export default function OffersPage() {
@@ -173,8 +204,6 @@ export default function OffersPage() {
 
   return (
     <main className="min-h-screen p-8">
-      <style>{"\n        .img-zoom-wrap { overflow: hidden; }\n        .img-zoom { transition: transform 0.4s ease; }\n        .img-zoom-wrap:hover .img-zoom { transform: scale(1.06); }\n      "}</style>
-
       <div className="flex justify-between items-center max-w-2xl mx-auto mb-6">
         <h1 className="text-3xl font-bold text-green-700 text-center flex-1">
           Offres disponibles
@@ -212,79 +241,76 @@ export default function OffersPage() {
       )}
 
       <div className="grid gap-4 max-w-2xl mx-auto">
-        {offers.map((offer) => {
+        {offers.map((offer, index) => {
           const percent = Math.round(
             ((offer.originalPrice - offer.discountedPrice) / offer.originalPrice) * 100
           );
           const isFavorite = favoriteMerchantIds.includes(offer.merchant.id);
           return (
-            <div
-              key={offer.id}
-              className="border border-gray-200 rounded-lg overflow-hidden shadow-sm flex flex-col gap-1"
-            >
-              <FoodSaveImage url={offer.imageUrl} alt={offer.title} variant="offer" merchantType={(offer.merchant as any).type} />
+            <ScrollReveal key={offer.id} index={index}>
+              <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm flex flex-col gap-1">
+                <FoodSaveImage url={offer.imageUrl} alt={offer.title} variant="offer" merchantType={offer.merchant.type} />
 
-              <div className="p-4 flex flex-col gap-1">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h2 className="text-lg font-semibold">{offer.title}</h2>
-                    <p className="text-sm text-gray-500 flex items-center gap-1">
-                      {offer.merchant.name} - {offer.merchant.city}
-                      {offer.distanceKm !== undefined && (
-                        <span className="text-green-700 font-medium"> - {offer.distanceKm.toFixed(1)} km</span>
-                      )}
-                      <button
-                        onClick={() => toggleFavorite(offer.merchant.id)}
-                        className="ml-1 text-lg"
-                        aria-label="Ajouter aux favoris"
-                      >
-                        {isFavorite ? "[*]" : "[ ]"}
-                      </button>
-                    </p>
+                <div className="p-4 flex flex-col gap-1">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h2 className="text-lg font-semibold">{offer.title}</h2>
+                      <p className="text-sm text-gray-500 flex items-center gap-1">
+                        {offer.merchant.name} - {offer.merchant.city}
+                        {offer.distanceKm !== undefined && (
+                          <span className="text-green-700 font-medium"> - {offer.distanceKm.toFixed(1)} km</span>
+                        )}
+                        <button
+                          onClick={() => toggleFavorite(offer.merchant.id)}
+                          className="ml-1 text-lg"
+                          aria-label="Ajouter aux favoris"
+                        >
+                          {isFavorite ? "[*]" : "[ ]"}
+                        </button>
+                      </p>
+                    </div>
+                    <span className="bg-green-700 text-white text-xs font-bold px-2 py-1 rounded">
+                      -{percent}%
+                    </span>
                   </div>
-                  <span className="bg-green-700 text-white text-xs font-bold px-2 py-1 rounded">
-                    -{percent}%
-                  </span>
+
+                  {offer.description && (
+                    <p className="text-sm text-gray-600">{offer.description}</p>
+                  )}
+
+                  <div className="flex items-baseline gap-2 mt-1">
+                    <span className="line-through text-gray-400 text-sm">
+                      {offer.originalPrice.toFixed(2)} $
+                    </span>
+                    <span className="text-green-700 font-bold text-lg">
+                      {offer.discountedPrice.toFixed(2)} $
+                    </span>
+                  </div>
+
+                  <p className="text-sm text-gray-600">
+                    Recuperation : {formatTime(offer.pickupStart)} - {formatTime(offer.pickupEnd)}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {offer.quantity} disponible{offer.quantity > 1 ? "s" : ""}
+                  </p>
+
+                  <button
+                    onClick={() => handleReserve(offer.id)}
+                    disabled={reserving === offer.id || offer.quantity < 1}
+                    className="mt-2 bg-green-700 text-white rounded p-2 font-semibold hover:bg-green-800 disabled:bg-gray-300"
+                  >
+                    {reserving === offer.id ? "Redirection..." : "Reserver"}
+                  </button>
+
+                  {confirmations[offer.id] && (
+                    <p className="text-sm text-red-600 mt-1">{confirmations[offer.id]}</p>
+                  )}
                 </div>
-
-                {offer.description && (
-                  <p className="text-sm text-gray-600">{offer.description}</p>
-                )}
-
-                <div className="flex items-baseline gap-2 mt-1">
-                  <span className="line-through text-gray-400 text-sm">
-                    {offer.originalPrice.toFixed(2)} $
-                  </span>
-                  <span className="text-green-700 font-bold text-lg">
-                    {offer.discountedPrice.toFixed(2)} $
-                  </span>
-                </div>
-
-                <p className="text-sm text-gray-600">
-                  Recuperation : {formatTime(offer.pickupStart)} - {formatTime(offer.pickupEnd)}
-                </p>
-                <p className="text-sm text-gray-500">
-                  {offer.quantity} disponible{offer.quantity > 1 ? "s" : ""}
-                </p>
-
-                <button
-                  onClick={() => handleReserve(offer.id)}
-                  disabled={reserving === offer.id || offer.quantity < 1}
-                  className="mt-2 bg-green-700 text-white rounded p-2 font-semibold hover:bg-green-800 disabled:bg-gray-300"
-                >
-                  {reserving === offer.id ? "Redirection..." : "Reserver"}
-                </button>
-
-                {confirmations[offer.id] && (
-                  <p className="text-sm text-red-600 mt-1">{confirmations[offer.id]}</p>
-                )}
               </div>
-            </div>
+            </ScrollReveal>
           );
         })}
       </div>
     </main>
   );
 }
-
-
