@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import NotificationBell from "../components/NotificationBell";
 import LoyaltyBanner from "../components/LoyaltyBanner";
+import FoodSaveImage from "../components/FoodSaveImage";
 
 interface Offer {
   id: string;
@@ -172,6 +173,8 @@ export default function OffersPage() {
 
   return (
     <main className="min-h-screen p-8">
+      <style>{"\n        .img-zoom-wrap { overflow: hidden; }\n        .img-zoom { transition: transform 0.4s ease; }\n        .img-zoom-wrap:hover .img-zoom { transform: scale(1.06); }\n      "}</style>
+
       <div className="flex justify-between items-center max-w-2xl mx-auto mb-6">
         <h1 className="text-3xl font-bold text-green-700 text-center flex-1">
           Offres disponibles
@@ -219,13 +222,7 @@ export default function OffersPage() {
               key={offer.id}
               className="border border-gray-200 rounded-lg overflow-hidden shadow-sm flex flex-col gap-1"
             >
-              {offer.imageUrl && (
-                <img
-                  src={offer.imageUrl}
-                  alt={offer.title}
-                  className="w-full h-40 object-cover"
-                />
-              )}
+              <FoodSaveImage url={offer.imageUrl} alt={offer.title} variant="offer" merchantType={(offer.merchant as any).type} />
 
               <div className="p-4 flex flex-col gap-1">
                 <div className="flex justify-between items-start">
@@ -289,3 +286,5 @@ export default function OffersPage() {
     </main>
   );
 }
+
+
