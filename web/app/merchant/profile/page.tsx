@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Bebas_Neue, Space_Grotesk } from "next/font/google";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
@@ -21,6 +21,19 @@ const inputStyle = {
   color: "#F5F1E8",
 };
 
+interface Merchant {
+  id: string;
+  name: string;
+  type: string;
+  description: string | null;
+  address: string;
+  city: string;
+  province: string;
+  postalCode: string;
+  phone: string | null;
+  stripeAccountId: string | null;
+}
+
 export default function MerchantProfilePage() {
   const [name, setName] = useState("");
   const [type, setType] = useState("RESTAURANT");
@@ -31,8 +44,29 @@ export default function MerchantProfilePage() {
   const [postalCode, setPostalCode] = useState("");
   const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("");
-  const [profileCreated, setProfileCreated] = useState(false);
+  const [merchant, setMerchant] = useState<Merchant | null>(null);
+  const [loadingMerchant, setLoadingMerchant] = useState(true);
   const [connectingStripe, setConnectingStripe] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setLoadingMerchant(false);
+      return;
+    }
+
+    fetch(`${API_URL}/merchants/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => (res.status === 404 ? null : res.json()))
+      .then((data) => {
+        if (data?.merchant) {
+          setMerchant(data.merchant);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMerchant(false));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,7 +96,7 @@ export default function MerchantProfilePage() {
       }
 
       setMessage("Profil de commerce créé avec succès !");
-      setProfileCreated(true);
+      setMerchant(data.merchant);
     } catch {
       setMessage("Impossible de contacter le serveur");
     }
@@ -112,11 +146,36 @@ export default function MerchantProfilePage() {
             <br />
             <span style={{ color: amber }}>COMMERCE</span>
           </h1>
-          <p className="mt-4" style={{ color: dim }}>
-            Créez votre profil commerce pour commencer à publier vos surplus sur FoodSave.
-          </p>
+          {loadingMerchant ? (
+            <p className="mt-4" style={{ color: dim }}>Chargement...</p>
+          ) : merchant ? (
+            <>
+              <p className="mt-4" style={{ color: dim }}>
+                Voici les informations de votre commerce enregistrées sur FoodSave.
+              </p>
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-8">
+              <div
+                className="mt-8 rounded-2xl p-5 flex flex-col gap-1"
+                style={{ backgroundColor: "#0D1912", border: "1px solid rgba(255,255,255,0.1)" }}
+              >
+                <p className="font-bold text-lg">{merchant.name}</p>
+                <p className="text-sm" style={{ color: dim }}>{merchant.type}</p>
+                {merchant.description && (
+                  <p className="text-sm mt-1" style={{ color: dim }}>{merchant.description}</p>
+                )}
+                <p className="text-sm mt-2" style={{ color: dim }}>
+                  {merchant.address}, {merchant.city}, {merchant.province} {merchant.postalCode}
+                </p>
+                {merchant.phone && <p className="text-sm" style={{ color: dim }}>{merchant.phone}</p>}
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="mt-4" style={{ color: dim }}>
+                Créez votre profil commerce pour commencer à publier vos surplus sur FoodSave.
+              </p>
+
+              <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-8">
             <label htmlFor="merchant-name" className="sr-only">Nom du commerce</label>
             <input
               id="merchant-name"
@@ -229,8 +288,10 @@ export default function MerchantProfilePage() {
               style={{ backgroundColor: amber, color: bg }}
             >
               Créer mon profil
-            </button>
-          </form>
+                </button>
+              </form>
+            </>
+          )}
 
           {message && <p className="mt-4" style={{ color: dim }}>{message}</p>}
 
@@ -245,20 +306,26 @@ export default function MerchantProfilePage() {
             </span>
           </div>
 
-          {profileCreated && (
-            <button
-              onClick={handleConnectStripe}
-              disabled={connectingStripe}
-              className="mt-4 rounded-full px-6 py-3 font-bold uppercase tracking-wide text-sm"
-              style={{ backgroundColor: jade, color: bg }}
-            >
-              {connectingStripe ? "Connexion..." : "Connecter mon compte Stripe"}
-            </button>
+          {merchant && (
+            merchant.stripeAccountId ? (
+              <p className="mt-4 font-bold" style={{ color: jade }}>
+                ✓ Compte Stripe connecté
+              </p>
+            ) : (
+              <button
+                onClick={handleConnectStripe}
+                disabled={connectingStripe}
+                className="mt-4 rounded-full px-6 py-3 font-bold uppercase tracking-wide text-sm"
+                style={{ backgroundColor: jade, color: bg }}
+              >
+                {connectingStripe ? "Connexion..." : "Connecter mon compte Stripe"}
+              </button>
+            )
           )}
         </div>
 
         <div className="hidden md:block sticky top-24">
-          <FoodSaveImage url={null} alt={name || "Votre commerce"} variant="hero" merchantType={type} className="rounded-2xl" />
+          <FoodSaveImage url={null} alt={merchant?.name || name || "Votre commerce"} variant="hero" merchantType={merchant?.type || type} className="rounded-2xl" />
           <p className="mt-4 text-sm text-center" style={{ color: dim }}>
             Un aperçu qui s adapte au type de commerce que vous choisissez.
           </p>
