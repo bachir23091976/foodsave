@@ -1,4 +1,4 @@
-﻿import { Response } from "express";
+import { Response } from "express";
 import QRCode from "qrcode";
 import { prisma } from "../lib/prisma";
 import { stripe } from "../lib/stripe";
@@ -8,6 +8,7 @@ import { checkAndCreateReward } from "./loyalty.controller";
 
 const COMMISSION_PERCENT = 15;
 const REFERRAL_DISCOUNT_PERCENT = 15;
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 
 async function checkAndRewardReferral(userId: string) {
   try {
@@ -81,8 +82,8 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
         offerId: offer.id,
         userId: userId as string,
       },
-      success_url: `http://localhost:3000/order-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `http://localhost:3000/offers`,
+      success_url: `${FRONTEND_URL}/order-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${FRONTEND_URL}/offers`,
     });
 
     res.json({ checkoutUrl: session.url });
@@ -219,5 +220,4 @@ export const validatePickup = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ message: "Erreur serveur" });
   }
 };
-
 

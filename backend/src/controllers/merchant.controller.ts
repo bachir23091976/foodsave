@@ -3,6 +3,8 @@ import { prisma } from "../lib/prisma";
 import { stripe } from "../lib/stripe";
 import { AuthRequest } from "../middleware/auth.middleware";
 
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
+
 async function geocodeAddress(address: string, city: string, province: string): Promise<{ lat: number; lng: number } | null> {
   try {
     const query = encodeURIComponent(`${address}, ${city}, ${province}, Canada`);
@@ -111,8 +113,8 @@ export const connectStripe = async (req: AuthRequest, res: Response) => {
 
     const accountLink = await stripe.accountLinks.create({
       account: stripeAccountId,
-      refresh_url: "http://localhost:3000/merchant/stripe-refresh",
-      return_url: "http://localhost:3000/merchant/stripe-success",
+      refresh_url: `${FRONTEND_URL}/merchant/stripe-refresh`,
+      return_url: `${FRONTEND_URL}/merchant/stripe-success`,
       type: "account_onboarding",
     });
 
