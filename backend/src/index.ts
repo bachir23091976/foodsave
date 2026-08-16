@@ -18,6 +18,11 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 4000;
 
+// Render (like most PaaS) sits behind a reverse proxy and sets X-Forwarded-For.
+// Without this, express-rate-limit throws ERR_ERL_UNEXPECTED_X_FORWARDED_FOR
+// because it can't safely derive the real client IP from the proxy chain.
+app.set("trust proxy", 1);
+
 app.use(cors());
 app.use(express.json());
 
@@ -39,4 +44,4 @@ app.get("/", (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Serveur démarré sur http://localhost:${PORT}`);
-});
+});
