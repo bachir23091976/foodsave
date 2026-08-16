@@ -5,6 +5,7 @@ import { Bebas_Neue, Space_Grotesk } from "next/font/google";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import ScrollReveal from "../components/ScrollReveal";
+import { API_URL } from "../lib/api";
 
 const display = Bebas_Neue({ subsets: ["latin"], weight: "400" });
 const body = Space_Grotesk({ subsets: ["latin"], weight: ["400", "500", "700"] });
@@ -37,7 +38,7 @@ export default function LocationsPage() {
     const token = localStorage.getItem("token");
     if (!token) return;
 
-    fetch("http://localhost:4000/locations", {
+    fetch(`${API_URL}/locations`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => res.json())
@@ -62,7 +63,7 @@ export default function LocationsPage() {
     }
 
     try {
-      const res = await fetch("http://localhost:4000/locations", {
+      const res = await fetch(`${API_URL}/locations`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -94,7 +95,7 @@ export default function LocationsPage() {
     const token = localStorage.getItem("token");
     if (!token) return;
 
-    await fetch("http://localhost:4000/locations/delete", {
+    await fetch(`${API_URL}/locations/delete`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -123,7 +124,9 @@ export default function LocationsPage() {
       </section>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full max-w-sm mx-auto px-6 mb-10">
+        <label htmlFor="location-label" className="sr-only">Nom (ex: Domicile, Travail)</label>
         <input
+          id="location-label"
           type="text"
           placeholder="Nom (ex: Domicile, Travail)"
           value={label}
@@ -132,7 +135,9 @@ export default function LocationsPage() {
           style={inputStyle}
           required
         />
+        <label htmlFor="location-address" className="sr-only">Adresse</label>
         <input
+          id="location-address"
           type="text"
           placeholder="Adresse"
           value={address}

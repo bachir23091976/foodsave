@@ -5,6 +5,7 @@ import { Bebas_Neue, Space_Grotesk } from "next/font/google";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import FoodSaveImage from "../../components/FoodSaveImage";
+import { API_URL } from "../../lib/api";
 
 const display = Bebas_Neue({ subsets: ["latin"], weight: "400" });
 const body = Space_Grotesk({ subsets: ["latin"], weight: ["400", "500", "700"] });
@@ -44,7 +45,7 @@ export default function MerchantProfilePage() {
     }
 
     try {
-      const res = await fetch("http://localhost:4000/merchants", {
+      const res = await fetch(`${API_URL}/merchants`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -74,7 +75,7 @@ export default function MerchantProfilePage() {
     setConnectingStripe(true);
 
     try {
-      const res = await fetch("http://localhost:4000/merchants/connect-stripe", {
+      const res = await fetch(`${API_URL}/merchants/connect-stripe`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -116,7 +117,9 @@ export default function MerchantProfilePage() {
           </p>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-8">
+            <label htmlFor="merchant-name" className="sr-only">Nom du commerce</label>
             <input
+              id="merchant-name"
               type="text"
               placeholder="Nom du commerce"
               value={name}
@@ -126,7 +129,9 @@ export default function MerchantProfilePage() {
               required
             />
 
+            <label htmlFor="merchant-type" className="sr-only">Type de commerce</label>
             <select
+              id="merchant-type"
               value={type}
               onChange={(e) => setType(e.target.value)}
               className="rounded-full px-5 py-3 outline-none"
@@ -141,7 +146,9 @@ export default function MerchantProfilePage() {
               <option value="OTHER">Autre</option>
             </select>
 
+            <label htmlFor="merchant-description" className="sr-only">Description (optionnel)</label>
             <textarea
+              id="merchant-description"
               placeholder="Description (optionnel)"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -149,7 +156,9 @@ export default function MerchantProfilePage() {
               style={inputStyle}
             />
 
+            <label htmlFor="merchant-address" className="sr-only">Adresse</label>
             <input
+              id="merchant-address"
               type="text"
               placeholder="Adresse"
               value={address}
@@ -159,43 +168,59 @@ export default function MerchantProfilePage() {
               required
             />
             <div className="grid grid-cols-2 gap-4">
-              <input
-                type="text"
-                placeholder="Ville"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                className="rounded-full px-5 py-3 outline-none"
-                style={inputStyle}
-                required
-              />
-              <input
-                type="text"
-                placeholder="Province"
-                value={province}
-                onChange={(e) => setProvince(e.target.value)}
-                className="rounded-full px-5 py-3 outline-none"
-                style={inputStyle}
-                required
-              />
+              <div>
+                <label htmlFor="merchant-city" className="sr-only">Ville</label>
+                <input
+                  id="merchant-city"
+                  type="text"
+                  placeholder="Ville"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  className="rounded-full px-5 py-3 outline-none w-full"
+                  style={inputStyle}
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="merchant-province" className="sr-only">Province</label>
+                <input
+                  id="merchant-province"
+                  type="text"
+                  placeholder="Province"
+                  value={province}
+                  onChange={(e) => setProvince(e.target.value)}
+                  className="rounded-full px-5 py-3 outline-none w-full"
+                  style={inputStyle}
+                  required
+                />
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="merchant-postalcode" className="sr-only">Code postal</label>
+                <input
+                  id="merchant-postalcode"
+                  type="text"
+                  placeholder="Code postal"
+                  value={postalCode}
+                  onChange={(e) => setPostalCode(e.target.value)}
+                  className="rounded-full px-5 py-3 outline-none w-full"
+                  style={inputStyle}
+                  required
+                />
+              </div>
+              <div>
+              <label htmlFor="merchant-phone" className="sr-only">Téléphone (optionnel)</label>
               <input
-                type="text"
-                placeholder="Code postal"
-                value={postalCode}
-                onChange={(e) => setPostalCode(e.target.value)}
-                className="rounded-full px-5 py-3 outline-none"
-                style={inputStyle}
-                required
-              />
-              <input
+                id="merchant-phone"
                 type="text"
                 placeholder="Téléphone (optionnel)"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="rounded-full px-5 py-3 outline-none"
+                className="rounded-full px-5 py-3 outline-none w-full"
                 style={inputStyle}
               />
+              </div>
             </div>
 
             <button

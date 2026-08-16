@@ -6,6 +6,7 @@ import { Bebas_Neue, Space_Grotesk } from "next/font/google";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import FoodSaveImage from "./components/FoodSaveImage";
+import { API_URL } from "./lib/api";
 
 const display = Bebas_Neue({ subsets: ["latin"], weight: "400" });
 const body = Space_Grotesk({ subsets: ["latin"], weight: ["400", "500", "700"] });
@@ -33,7 +34,7 @@ export default function Home() {
   const [offers, setOffers] = useState<Offer[]>([]);
 
   useEffect(() => {
-    fetch("http://localhost:4000/offers")
+    fetch(`${API_URL}/offers`)
       .then((res) => res.json())
       .then((data) => setOffers((data.offers || []).slice(0, 3)))
       .catch(() => {});

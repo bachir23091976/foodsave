@@ -6,6 +6,7 @@ import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import FoodSaveImage from "../../components/FoodSaveImage";
 import ScrollReveal from "../../components/ScrollReveal";
+import { API_URL } from "../../lib/api";
 
 const display = Bebas_Neue({ subsets: ["latin"], weight: "400" });
 const body = Space_Grotesk({ subsets: ["latin"], weight: ["400", "500", "700"] });
@@ -41,7 +42,7 @@ export default function MerchantOffersPage() {
       return;
     }
 
-    fetch("http://localhost:4000/offers/mine", {
+    fetch(`${API_URL}/offers/mine`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => res.json())

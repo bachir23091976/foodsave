@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bebas_Neue, Space_Grotesk } from "next/font/google";
+import { API_URL } from "../lib/api";
 
 const display = Bebas_Neue({ subsets: ["latin"], weight: "400" });
 const bodyFont = Space_Grotesk({ subsets: ["latin"], weight: ["400", "700"] });
@@ -24,7 +25,7 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:4000/auth/login", {
+      const res = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -53,7 +54,9 @@ export default function LoginPage() {
           SE CONNECTER
         </h1>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full max-w-sm mt-10">
+          <label htmlFor="login-email" className="sr-only">Courriel</label>
           <input
+            id="login-email"
             type="email"
             placeholder="Courriel"
             value={email}
@@ -62,7 +65,9 @@ export default function LoginPage() {
             style={{ backgroundColor: "#0D1912", border: "1px solid rgba(255,255,255,0.15)", color: "#F5F1E8" }}
             required
           />
+          <label htmlFor="login-password" className="sr-only">Mot de passe</label>
           <input
+            id="login-password"
             type="password"
             placeholder="Mot de passe"
             value={password}

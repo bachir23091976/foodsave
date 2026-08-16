@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Bebas_Neue, Space_Grotesk } from "next/font/google";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
+import { API_URL } from "../../lib/api";
 
 const display = Bebas_Neue({ subsets: ["latin"], weight: "400" });
 const body = Space_Grotesk({ subsets: ["latin"], weight: ["400", "500", "700"] });
@@ -59,7 +60,7 @@ export default function NewOfferPage() {
         const formData = new FormData();
         formData.append("image", imageFile);
 
-        const uploadRes = await fetch("http://localhost:4000/upload/image", {
+        const uploadRes = await fetch(`${API_URL}/upload/image`, {
           method: "POST",
           headers: { Authorization: `Bearer ${token}` },
           body: formData,
@@ -76,7 +77,7 @@ export default function NewOfferPage() {
         imageUrl = uploadData.imageUrl;
       }
 
-      const res = await fetch("http://localhost:4000/offers", {
+      const res = await fetch(`${API_URL}/offers`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -160,7 +161,9 @@ export default function NewOfferPage() {
           <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
         </label>
 
+        <label htmlFor="offer-title" className="sr-only">Titre de l'offre</label>
         <input
+          id="offer-title"
           type="text"
           placeholder="Titre de l'offre"
           value={title}
@@ -169,7 +172,9 @@ export default function NewOfferPage() {
           style={inputStyle}
           required
         />
+        <label htmlFor="offer-description" className="sr-only">Description (optionnel)</label>
         <textarea
+          id="offer-description"
           placeholder="Description (optionnel)"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
@@ -177,28 +182,38 @@ export default function NewOfferPage() {
           style={inputStyle}
         />
         <div className="grid grid-cols-2 gap-4">
-          <input
-            type="number"
-            step="0.01"
-            placeholder="Prix original ($)"
-            value={originalPrice}
-            onChange={(e) => setOriginalPrice(e.target.value)}
-            className="rounded-full px-5 py-3 outline-none"
-            style={inputStyle}
-            required
-          />
-          <input
-            type="number"
-            step="0.01"
-            placeholder="Prix reduit ($)"
-            value={discountedPrice}
-            onChange={(e) => setDiscountedPrice(e.target.value)}
-            className="rounded-full px-5 py-3 outline-none"
-            style={inputStyle}
-            required
-          />
+          <div>
+            <label htmlFor="offer-original-price" className="sr-only">Prix original ($)</label>
+            <input
+              id="offer-original-price"
+              type="number"
+              step="0.01"
+              placeholder="Prix original ($)"
+              value={originalPrice}
+              onChange={(e) => setOriginalPrice(e.target.value)}
+              className="rounded-full px-5 py-3 outline-none w-full"
+              style={inputStyle}
+              required
+            />
+          </div>
+          <div>
+            <label htmlFor="offer-discounted-price" className="sr-only">Prix reduit ($)</label>
+            <input
+              id="offer-discounted-price"
+              type="number"
+              step="0.01"
+              placeholder="Prix reduit ($)"
+              value={discountedPrice}
+              onChange={(e) => setDiscountedPrice(e.target.value)}
+              className="rounded-full px-5 py-3 outline-none w-full"
+              style={inputStyle}
+              required
+            />
+          </div>
         </div>
+        <label htmlFor="offer-quantity" className="sr-only">Quantite disponible</label>
         <input
+          id="offer-quantity"
           type="number"
           placeholder="Quantite disponible"
           value={quantity}
@@ -209,8 +224,9 @@ export default function NewOfferPage() {
         />
 
         <div>
-          <label className="text-xs uppercase tracking-wide" style={{ color: dim }}>Debut de recuperation</label>
+          <label htmlFor="offer-pickup-start" className="text-xs uppercase tracking-wide" style={{ color: dim }}>Debut de recuperation</label>
           <input
+            id="offer-pickup-start"
             type="datetime-local"
             value={pickupStart}
             onChange={(e) => setPickupStart(e.target.value)}
@@ -220,8 +236,9 @@ export default function NewOfferPage() {
           />
         </div>
         <div>
-          <label className="text-xs uppercase tracking-wide" style={{ color: dim }}>Fin de recuperation</label>
+          <label htmlFor="offer-pickup-end" className="text-xs uppercase tracking-wide" style={{ color: dim }}>Fin de recuperation</label>
           <input
+            id="offer-pickup-end"
             type="datetime-local"
             value={pickupEnd}
             onChange={(e) => setPickupEnd(e.target.value)}

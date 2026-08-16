@@ -8,6 +8,7 @@ import NotificationBell from "../components/NotificationBell";
 import LoyaltyBanner from "../components/LoyaltyBanner";
 import FoodSaveImage from "../components/FoodSaveImage";
 import ScrollReveal from "../components/ScrollReveal";
+import { API_URL } from "../lib/api";
 
 const display = Bebas_Neue({ subsets: ["latin"], weight: "400" });
 const body = Space_Grotesk({ subsets: ["latin"], weight: ["400", "500", "700"] });
@@ -43,7 +44,7 @@ export default function OffersPage() {
   const [favoriteMerchantIds, setFavoriteMerchantIds] = useState<string[]>([]);
 
   const loadOffers = () => {
-    fetch("http://localhost:4000/offers")
+    fetch(`${API_URL}/offers`)
       .then(function (res) { return res.json(); })
       .then(function (data) {
         setOffers(data.offers || []);
@@ -58,7 +59,7 @@ export default function OffersPage() {
   const loadFavorites = () => {
     const token = localStorage.getItem("token");
     if (!token) return;
-    fetch("http://localhost:4000/favorites", { headers: { Authorization: "Bearer " + token } })
+    fetch(`${API_URL}/favorites`, { headers: { Authorization: "Bearer " + token } })
       .then(function (res) { return res.json(); })
       .then(function (data) {
         const ids = (data.favorites || []).map(function (f: any) { return f.merchantId; });
@@ -91,7 +92,7 @@ export default function OffersPage() {
       }
       const lat = geoData[0].lat;
       const lng = geoData[0].lon;
-      const res = await fetch("http://localhost:4000/offers/nearby?lat=" + lat + "&lng=" + lng);
+      const res = await fetch(`${API_URL}/offers/nearby?lat=` + lat + "&lng=" + lng);
       const data = await res.json();
       setOffers(data.offers || []);
       if (!data.offers || data.offers.length === 0) {
@@ -112,7 +113,7 @@ export default function OffersPage() {
     }
     setReserving(offerId);
     try {
-      const res = await fetch("http://localhost:4000/orders", {
+      const res = await fetch(`${API_URL}/orders`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
         body: JSON.stringify({ offerId }),
@@ -135,14 +136,14 @@ export default function OffersPage() {
     if (!token) return;
     const isFavorite = favoriteMerchantIds.includes(merchantId);
     if (isFavorite) {
-      await fetch("http://localhost:4000/favorites/remove", {
+      await fetch(`${API_URL}/favorites/remove`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
         body: JSON.stringify({ merchantId }),
       });
       setFavoriteMerchantIds((prev) => prev.filter((id) => id !== merchantId));
     } else {
-      await fetch("http://localhost:4000/favorites", {
+      await fetch(`${API_URL}/favorites`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
         body: JSON.stringify({ merchantId }),
@@ -173,7 +174,9 @@ export default function OffersPage() {
       </div>
 
       <div className="max-w-2xl mx-auto px-6 mb-8 flex gap-2">
+        <label htmlFor="offers-address-search" className="sr-only">Entrez une adresse pour voir les offres proches</label>
         <input
+          id="offers-address-search"
           type="text"
           placeholder="Entrez une adresse pour voir les offres proches"
           value={addressInput}

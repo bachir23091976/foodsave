@@ -6,6 +6,7 @@ import { Bebas_Neue, Space_Grotesk } from "next/font/google";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import FoodSaveImage from "../components/FoodSaveImage";
+import { API_URL } from "../lib/api";
 
 const display = Bebas_Neue({ subsets: ["latin"], weight: "400" });
 const body = Space_Grotesk({ subsets: ["latin"], weight: ["400", "500", "700"] });
@@ -29,7 +30,7 @@ export default function RegisterMerchantPage() {
     setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:4000/auth/register", {
+      const res = await fetch(`${API_URL}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ firstName, lastName, email, password, role: "MERCHANT" }),
@@ -70,7 +71,9 @@ export default function RegisterMerchantPage() {
           </p>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-8">
+            <label htmlFor="registermerchant-firstname" className="sr-only">Prenom</label>
             <input
+              id="registermerchant-firstname"
               type="text"
               placeholder="Prenom"
               value={firstName}
@@ -79,7 +82,9 @@ export default function RegisterMerchantPage() {
               style={{ backgroundColor: "#0D1912", border: "1px solid rgba(255,255,255,0.15)", color: "#F5F1E8" }}
               required
             />
+            <label htmlFor="registermerchant-lastname" className="sr-only">Nom</label>
             <input
+              id="registermerchant-lastname"
               type="text"
               placeholder="Nom"
               value={lastName}
@@ -88,7 +93,9 @@ export default function RegisterMerchantPage() {
               style={{ backgroundColor: "#0D1912", border: "1px solid rgba(255,255,255,0.15)", color: "#F5F1E8" }}
               required
             />
+            <label htmlFor="registermerchant-email" className="sr-only">Courriel</label>
             <input
+              id="registermerchant-email"
               type="email"
               placeholder="Courriel"
               value={email}
@@ -97,7 +104,9 @@ export default function RegisterMerchantPage() {
               style={{ backgroundColor: "#0D1912", border: "1px solid rgba(255,255,255,0.15)", color: "#F5F1E8" }}
               required
             />
+            <label htmlFor="registermerchant-password" className="sr-only">Mot de passe</label>
             <input
+              id="registermerchant-password"
               type="password"
               placeholder="Mot de passe"
               value={password}

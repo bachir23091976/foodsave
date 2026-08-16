@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { API_URL } from "../lib/api";
 
 interface Notification {
   id: string;
@@ -17,7 +18,7 @@ export default function NotificationBell() {
     const token = localStorage.getItem("token");
     if (!token) return;
 
-    fetch("http://localhost:4000/notifications", {
+    fetch(`${API_URL}/notifications`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => res.json())
@@ -35,7 +36,7 @@ export default function NotificationBell() {
     const token = localStorage.getItem("token");
     if (!token) return;
 
-    await fetch("http://localhost:4000/notifications/read", {
+    await fetch(`${API_URL}/notifications/read`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

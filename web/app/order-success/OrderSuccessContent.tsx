@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Bebas_Neue, Space_Grotesk } from "next/font/google";
+import { API_URL } from "../lib/api";
 
 const display = Bebas_Neue({ subsets: ["latin"], weight: "400" });
 const body = Space_Grotesk({ subsets: ["latin"], weight: ["400", "500", "700"] });
@@ -31,7 +32,7 @@ export default function OrderSuccessContent() {
       return;
     }
 
-    fetch("http://localhost:4000/orders/confirm", {
+    fetch(`${API_URL}/orders/confirm`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

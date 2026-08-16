@@ -5,6 +5,7 @@ import { Bebas_Neue, Space_Grotesk } from "next/font/google";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import ScrollReveal from "../components/ScrollReveal";
+import { API_URL } from "../lib/api";
 
 const display = Bebas_Neue({ subsets: ["latin"], weight: "400" });
 const body = Space_Grotesk({ subsets: ["latin"], weight: ["400", "500", "700"] });
@@ -23,7 +24,7 @@ export default function ReferralPage() {
     const token = localStorage.getItem("token");
     if (!token) return;
 
-    fetch("http://localhost:4000/users/referral", {
+    fetch(`${API_URL}/users/referral`, {
       headers: { Authorization: "Bearer " + token },
     })
       .then((res) => res.json())

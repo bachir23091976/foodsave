@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { API_URL } from "../lib/api";
 
 interface Reward {
   id: string;
@@ -16,7 +17,7 @@ export default function LoyaltyBanner() {
     const token = localStorage.getItem("token");
     if (!token) return;
 
-    fetch("http://localhost:4000/loyalty", {
+    fetch(`${API_URL}/loyalty`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => res.json())

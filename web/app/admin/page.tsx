@@ -5,6 +5,7 @@ import { Bebas_Neue, Space_Grotesk } from "next/font/google";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import ScrollReveal from "../components/ScrollReveal";
+import { API_URL } from "../lib/api";
 
 const display = Bebas_Neue({ subsets: ["latin"], weight: "400" });
 const body = Space_Grotesk({ subsets: ["latin"], weight: ["400", "500", "700"] });
@@ -43,7 +44,7 @@ export default function AdminPage() {
     }
 
     try {
-      const statsRes = await fetch("http://localhost:4000/admin/stats", {
+      const statsRes = await fetch(`${API_URL}/admin/stats`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const statsData = await statsRes.json();
@@ -55,7 +56,7 @@ export default function AdminPage() {
 
       setStats(statsData.stats);
 
-      const pendingRes = await fetch("http://localhost:4000/admin/merchants/pending", {
+      const pendingRes = await fetch(`${API_URL}/admin/merchants/pending`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const pendingData = await pendingRes.json();
@@ -74,7 +75,7 @@ export default function AdminPage() {
     setMessage("");
 
     try {
-      const res = await fetch("http://localhost:4000/admin/merchants/approve", {
+      const res = await fetch(`${API_URL}/admin/merchants/approve`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
