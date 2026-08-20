@@ -135,20 +135,24 @@ export default function OffersPage() {
     const token = localStorage.getItem("token");
     if (!token) return;
     const isFavorite = favoriteMerchantIds.includes(merchantId);
-    if (isFavorite) {
-      await fetch(`${API_URL}/favorites/remove`, {
+    try {
+      const res = await fetch(`${API_URL}/favorites${isFavorite ? "/remove" : ""}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
         body: JSON.stringify({ merchantId }),
       });
-      setFavoriteMerchantIds((prev) => prev.filter((id) => id !== merchantId));
-    } else {
-      await fetch(`${API_URL}/favorites`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
-        body: JSON.stringify({ merchantId }),
-      });
-      setFavoriteMerchantIds((prev) => [...prev, merchantId]);
+
+      if (!res.ok) return;
+
+      if (isFavorite) {
+        setFavoriteMerchantIds((prev) => prev.filter((id) => id !== merchantId));
+      } else {
+        setFavoriteMerchantIds((prev) => [...prev, merchantId]);
+      }
+    } catch {
+      // Network failure: leave favoriteMerchantIds untouched so the star
+      // icon keeps reflecting the last known-good state instead of drifting
+      // out of sync with the backend.
     }
   };
 
