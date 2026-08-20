@@ -36,16 +36,21 @@ export default function NotificationBell() {
     const token = localStorage.getItem("token");
     if (!token) return;
 
-    await fetch(`${API_URL}/notifications/read`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ notificationId }),
-    });
+    try {
+      await fetch(`${API_URL}/notifications/read`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ notificationId }),
+      });
 
-    loadNotifications();
+      loadNotifications();
+    } catch {
+      // Network failure: notification just stays unread until the next
+      // successful click or the 15s polling refresh.
+    }
   };
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
