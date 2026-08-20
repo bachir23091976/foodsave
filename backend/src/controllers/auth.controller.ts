@@ -6,6 +6,20 @@ import { checkAndCreateReward } from "./loyalty.controller";
 
 const JWT_SECRET = process.env.JWT_SECRET || "changez-moi-en-production";
 
+if (!process.env.JWT_SECRET) {
+  console.warn(
+    "[SECURITE] JWT_SECRET n'est pas defini dans l'environnement. " +
+    "Un secret par defaut non securise est utilise pour signer les tokens. " +
+    "Definissez JWT_SECRET dans .env (local) et dans les variables d'environnement Render (production)."
+  );
+}
+
+// Precomputed once at startup so that login() always pays the same bcrypt
+// cost whether the email exists or not — otherwise the response-time
+// difference between "user not found" (instant) and "user found, wrong
+// password" (one bcrypt.compare) lets an attacker enumerate valid emails.
+const DUMMY_PASSWORD_HASH = bcrypt.hashSync("foodsave-timing-safety-placeholder", 10);
+
 export const register = async (req: Request, res: Response) => {
   try {
     const { email, password, firstName, lastName, role, referralCode } = req.body;
@@ -56,7 +70,14 @@ export const register = async (req: Request, res: Response) => {
         role: user.role,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
+    if (error.code === "P2002") {
+      // Two concurrent registrations with the same email both passed the
+      // findUnique check above before either insert committed; the unique
+      // constraint on User.email is the real guard, this just returns the
+      // same friendly message instead of a generic 500.
+      return res.status(400).json({ message: "Cet email est deja utilise" });
+    }
     console.error(error);
     res.status(500).json({ message: "Erreur serveur" });
   }
@@ -71,12 +92,9 @@ export const login = async (req: Request, res: Response) => {
     }
 
     const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) {
-      return res.status(401).json({ message: "Email ou mot de passe incorrect" });
-    }
+    const isPasswordValid = await bcrypt.compare(password, user ? user.password : DUMMY_PASSWORD_HASH);
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
+    if (!user || !isPasswordValid) {
       return res.status(401).json({ message: "Email ou mot de passe incorrect" });
     }
 
