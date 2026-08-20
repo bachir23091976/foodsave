@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Bebas_Neue, Space_Grotesk } from "next/font/google";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
@@ -34,6 +35,14 @@ interface Merchant {
   stripeAccountId: string | null;
 }
 
+interface StripeStatus {
+  status: "NOT_CONNECTED" | "ONBOARDING_INCOMPLETE" | "READY";
+  transfersActive: boolean;
+  chargesEnabled: boolean;
+  payoutsEnabled: boolean;
+  currentlyDue: string[];
+}
+
 export default function MerchantProfilePage() {
   const [name, setName] = useState("");
   const [type, setType] = useState("RESTAURANT");
@@ -46,7 +55,10 @@ export default function MerchantProfilePage() {
   const [message, setMessage] = useState("");
   const [merchant, setMerchant] = useState<Merchant | null>(null);
   const [loadingMerchant, setLoadingMerchant] = useState(true);
+  const [stripeStatus, setStripeStatus] = useState<StripeStatus | null>(null);
+  const [loadingStripeStatus, setLoadingStripeStatus] = useState(true);
   const [connectingStripe, setConnectingStripe] = useState(false);
+  const [submittingProfile, setSubmittingProfile] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -68,8 +80,35 @@ export default function MerchantProfilePage() {
       .finally(() => setLoadingMerchant(false));
   }, []);
 
+  useEffect(() => {
+    if (!merchant) {
+      setLoadingStripeStatus(false);
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setLoadingStripeStatus(false);
+      return;
+    }
+
+    setLoadingStripeStatus(true);
+    fetch(`${API_URL}/merchants/stripe-status`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) {
+          setStripeStatus(data);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingStripeStatus(false));
+  }, [merchant]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingProfile) return;
     setMessage("");
 
     const token = localStorage.getItem("token");
@@ -78,6 +117,7 @@ export default function MerchantProfilePage() {
       return;
     }
 
+    setSubmittingProfile(true);
     try {
       const res = await fetch(`${API_URL}/merchants`, {
         method: "POST",
@@ -99,6 +139,8 @@ export default function MerchantProfilePage() {
       setMerchant(data.merchant);
     } catch {
       setMessage("Impossible de contacter le serveur");
+    } finally {
+      setSubmittingProfile(false);
     }
   };
 
@@ -168,6 +210,21 @@ export default function MerchantProfilePage() {
                 </p>
                 {merchant.phone && <p className="text-sm" style={{ color: dim }}>{merchant.phone}</p>}
               </div>
+
+              <Link
+  href="/merchant/new-offer"
+  className="mt-4 mr-3 inline-block rounded-full px-6 py-3 font-bold uppercase tracking-wide text-sm"
+  style={{ backgroundColor: amber, color: bg }}
+>
+  Créer une offre
+</Link>
+<Link
+                href="/merchant/reservations"
+                className="mt-4 inline-block rounded-full px-6 py-3 font-bold uppercase tracking-wide text-sm"
+                style={{ backgroundColor: "rgba(23,201,137,0.15)", color: jade, border: "1px solid rgba(23,201,137,0.4)" }}
+              >
+                Réservations
+              </Link>
             </>
           ) : (
             <>
@@ -284,10 +341,11 @@ export default function MerchantProfilePage() {
 
             <button
               type="submit"
+              disabled={submittingProfile}
               className="rounded-full px-6 py-3 font-bold uppercase tracking-wide text-sm mt-2"
-              style={{ backgroundColor: amber, color: bg }}
+              style={{ backgroundColor: amber, color: bg, opacity: submittingProfile ? 0.7 : 1 }}
             >
-              Créer mon profil
+              {submittingProfile ? "Création..." : "Créer mon profil"}
                 </button>
               </form>
             </>
@@ -307,9 +365,11 @@ export default function MerchantProfilePage() {
           </div>
 
           {merchant && (
-            merchant.stripeAccountId ? (
+            loadingStripeStatus ? (
+              <p className="mt-4" style={{ color: dim }}>Vérification du statut Stripe...</p>
+            ) : stripeStatus?.status === "READY" ? (
               <p className="mt-4 font-bold" style={{ color: jade }}>
-                ✓ Compte Stripe connecté
+                ✓ Compte Stripe connecté et prêt à recevoir des paiements
               </p>
             ) : (
               <button
@@ -318,7 +378,11 @@ export default function MerchantProfilePage() {
                 className="mt-4 rounded-full px-6 py-3 font-bold uppercase tracking-wide text-sm"
                 style={{ backgroundColor: jade, color: bg }}
               >
-                {connectingStripe ? "Connexion..." : "Connecter mon compte Stripe"}
+                {connectingStripe
+                  ? "Connexion..."
+                  : stripeStatus?.status === "ONBOARDING_INCOMPLETE"
+                  ? "Continuer la configuration Stripe"
+                  : "Connecter mon compte Stripe"}
               </button>
             )
           )}
