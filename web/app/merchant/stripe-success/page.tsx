@@ -1,6 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { Bebas_Neue, Space_Grotesk } from "next/font/google";
+import Navbar from "../../components/Navbar";
+import Footer from "../../components/Footer";
 
 const display = Bebas_Neue({ subsets: ["latin"], weight: "400" });
 const body = Space_Grotesk({ subsets: ["latin"], weight: ["400", "700"] });
@@ -12,7 +15,8 @@ const dim = "#8FA396";
 export default function StripeSuccessPage() {
   return (
     <main className={body.className} style={{ backgroundColor: bg, color: "#F5F1E8", minHeight: "100vh" }}>
-      <div className="flex flex-col items-center justify-center min-h-screen px-6 text-center">
+      <Navbar />
+      <div className="flex flex-col items-center justify-center px-6 py-24 text-center">
         <div
           className="w-16 h-16 rounded-full flex items-center justify-center mb-6"
           style={{ backgroundColor: "rgba(23,201,137,0.15)", border: "1px solid rgba(23,201,137,0.4)" }}
@@ -27,10 +31,11 @@ export default function StripeSuccessPage() {
         <p className="mt-4 max-w-sm" style={{ color: dim }}>
           Votre compte est maintenant prêt à recevoir des paiements.
         </p>
-        <a href="/merchant/profile" className="mt-8" style={{ color: jade }}>
+        <Link href="/merchant/profile" className="mt-8" style={{ color: jade }}>
           Retour à mon profil
-        </a>
+        </Link>
       </div>
+      <Footer />
     </main>
   );
 }
