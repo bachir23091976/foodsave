@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createOrder, confirmOrder, getMyOrders, validatePickup } from "../controllers/order.controller";
+import { createOrder, confirmOrder, getMyOrders, getMerchantOrders, validatePickup } from "../controllers/order.controller";
 import { authenticate } from "../middleware/auth.middleware";
 
 const router = Router();
@@ -7,6 +7,7 @@ const router = Router();
 router.post("/", authenticate, createOrder);
 router.post("/confirm", authenticate, confirmOrder);
 router.get("/mine", authenticate, getMyOrders);
+router.get("/merchant", authenticate, getMerchantOrders);
 router.post("/validate", authenticate, validatePickup);
 
-export default router;
+export default router;

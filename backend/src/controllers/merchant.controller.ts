@@ -58,7 +58,14 @@ export const createMerchantProfile = async (req: AuthRequest, res: Response) => 
     });
 
     res.status(201).json({ message: "Commerce cree avec succes", merchant });
-  } catch (error) {
+  } catch (error: any) {
+    if (error.code === "P2002") {
+      // Two concurrent submissions (e.g. two open tabs) both passed the
+      // findUnique check above before either insert committed; the unique
+      // constraint on Merchant.ownerId is the real guard, this just returns
+      // the same friendly message instead of a generic 500.
+      return res.status(400).json({ message: "Ce compte a deja un commerce" });
+    }
     console.error(error);
     res.status(500).json({ message: "Erreur serveur" });
   }
@@ -103,12 +110,22 @@ export const connectStripe = async (req: AuthRequest, res: Response) => {
         },
       });
 
-      stripeAccountId = account.id;
-
-      await prisma.merchant.update({
-        where: { id: merchant.id },
-        data: { stripeAccountId },
+      // Conditional write: only persist this new Stripe account if the
+      // merchant still has no stripeAccountId. If a second concurrent
+      // request already won this race, fall back to the account it saved
+      // instead of overwriting it (which would silently orphan one of the
+      // two Stripe accounts with no DB reference).
+      const saved = await prisma.merchant.updateMany({
+        where: { id: merchant.id, stripeAccountId: null },
+        data: { stripeAccountId: account.id },
       });
+
+      if (saved.count === 1) {
+        stripeAccountId = account.id;
+      } else {
+        const refreshed = await prisma.merchant.findUnique({ where: { id: merchant.id } });
+        stripeAccountId = refreshed?.stripeAccountId || account.id;
+      }
     }
 
     const accountLink = await stripe.accountLinks.create({
@@ -122,6 +139,47 @@ export const connectStripe = async (req: AuthRequest, res: Response) => {
   } catch (error: any) {
     console.error(error);
     res.status(500).json({ message: "Erreur lors de la connexion a Stripe", detail: error.message });
+  }
+};
+
+export const getStripeStatus = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId;
+
+    const merchant = await prisma.merchant.findUnique({ where: { ownerId: userId } });
+    if (!merchant) {
+      return res.status(404).json({ message: "Aucun commerce trouve" });
+    }
+
+    if (!merchant.stripeAccountId) {
+      return res.json({
+        status: "NOT_CONNECTED",
+        transfersActive: false,
+        chargesEnabled: false,
+        payoutsEnabled: false,
+        currentlyDue: [],
+      });
+    }
+
+    const account = await stripe.accounts.retrieve(merchant.stripeAccountId);
+
+    const transfersActive = account.capabilities?.transfers === "active";
+    const chargesEnabled = !!account.charges_enabled;
+    const payoutsEnabled = !!account.payouts_enabled;
+    const currentlyDue = account.requirements?.currently_due || [];
+
+    const ready = transfersActive && chargesEnabled && payoutsEnabled && currentlyDue.length === 0;
+
+    res.json({
+      status: ready ? "READY" : "ONBOARDING_INCOMPLETE",
+      transfersActive,
+      chargesEnabled,
+      payoutsEnabled,
+      currentlyDue,
+    });
+  } catch (error: any) {
+    console.error(error);
+    res.status(500).json({ message: "Erreur lors de la verification du statut Stripe", detail: error.message });
   }
 };
 

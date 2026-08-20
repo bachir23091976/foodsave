@@ -52,6 +52,10 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: "Cette offre n'est plus disponible" });
     }
 
+    if (offer.pickupEnd.getTime() < Date.now()) {
+      return res.status(400).json({ message: "La fenetre de recuperation de cette offre est terminee" });
+    }
+
     if (!offer.merchant.stripeAccountId) {
       return res.status(400).json({ message: "Ce commerce n'a pas encore configure ses paiements" });
     }
@@ -114,6 +118,10 @@ export const confirmOrder = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: "Metadonnees manquantes" });
     }
 
+    if (userId !== req.userId) {
+      return res.status(403).json({ message: "Cette session de paiement ne vous appartient pas" });
+    }
+
     const existingOrder = await prisma.order.findFirst({
       where: { offerId, userId, status: { in: ["CONFIRMED", "COMPLETED"] } },
     });
@@ -124,11 +132,24 @@ export const confirmOrder = async (req: AuthRequest, res: Response) => {
     }
 
     const offer = await prisma.offer.findUnique({ where: { id: offerId }, include: { merchant: true } });
-    if (!offer || offer.quantity < 1) {
+    if (!offer) {
       return res.status(400).json({ message: "Offre indisponible" });
     }
 
     const order = await prisma.$transaction(async (tx) => {
+      // Atomic, conditional decrement: only succeeds if quantity is still > 0
+      // at the moment the row is locked, preventing a lost-update race where
+      // two near-simultaneous confirmations both read the same stale quantity
+      // and both believe they got the last unit.
+      const decremented = await tx.offer.updateMany({
+        where: { id: offerId, quantity: { gt: 0 } },
+        data: { quantity: { decrement: 1 } },
+      });
+
+      if (decremented.count === 0) {
+        throw new Error("OFFER_SOLD_OUT");
+      }
+
       const newOrder = await tx.order.create({
         data: {
           userId,
@@ -136,11 +157,6 @@ export const confirmOrder = async (req: AuthRequest, res: Response) => {
           totalPrice: offer.discountedPrice,
           status: "CONFIRMED",
         },
-      });
-
-      await tx.offer.update({
-        where: { id: offerId },
-        data: { quantity: offer.quantity - 1 },
       });
 
       return newOrder;
@@ -156,6 +172,9 @@ export const confirmOrder = async (req: AuthRequest, res: Response) => {
 
     res.status(201).json({ message: "Reservation confirmee", order, qrCodeImage });
   } catch (error: any) {
+    if (error.message === "OFFER_SOLD_OUT") {
+      return res.status(400).json({ message: "Offre epuisee, un autre client a reserve la derniere unite entre-temps" });
+    }
     console.error(error);
     res.status(500).json({ message: "Erreur serveur", detail: error.message });
   }
@@ -168,6 +187,31 @@ export const getMyOrders = async (req: AuthRequest, res: Response) => {
     const orders = await prisma.order.findMany({
       where: { userId },
       include: { offer: { include: { merchant: true } } },
+      orderBy: { createdAt: "desc" },
+    });
+
+    res.json({ orders });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Erreur serveur" });
+  }
+};
+
+export const getMerchantOrders = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId;
+
+    const merchant = await prisma.merchant.findUnique({ where: { ownerId: userId } });
+    if (!merchant) {
+      return res.status(404).json({ message: "Aucun commerce trouve" });
+    }
+
+    const orders = await prisma.order.findMany({
+      where: { offer: { merchantId: merchant.id } },
+      include: {
+        offer: true,
+        user: { select: { firstName: true, lastName: true, email: true } },
+      },
       orderBy: { createdAt: "desc" },
     });
 
@@ -203,10 +247,20 @@ export const validatePickup = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: "Cette commande a deja ete recuperee" });
     }
 
-    const updatedOrder = await prisma.order.update({
-      where: { id: order.id },
+    // Atomic, conditional status flip: only one concurrent validation request
+    // can move this order out of COMPLETED-not-yet-set. This closes a race
+    // where two near-simultaneous scans of the same code would otherwise both
+    // pass the check above and both trigger the loyalty/referral reward logic.
+    const updateResult = await prisma.order.updateMany({
+      where: { id: order.id, status: { not: "COMPLETED" } },
       data: { status: "COMPLETED" },
     });
+
+    if (updateResult.count === 0) {
+      return res.status(400).json({ message: "Cette commande a deja ete recuperee" });
+    }
+
+    const updatedOrder = (await prisma.order.findUnique({ where: { id: order.id } }))!;
 
     const pickupMessage = "Votre commande " + order.offer.title + " a ete recuperee avec succes";
     await createNotification(order.userId, pickupMessage);
