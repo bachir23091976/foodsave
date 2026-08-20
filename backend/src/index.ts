@@ -1,6 +1,19 @@
+// Must be the very first import. TypeScript compiles `import` statements to
+// `require()` calls in source order, and every route below transitively
+// imports a controller/lib module that reads `process.env.*` at module load
+// time (JWT_SECRET in auth.controller.ts/auth.middleware.ts,
+// STRIPE_SECRET_KEY in lib/stripe.ts, DATABASE_URL via lib/prisma.ts's
+// `new PrismaClient()`). If dotenv.config() ran after those imports (as it
+// did before this fix), all of them would capture `undefined` for any var
+// that only exists in .env — permanently, since those are top-level
+// `const`s evaluated once. `import "dotenv/config"` runs as soon as this
+// line is reached, before any later import, guaranteeing .env is loaded
+// first. This only matters for local dev: on Render, env vars are injected
+// into process.env before Node even starts, so this was invisible there.
+import "dotenv/config";
+
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 import authRoutes from "./routes/auth.routes";
 import merchantRoutes from "./routes/merchant.routes";
 import offerRoutes from "./routes/offer.routes";
@@ -12,8 +25,6 @@ import userRoutes from "./routes/user.routes";
 import favoriteRoutes from "./routes/favorite.routes";
 import loyaltyRoutes from "./routes/loyalty.routes";
 import uploadRoutes from "./routes/upload.routes";
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -44,4 +55,4 @@ app.get("/", (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Serveur démarré sur http://localhost:${PORT}`);
-});
+});
