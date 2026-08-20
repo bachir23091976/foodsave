@@ -93,6 +93,28 @@ export const createOffer = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    const originalPriceNum = Number(originalPrice);
+    const discountedPriceNum = Number(discountedPrice);
+    const quantityNum = Number(quantity);
+    const pickupStartDate = new Date(pickupStart);
+    const pickupEndDate = new Date(pickupEnd);
+
+    if (
+      !Number.isFinite(originalPriceNum) || originalPriceNum <= 0 ||
+      !Number.isFinite(discountedPriceNum) || discountedPriceNum <= 0 ||
+      discountedPriceNum > originalPriceNum
+    ) {
+      return res.status(400).json({ message: "Prix invalides" });
+    }
+
+    if (!Number.isInteger(quantityNum) || quantityNum <= 0) {
+      return res.status(400).json({ message: "Quantite invalide" });
+    }
+
+    if (isNaN(pickupStartDate.getTime()) || isNaN(pickupEndDate.getTime()) || pickupEndDate <= pickupStartDate) {
+      return res.status(400).json({ message: "Fenetre de recuperation invalide" });
+    }
+
     const merchant = await prisma.merchant.findUnique({ where: { ownerId: userId } });
     if (!merchant) {
       return res.status(404).json({ message: "Aucun commerce trouve pour ce compte" });
@@ -103,11 +125,11 @@ export const createOffer = async (req: AuthRequest, res: Response) => {
         title,
         description,
         imageUrl: imageUrl || null,
-        originalPrice,
-        discountedPrice,
-        quantity,
-        pickupStart: new Date(pickupStart),
-        pickupEnd: new Date(pickupEnd),
+        originalPrice: originalPriceNum,
+        discountedPrice: discountedPriceNum,
+        quantity: quantityNum,
+        pickupStart: pickupStartDate,
+        pickupEnd: pickupEndDate,
         merchantId: merchant.id,
       },
     });
