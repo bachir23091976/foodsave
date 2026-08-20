@@ -1,5 +1,7 @@
 ﻿"use client";
 
+import { useState } from "react";
+
 interface Props {
   url: string | null;
   alt: string;
@@ -46,11 +48,17 @@ function TypeIcon({ type, size }: { type: string | null | undefined; size: numbe
 export default function FoodSaveImage({ url, alt, variant = "offer", merchantType = null, className = "" }: Props) {
   const height = variant === "hero" ? "h-72" : "h-40";
   const iconSize = variant === "hero" ? 64 : 36;
+  const [imageFailed, setImageFailed] = useState(false);
 
-  if (url) {
+  if (url && !imageFailed) {
     return (
       <div className={"fs-img-wrap w-full overflow-hidden " + height + " " + className}>
-        <img src={url} alt={alt} className="fs-img w-full h-full object-cover" />
+        <img
+          src={url}
+          alt={alt}
+          className="fs-img w-full h-full object-cover"
+          onError={() => setImageFailed(true)}
+        />
       </div>
     );
   }
