@@ -16,9 +16,39 @@ const NAV_LINKS = [
 
 const CONTACT_LINK = { href: "/#contact", label: "Contact" };
 
+// Decodes only the payload segment of a JWT, client-side, to read the
+// role claim for a UI decision (which nav links to show). This is NOT a
+// signature check and must never be treated as one -- it never touches
+// JWT_SECRET (which only exists on the backend) and proves nothing about
+// authenticity. The actual authorization check still happens server-side
+// on every request via the authenticate middleware. If the token is
+// absent, malformed, not a 3-part JWT, or its payload isn't valid
+// base64url/JSON, this returns null instead of throwing.
+function decodeJwtPayload(token: string): { role?: string } | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+    const binary = window.atob(padded);
+    const json = decodeURIComponent(
+      Array.prototype.map
+        .call(binary, (c: string) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+
+    const payload = JSON.parse(json);
+    return payload && typeof payload === "object" ? payload : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isMerchant, setIsMerchant] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
 
@@ -26,7 +56,9 @@ export default function Navbar() {
   // that just happened (router.push from /login to /offers) or a logout
   // redirect, without needing a full page reload.
   useEffect(() => {
-    setIsLoggedIn(!!localStorage.getItem("token"));
+    const token = localStorage.getItem("token");
+    setIsLoggedIn(!!token);
+    setIsMerchant(!!token && decodeJwtPayload(token)?.role === "MERCHANT");
   }, [pathname]);
 
   const handleLogout = () => {
@@ -57,6 +89,11 @@ export default function Navbar() {
                 S&apos;inscrire
               </Link>
             </>
+          )}
+          {isMerchant && (
+            <Link href="/merchant/profile" className="hover:text-white">
+              Espace commerçant
+            </Link>
           )}
           {isLoggedIn && (
             <button
@@ -140,6 +177,16 @@ export default function Navbar() {
                 S&apos;inscrire
               </Link>
             </>
+          )}
+          {isMerchant && (
+            <Link
+              href="/merchant/profile"
+              className="py-3 hover:text-white"
+              style={{ color: "#8FA396" }}
+              onClick={() => setOpen(false)}
+            >
+              Espace commerçant
+            </Link>
           )}
           {isLoggedIn && (
             <button
