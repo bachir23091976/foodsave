@@ -39,8 +39,10 @@ function TypeIcon({ type, size }: { type: string | null | undefined; size: numbe
   }
   return (
     <svg {...s} viewBox="0 0 24 24" fill="none">
-      <circle cx="12" cy="12" r="8" stroke="#FFB100" strokeWidth="1.4" opacity="0.85" />
-      <path d="M9 12h6M12 9v6" stroke="#17C989" strokeWidth="1.4" opacity="0.85" />
+      <path d="M4 15A8 8 0 0 1 20 15" stroke="#FFB100" strokeWidth="1.4" strokeLinecap="round" opacity="0.85" />
+      <path d="M2 15h20" stroke="#17C989" strokeWidth="1.4" strokeLinecap="round" opacity="0.85" />
+      <path d="M12 7V5" stroke="#FFB100" strokeWidth="1.4" strokeLinecap="round" opacity="0.85" />
+      <circle cx="12" cy="4.3" r="0.9" fill="#17C989" opacity="0.85" />
     </svg>
   );
 }
