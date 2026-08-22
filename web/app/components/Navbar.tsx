@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 
 const bg = "#06110C";
 const amber = "#FFB100";
@@ -11,12 +12,28 @@ const NAV_LINKS = [
   { href: "/", label: "Accueil" },
   { href: "/offers", label: "Offres" },
   { href: "/partner", label: "Devenir partenaire" },
-  { href: "/register", label: "S'inscrire" },
-  { href: "/#contact", label: "Contact" },
 ];
+
+const CONTACT_LINK = { href: "/#contact", label: "Contact" };
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const pathname = usePathname();
+  const router = useRouter();
+
+  // Re-read the token on every route change so the Navbar picks up a login
+  // that just happened (router.push from /login to /offers) or a logout
+  // redirect, without needing a full page reload.
+  useEffect(() => {
+    setIsLoggedIn(!!localStorage.getItem("token"));
+  }, [pathname]);
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    setOpen(false);
+    router.push("/login");
+  };
 
   return (
     <nav className="sticky top-0 z-50" style={{ backgroundColor: "rgba(6,17,12,0.92)", backdropFilter: "blur(8px)", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
@@ -31,6 +48,29 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
+          {!isLoggedIn && (
+            <>
+              <Link href="/login" className="hover:text-white">
+                Se connecter
+              </Link>
+              <Link href="/register" className="hover:text-white">
+                S&apos;inscrire
+              </Link>
+            </>
+          )}
+          {isLoggedIn && (
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="hover:text-white"
+              style={{ background: "none", border: "none", padding: 0, font: "inherit", color: "#8FA396", cursor: "pointer" }}
+            >
+              Se déconnecter
+            </button>
+          )}
+          <Link href={CONTACT_LINK.href} className="hover:text-white">
+            {CONTACT_LINK.label}
+          </Link>
         </div>
 
         <div className="flex items-center gap-3">
@@ -81,6 +121,44 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
+          {!isLoggedIn && (
+            <>
+              <Link
+                href="/login"
+                className="py-3 hover:text-white"
+                style={{ color: "#8FA396" }}
+                onClick={() => setOpen(false)}
+              >
+                Se connecter
+              </Link>
+              <Link
+                href="/register"
+                className="py-3 hover:text-white"
+                style={{ color: "#8FA396" }}
+                onClick={() => setOpen(false)}
+              >
+                S&apos;inscrire
+              </Link>
+            </>
+          )}
+          {isLoggedIn && (
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="py-3 px-0 w-full text-left hover:text-white"
+              style={{ background: "none", border: "none", font: "inherit", color: "#8FA396", cursor: "pointer" }}
+            >
+              Se déconnecter
+            </button>
+          )}
+          <Link
+            href={CONTACT_LINK.href}
+            className="py-3 hover:text-white"
+            style={{ color: "#8FA396" }}
+            onClick={() => setOpen(false)}
+          >
+            {CONTACT_LINK.label}
+          </Link>
 
           <Link
             href="/offers"
