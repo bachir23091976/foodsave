@@ -215,6 +215,8 @@ export default function NewOfferPage() {
         <input
           id="offer-quantity"
           type="number"
+          min="1"
+          max="1000"
           placeholder="Quantite disponible"
           value={quantity}
           onChange={(e) => setQuantity(e.target.value)}
