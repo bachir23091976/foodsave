@@ -181,6 +181,41 @@ export const getAllOffers = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const deactivateOffer = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId;
+    const id = String(req.params.id);
+
+    const merchant = await prisma.merchant.findUnique({ where: { ownerId: userId } });
+    if (!merchant) {
+      return res.status(404).json({ message: "Aucun commerce trouve pour ce compte" });
+    }
+
+    const offer = await prisma.offer.findUnique({ where: { id } });
+    if (!offer) {
+      return res.status(404).json({ message: "Offre introuvable" });
+    }
+
+    if (offer.merchantId !== merchant.id) {
+      return res.status(403).json({ message: "Cette offre n'appartient pas a votre commerce" });
+    }
+
+    // Deactivation only ever sets quantity to the fixed sentinel value 0 (the
+    // same value getAllOffers/getNearbyOffers already filter out with
+    // `quantity: { gt: 0 }`) — it never touches order history, so existing
+    // orders/pickup codes for this offer remain valid and unaffected.
+    const updatedOffer = await prisma.offer.update({
+      where: { id: offer.id },
+      data: { quantity: 0 },
+    });
+
+    res.json({ message: "Offre desactivee avec succes", offer: updatedOffer });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Erreur serveur" });
+  }
+};
+
 export const getNearbyOffers = async (req: AuthRequest, res: Response) => {
   try {
     const lat = parseFloat(req.query.lat as string);

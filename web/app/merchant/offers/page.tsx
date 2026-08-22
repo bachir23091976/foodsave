@@ -33,8 +33,9 @@ export default function MerchantOffersPage() {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [deactivatingId, setDeactivatingId] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadOffers = () => {
     const token = localStorage.getItem("token");
     if (!token) {
       setError("Vous devez etre connecte");
@@ -42,6 +43,7 @@ export default function MerchantOffersPage() {
       return;
     }
 
+    setLoading(true);
     fetch(`${API_URL}/offers/mine`, {
       headers: { Authorization: `Bearer ${token}` },
     })
@@ -54,7 +56,45 @@ export default function MerchantOffersPage() {
         setError("Impossible de charger vos offres");
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    loadOffers();
   }, []);
+
+  const handleDeactivate = async (offerId: string, offerTitle: string) => {
+    const confirmed = window.confirm(
+      `Desactiver l'offre "${offerTitle}" ? Elle ne sera plus visible dans les offres publiques.`
+    );
+    if (!confirmed) return;
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setError("Vous devez etre connecte");
+      return;
+    }
+
+    setDeactivatingId(offerId);
+    setError("");
+    try {
+      const res = await fetch(`${API_URL}/offers/${offerId}/deactivate`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        setError(data?.message || "Impossible de desactiver l'offre");
+        return;
+      }
+
+      loadOffers();
+    } catch {
+      setError("Impossible de contacter le serveur");
+    } finally {
+      setDeactivatingId(null);
+    }
+  };
 
   const formatDateTime = (iso: string) => {
     const date = new Date(iso);
@@ -104,7 +144,7 @@ export default function MerchantOffersPage() {
                         : { backgroundColor: "rgba(255,255,255,0.08)", color: dim }
                     }
                   >
-                    {offer.quantity > 0 ? `${offer.quantity} restante(s)` : "Epuise"}
+                    {offer.quantity > 0 ? `${offer.quantity} restante(s)` : "Desactivee"}
                   </span>
                 </div>
 
@@ -127,6 +167,17 @@ export default function MerchantOffersPage() {
                 <p className="text-xs mt-1" style={{ color: dim, opacity: 0.7 }}>
                   Publiee le {formatDateTime(offer.createdAt)}
                 </p>
+
+                {offer.quantity > 0 && (
+                  <button
+                    onClick={() => handleDeactivate(offer.id, offer.title)}
+                    disabled={deactivatingId === offer.id}
+                    className="mt-3 self-start rounded-full px-4 py-2 text-xs font-bold uppercase tracking-wide"
+                    style={{ backgroundColor: "rgba(255,107,107,0.12)", color: "#FF6B6B", border: "1px solid rgba(255,107,107,0.35)" }}
+                  >
+                    {deactivatingId === offer.id ? "Desactivation..." : "Desactiver"}
+                  </button>
+                )}
               </div>
             </div>
           </ScrollReveal>
