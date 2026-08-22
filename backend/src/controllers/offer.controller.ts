@@ -169,7 +169,7 @@ export const getMyOffers = async (req: AuthRequest, res: Response) => {
 export const getAllOffers = async (req: AuthRequest, res: Response) => {
   try {
     const offers = await prisma.offer.findMany({
-      where: { quantity: { gt: 0 } },
+      where: { quantity: { gt: 0 }, pickupEnd: { gt: new Date() } },
       include: { merchant: true },
       orderBy: { createdAt: "desc" },
     });
@@ -226,7 +226,7 @@ export const getNearbyOffers = async (req: AuthRequest, res: Response) => {
     }
 
     const offers = await prisma.offer.findMany({
-      where: { quantity: { gt: 0 } },
+      where: { quantity: { gt: 0 }, pickupEnd: { gt: new Date() } },
       include: { merchant: true },
     });
 
