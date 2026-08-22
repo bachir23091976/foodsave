@@ -107,8 +107,8 @@ export const createOffer = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: "Prix invalides" });
     }
 
-    if (!Number.isInteger(quantityNum) || quantityNum <= 0) {
-      return res.status(400).json({ message: "Quantite invalide" });
+    if (!Number.isInteger(quantityNum) || quantityNum <= 0 || quantityNum > 1000) {
+     return res.status(400).json({ message: "La quantite doit etre comprise entre 1 et 1000" });
     }
 
     if (isNaN(pickupStartDate.getTime()) || isNaN(pickupEndDate.getTime()) || pickupEndDate <= pickupStartDate) {
