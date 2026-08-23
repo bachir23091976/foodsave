@@ -101,12 +101,13 @@ model Offer {
 }
 
 model Order {
-  id         String      @id @default(uuid())
-  status     OrderStatus @default(PENDING)
-  totalPrice Float
-  pickupCode String      @unique @default(uuid())
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+  id              String      @id @default(uuid())
+  status          OrderStatus @default(PENDING)
+  totalPrice      Float
+  pickupCode      String      @unique @default(uuid())
+  stripeSessionId String?     @unique
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 
   user   User   @relation(fields: [userId], references: [id])
   userId String

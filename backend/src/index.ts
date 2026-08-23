@@ -35,6 +35,14 @@ const PORT = process.env.PORT || 4000;
 app.set("trust proxy", 1);
 
 app.use(cors());
+
+// Must be registered before express.json(), and only for this exact path.
+// Stripe's signature check (stripe.webhooks.constructEvent, in the
+// stripeWebhook handler) verifies the signature over the raw request bytes;
+// if express.json() parsed this body first, we'd only have the re-serialized
+// JS object, and the signature would never match. Every other route still
+// gets normal JSON parsing via express.json() below.
+app.use("/orders/webhook", express.raw({ type: "application/json" }));
 app.use(express.json());
 
 app.use("/auth", authRoutes);
