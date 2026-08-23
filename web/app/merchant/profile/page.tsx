@@ -219,6 +219,17 @@ export default function MerchantProfilePage() {
   Créer une offre
 </Link>
 <Link
+  href="/merchant/offers"
+  className="mt-4 mr-3 inline-block rounded-full px-6 py-3 font-bold uppercase tracking-wide text-sm"
+  style={{
+    backgroundColor: "rgba(255,255,255,0.08)",
+    color: "#F5F1E8",
+    border: "1px solid rgba(255,255,255,0.15)",
+  }}
+>
+  Mes offres
+</Link>
+<Link
                 href="/merchant/reservations"
                 className="mt-4 inline-block rounded-full px-6 py-3 font-bold uppercase tracking-wide text-sm"
                 style={{ backgroundColor: "rgba(23,201,137,0.15)", color: jade, border: "1px solid rgba(23,201,137,0.4)" }}
