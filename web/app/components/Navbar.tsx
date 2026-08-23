@@ -58,7 +58,8 @@ export default function Navbar() {
   useEffect(() => {
     const token = localStorage.getItem("token");
     setIsLoggedIn(!!token);
-    setIsMerchant(!!token && decodeJwtPayload(token)?.role === "MERCHANT");
+   const role = token ? decodeJwtPayload(token)?.role : null;
+setIsMerchant(!!token && (role === "MERCHANT" || role === "ADMIN"));
   }, [pathname]);
 
   const handleLogout = () => {
