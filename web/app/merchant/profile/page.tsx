@@ -236,6 +236,17 @@ export default function MerchantProfilePage() {
               >
                 Réservations
               </Link>
+<Link
+  href="/merchant/sales"
+  className="mt-4 ml-3 inline-block rounded-full px-6 py-3 font-bold uppercase tracking-wide text-sm"
+  style={{
+    backgroundColor: "rgba(255,177,0,0.15)",
+    color: amber,
+    border: "1px solid rgba(255,177,0,0.4)",
+  }}
+>
+  Mes ventes
+</Link>
             </>
           ) : (
             <>
