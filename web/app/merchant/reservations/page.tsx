@@ -142,6 +142,7 @@ export default function MerchantReservationsPage() {
       setScanError("Le scan caméra n'est pas disponible sur cet appareil/navigateur");
       return;
     }
+    setScanning(true);
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -153,8 +154,6 @@ export default function MerchantReservationsPage() {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
       }
-
-      setScanning(true);
 
       const { default: jsQR } = await import("jsqr");
 
