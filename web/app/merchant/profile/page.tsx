@@ -211,42 +211,51 @@ export default function MerchantProfilePage() {
                 {merchant.phone && <p className="text-sm" style={{ color: dim }}>{merchant.phone}</p>}
               </div>
 
-              <Link
-  href="/merchant/new-offer"
-  className="mt-4 mr-3 inline-block rounded-full px-6 py-3 font-bold uppercase tracking-wide text-sm"
-  style={{ backgroundColor: amber, color: bg }}
->
-  Créer une offre
-</Link>
-<Link
-  href="/merchant/offers"
-  className="mt-4 mr-3 inline-block rounded-full px-6 py-3 font-bold uppercase tracking-wide text-sm"
-  style={{
-    backgroundColor: "rgba(255,255,255,0.08)",
-    color: "#F5F1E8",
-    border: "1px solid rgba(255,255,255,0.15)",
-  }}
->
-  Mes offres
-</Link>
-<Link
-                href="/merchant/reservations"
-                className="mt-4 inline-block rounded-full px-6 py-3 font-bold uppercase tracking-wide text-sm"
-                style={{ backgroundColor: "rgba(23,201,137,0.15)", color: jade, border: "1px solid rgba(23,201,137,0.4)" }}
-              >
-                Réservations
-              </Link>
-<Link
-  href="/merchant/sales"
-  className="mt-4 ml-3 inline-block rounded-full px-6 py-3 font-bold uppercase tracking-wide text-sm"
-  style={{
-    backgroundColor: "rgba(255,177,0,0.15)",
-    color: amber,
-    border: "1px solid rgba(255,177,0,0.4)",
-  }}
->
-  Mes ventes
-</Link>
+              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+  <Link
+    href="/merchant/new-offer"
+    className="flex min-h-12 items-center justify-center rounded-full px-6 py-3 text-center font-bold uppercase tracking-wide text-sm"
+    style={{ backgroundColor: amber, color: bg }}
+  >
+    Créer une offre
+  </Link>
+
+  <Link
+    href="/merchant/offers"
+    className="flex min-h-12 items-center justify-center rounded-full px-6 py-3 text-center font-bold uppercase tracking-wide text-sm"
+    style={{
+      backgroundColor: "rgba(255,255,255,0.08)",
+      color: "#F5F1E8",
+      border: "1px solid rgba(255,255,255,0.15)",
+    }}
+  >
+    Mes offres
+  </Link>
+
+  <Link
+    href="/merchant/reservations"
+    className="flex min-h-12 items-center justify-center rounded-full px-6 py-3 text-center font-bold uppercase tracking-wide text-sm"
+    style={{
+      backgroundColor: "rgba(23,201,137,0.15)",
+      color: jade,
+      border: "1px solid rgba(23,201,137,0.4)",
+    }}
+  >
+    Réservations
+  </Link>
+
+  <Link
+    href="/merchant/sales"
+    className="flex min-h-12 items-center justify-center rounded-full px-6 py-3 text-center font-bold uppercase tracking-wide text-sm"
+    style={{
+      backgroundColor: "rgba(255,177,0,0.15)",
+      color: amber,
+      border: "1px solid rgba(255,177,0,0.4)",
+    }}
+  >
+    Mes ventes
+  </Link>
+</div>
             </>
           ) : (
             <>
