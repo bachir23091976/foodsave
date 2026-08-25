@@ -260,6 +260,21 @@ export default function OffersPage() {
                   >
                     {reserving === offer.id ? "Redirection..." : "Reserver"}
                   </button>
+<a
+  href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+    `${offer.merchant.address}, ${offer.merchant.city}`
+  )}`}
+  target="_blank"
+  rel="noopener noreferrer"
+  className="mt-3 rounded-full py-3 text-center font-bold uppercase tracking-wide text-sm"
+  style={{
+    backgroundColor: "rgba(255,177,0,0.15)",
+    color: amber,
+    border: "1px solid rgba(255,177,0,0.4)",
+  }}
+>
+  Itinéraire
+</a>
 
                   {confirmations[offer.id] && <p className="text-sm mt-1" style={{ color: "#FF6B6B" }}>{confirmations[offer.id]}</p>}
                 </div>
