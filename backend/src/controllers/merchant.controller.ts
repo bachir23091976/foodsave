@@ -5,9 +5,9 @@ import { AuthRequest } from "../middleware/auth.middleware";
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 
-async function geocodeAddress(address: string, city: string, province: string): Promise<{ lat: number; lng: number } | null> {
+async function geocodeAddress(address: string, city: string, province: string, postalCode: string): Promise<{ lat: number; lng: number } | null> { 
   try {
-    const query = encodeURIComponent(`${address}, ${city}, ${province}, Canada`);
+    const query = encodeURIComponent(`${address}, ${city}, ${province}, ${postalCode}, Canada`);
     const url = `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`;
 
     const res = await fetch(url, {
@@ -39,8 +39,12 @@ export const createMerchantProfile = async (req: AuthRequest, res: Response) => 
       return res.status(400).json({ message: "Ce compte a deja un commerce" });
     }
 
-    const coords = await geocodeAddress(address, city, province);
-
+    const coords = await geocodeAddress(address, city, province, postalCode);
+    if (!coords) {
+      return res.status(400).json({
+        message: "Adresse introuvable. Verifiez l'adresse, la ville, la province et le code postal.",
+      });
+    }
     const merchant = await prisma.merchant.create({
       data: {
         name,
