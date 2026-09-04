@@ -71,6 +71,21 @@ export default function OffersPage() {
   useEffect(() => {
     loadOffers();
     loadFavorites();
+
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    fetch(`${API_URL}/locations`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        const firstLocation = data.locations?.[0];
+        if (firstLocation?.address) {
+          setAddressInput(firstLocation.address);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const formatTime = (iso: string) => {
