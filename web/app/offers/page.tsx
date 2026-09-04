@@ -288,7 +288,7 @@ export default function OffersPage() {
                       <p className="text-sm flex items-center gap-1" style={{ color: dim }}>
                         {offer.merchant.name} - {offer.merchant.city}
                         {offer.distanceKm !== undefined && (
-                          <span style={{ color: jade }} className="font-medium"> - {offer.distanceKm.toFixed(1)} km</span>
+                          <span style={{ color: jade }} className="font-medium whitespace-nowrap"> - {offer.distanceKm.toFixed(1)} km</span>
                         )}
                         <button
                           onClick={() => toggleFavorite(offer.merchant.id)}
@@ -296,7 +296,7 @@ export default function OffersPage() {
                           style={{ color: amber }}
                           aria-label="Ajouter aux favoris"
                         >
-                          {isFavorite ? "[*]" : "[ ]"}
+                       {isFavorite ? "\u2605" : "\u2606"}
                         </button>
                       </p>
                     </div>
