@@ -91,6 +91,11 @@ setIsMerchant(!!token && (role === "MERCHANT" || role === "ADMIN"));
               </Link>
             </>
           )}
+          {isLoggedIn && !isMerchant && (
+            <Link href="/reservations" className="hover:text-white">
+              {"Mes r\u00e9servations"}
+            </Link>
+          )}
           {isMerchant && (
             <Link href="/merchant/profile" className="hover:text-white">
               Espace commerçant
@@ -178,6 +183,16 @@ setIsMerchant(!!token && (role === "MERCHANT" || role === "ADMIN"));
                 S&apos;inscrire
               </Link>
             </>
+          )}
+          {isLoggedIn && !isMerchant && (
+            <Link
+              href="/reservations"
+              className="py-3 hover:text-white"
+              style={{ color: "#8FA396" }}
+              onClick={() => setOpen(false)}
+            >
+              {"Mes r\u00e9servations"}
+            </Link>
           )}
           {isMerchant && (
             <Link
