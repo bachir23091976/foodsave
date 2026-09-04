@@ -24,9 +24,9 @@ interface Order {
 
 const statusLabels: Record<Order["status"], string> = {
   PENDING: "En attente",
-  CONFIRMED: "A recuperer",
-  COMPLETED: "Deja recuperee",
-  CANCELLED: "Annulee",
+  CONFIRMED: "\u00c0 r\u00e9cup\u00e9rer",
+  COMPLETED: "D\u00e9j\u00e0 r\u00e9cup\u00e9r\u00e9e",
+  CANCELLED: "Annul\u00e9e",
 };
 
 export default function ReservationsPage() {
