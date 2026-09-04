@@ -40,6 +40,7 @@ export default function OffersPage() {
   const [confirmations, setConfirmations] = useState<Record<string, string>>({});
   const [addressInput, setAddressInput] = useState("");
   const [searching, setSearching] = useState(false);
+  const [locating, setLocating] = useState(false);
   const [searchMessage, setSearchMessage] = useState("");
   const [favoriteMerchantIds, setFavoriteMerchantIds] = useState<string[]>([]);
 
@@ -119,7 +120,47 @@ export default function OffersPage() {
       setSearching(false);
     }
   };
+  const handleUseLocation = () => {
+    if (!navigator.geolocation) {
+      setSearchMessage("La geolocalisation n'est pas disponible sur cet appareil");
+      return;
+    }
 
+    setLocating(true);
+    setSearchMessage("");
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          const res = await fetch(
+            `${API_URL}/offers/nearby?lat=${latitude}&lng=${longitude}`
+          );
+          const data = await res.json();
+
+          setOffers(data.offers || []);
+          if (!data.offers || data.offers.length === 0) {
+            setSearchMessage("Aucune offre trouvee pres de votre position");
+          }
+        } catch {
+          setSearchMessage("Erreur lors de la recherche par GPS");
+        } finally {
+          setLocating(false);
+        }
+      },
+      () => {
+        setSearchMessage(
+          "Position refusee ou indisponible. Vous pouvez saisir une adresse."
+        );
+        setLocating(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000,
+      }
+    );
+  };
   const handleReserve = async (offerId: string) => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -192,7 +233,7 @@ export default function OffersPage() {
         <LoyaltyBanner />
       </div>
 
-      <div className="max-w-2xl mx-auto px-6 mb-8 flex gap-2">
+      <div className="max-w-2xl mx-auto px-6 mb-8 flex flex-wrap gap-2">
         <label htmlFor="offers-address-search" className="sr-only">Entrez une adresse pour voir les offres proches</label>
         <input
           id="offers-address-search"
@@ -210,6 +251,17 @@ export default function OffersPage() {
           style={{ backgroundColor: amber, color: bg }}
         >
           {searching ? "..." : "Chercher"}
+        </button>
+        <button
+          onClick={handleUseLocation}
+          disabled={locating || searching}
+          className="rounded-full px-6 py-3 font-bold uppercase tracking-wide text-xs"
+          style={{
+            backgroundColor: jade,
+            color: bg,
+          }}
+        >
+          {locating ? "Localisation..." : "Utiliser ma position"}
         </button>
       </div>
 
