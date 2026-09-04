@@ -345,6 +345,119 @@ export const getMyOrders = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const cancelOrder = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId;
+    const { orderId } = req.body;
+
+    if (!orderId) {
+      return res.status(400).json({ message: "orderId manquant" });
+    }
+
+    const order = await prisma.order.findFirst({
+      where: { id: orderId, userId },
+      include: { offer: true },
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: "Commande introuvable" });
+    }
+
+    if (order.status === "CANCELLED") {
+      return res.status(400).json({ message: "Cette commande est deja annulee" });
+    }
+
+    if (order.status === "COMPLETED") {
+      return res.status(400).json({ message: "Une commande deja recuperee ne peut pas etre annulee" });
+    }
+
+    if (order.status !== "CONFIRMED") {
+      return res.status(400).json({ message: "Cette commande ne peut pas etre annulee" });
+    }
+
+    const cancellationDeadline = order.offer.pickupStart.getTime() - 60 * 60 * 1000;
+    if (Date.now() >= cancellationDeadline) {
+      return res.status(400).json({
+        message: "Le delai d'annulation est depasse. L'annulation doit etre faite au moins 60 minutes avant la recuperation.",
+      });
+    }
+
+    if (!order.stripeSessionId) {
+      return res.status(400).json({ message: "Paiement Stripe introuvable" });
+    }
+
+    const claim = await prisma.order.updateMany({
+      where: { id: order.id, userId, status: "CONFIRMED" },
+      data: { status: "CANCELLED" },
+    });
+
+    if (claim.count === 0) {
+      return res.status(409).json({ message: "Cette commande a deja ete traitee" });
+    }
+
+    let refundSucceeded = false;
+
+    try {
+      const session = await stripe.checkout.sessions.retrieve(order.stripeSessionId, {
+        expand: ["payment_intent"],
+      });
+
+      const paymentIntentId =
+        typeof session.payment_intent === "string"
+          ? session.payment_intent
+          : session.payment_intent?.id;
+
+      if (!paymentIntentId) {
+        throw new Error("PaymentIntent introuvable");
+      }
+
+      await stripe.refunds.create(
+        {
+          payment_intent: paymentIntentId,
+          reverse_transfer: true,
+          refund_application_fee: true,
+        },
+        { idempotencyKey: `customer_cancel_${order.id}` }
+      );
+
+      refundSucceeded = true;
+
+      await prisma.offer.update({
+        where: { id: order.offerId },
+        data: { quantity: { increment: 1 } },
+      });
+
+      await createNotification(
+        userId as string,
+        `Votre commande ${order.offer.title} a ete annulee et remboursee`
+      ).catch((notificationError) => {
+        console.error("Erreur notification annulation:", notificationError);
+      });
+
+      return res.json({
+        message: "Commande annulee. Le remboursement a ete envoye vers votre moyen de paiement.",
+      });
+    } catch (error) {
+      if (!refundSucceeded) {
+        await prisma.order.updateMany({
+          where: { id: order.id, userId, status: "CANCELLED" },
+          data: { status: "CONFIRMED" },
+        });
+      }
+
+      console.error("Erreur annulation commande:", error);
+      return res.status(500).json({
+        message: refundSucceeded
+          ? "Le remboursement a reussi, mais le stock doit etre verifie par FoodSave."
+          : "Impossible d'effectuer le remboursement. La commande reste active.",
+      });
+    }
+  } catch (error) {
+    console.error("Erreur annulation commande:", error);
+    return res.status(500).json({ message: "Erreur serveur" });
+  }
+};
+
 export const getMerchantOrders = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId;
@@ -391,8 +504,12 @@ export const validatePickup = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ message: "Cette commande n'appartient pas a votre commerce" });
     }
 
-    if (order.status === "COMPLETED") {
-      return res.status(400).json({ message: "Cette commande a deja ete recuperee" });
+    if (order.status !== "CONFIRMED") {
+      return res.status(400).json({
+        message: order.status === "CANCELLED"
+          ? "Cette commande a ete annulee"
+          : "Cette commande ne peut pas etre validee",
+      });
     }
 
     // Atomic, conditional status flip: only one concurrent validation request
@@ -400,7 +517,7 @@ export const validatePickup = async (req: AuthRequest, res: Response) => {
     // where two near-simultaneous scans of the same code would otherwise both
     // pass the check above and both trigger the loyalty/referral reward logic.
     const updateResult = await prisma.order.updateMany({
-      where: { id: order.id, status: { not: "COMPLETED" } },
+      where: { id: order.id, status: "CONFIRMED" },
       data: { status: "COMPLETED" },
     });
 

@@ -319,6 +319,10 @@ export default function OffersPage() {
                     {offer.quantity} disponible{offer.quantity > 1 ? "s" : ""}
                   </p>
 
+                  <p className="text-xs mt-2" style={{ color: amber }}>
+                    Annulation gratuite jusqu&apos;à 60 minutes avant la récupération.
+                  </p>
+
                   <button
                     onClick={() => handleReserve(offer.id)}
                     disabled={reserving === offer.id || offer.quantity < 1}

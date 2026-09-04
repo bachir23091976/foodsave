@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createOrder, confirmOrder, getMyOrders, getMerchantOrders, validatePickup, stripeWebhook } from "../controllers/order.controller";
+import { createOrder, confirmOrder, getMyOrders, getMerchantOrders, validatePickup, cancelOrder, stripeWebhook } from "../controllers/order.controller";
 import { authenticate } from "../middleware/auth.middleware";
 
 const router = Router();
@@ -13,6 +13,7 @@ router.post("/webhook", stripeWebhook);
 router.post("/", authenticate, createOrder);
 router.post("/confirm", authenticate, confirmOrder);
 router.get("/mine", authenticate, getMyOrders);
+router.post("/cancel", authenticate, cancelOrder);
 router.get("/merchant", authenticate, getMerchantOrders);
 router.post("/validate", authenticate, validatePickup);
 

@@ -33,6 +33,8 @@ export default function ReservationsPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [cancelingId, setCancelingId] = useState<string | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -64,6 +66,51 @@ export default function ReservationsPage() {
       minute: "2-digit",
     });
 
+  const handleCancel = async (orderId: string) => {
+    const confirmed = window.confirm(
+      "Voulez-vous annuler cette commande ? Le remboursement sera envoye vers votre moyen de paiement initial."
+    );
+    if (!confirmed) return;
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setMessage("Vous devez etre connecte");
+      return;
+    }
+
+    setCancelingId(orderId);
+    setMessage("");
+
+    try {
+      const res = await fetch(`${API_URL}/orders/cancel`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ orderId }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setMessage(data.message || "Impossible d'annuler la commande");
+        return;
+      }
+
+      setOrders((current) =>
+        current.map((order) =>
+          order.id === orderId ? { ...order, status: "CANCELLED" } : order
+        )
+      );
+      setMessage(data.message);
+    } catch {
+      setMessage("Impossible de contacter le serveur");
+    } finally {
+      setCancelingId(null);
+    }
+  };
+
   return (
     <main style={{ backgroundColor: "#06110C", color: "#F5F1E8", minHeight: "100vh" }}>
       <Navbar />
@@ -77,6 +124,7 @@ export default function ReservationsPage() {
 
       {loading && <p className="text-center">Chargement...</p>}
       {error && <p className="text-center" style={{ color: "#FF6B6B" }}>{error}</p>}
+      {message && <p className="text-center px-6 mb-4" style={{ color: "#FFB100" }}>{message}</p>}
 
       {!loading && !error && orders.length === 0 && (
         <p className="text-center" style={{ color: "#8FA396" }}>
@@ -107,6 +155,38 @@ export default function ReservationsPage() {
             <p>
               Code de recuperation : <strong style={{ color: "#FFB100" }}>{order.pickupCode}</strong>
             </p>
+
+            {order.status === "CONFIRMED" && (
+              Date.now() < new Date(order.offer.pickupStart).getTime() - 60 * 60 * 1000 ? (
+                <>
+                  <p className="text-sm" style={{ color: "#8FA396" }}>
+                    Annulation possible jusqu'a{" "}
+                    {formatDateTime(
+                      new Date(
+                        new Date(order.offer.pickupStart).getTime() - 60 * 60 * 1000
+                      ).toISOString()
+                    )}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => handleCancel(order.id)}
+                    disabled={cancelingId === order.id}
+                    className="mt-2 self-start rounded-full px-5 py-2 text-sm font-bold"
+                    style={{
+                      backgroundColor: "rgba(255,107,107,0.12)",
+                      color: "#FF6B6B",
+                      border: "1px solid rgba(255,107,107,0.35)",
+                    }}
+                  >
+                    {cancelingId === order.id ? "Annulation..." : "Annuler la commande"}
+                  </button>
+                </>
+              ) : (
+                <p className="text-sm" style={{ color: "#FF6B6B" }}>
+                  Delai d'annulation depasse
+                </p>
+              )
+            )}
           </article>
         ))}
       </div>
