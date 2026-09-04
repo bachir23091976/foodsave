@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Bebas_Neue, Space_Grotesk } from "next/font/google";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
@@ -118,6 +119,16 @@ export default function MerchantOffersPage() {
           MES OFFRES
         </h1>
       </section>
+
+      <div className="max-w-2xl mx-auto px-6 mb-6 flex justify-end">
+        <Link
+          href="/merchant/new-offer"
+          className="rounded-full px-6 py-3 font-bold uppercase tracking-wide text-sm"
+          style={{ backgroundColor: jade, color: bg }}
+        >
+          {"Cr\u00e9er une offre"}
+        </Link>
+      </div>
 
       {loading && <p className="text-center" style={{ color: dim }}>Chargement...</p>}
       {error && <p className="text-center" style={{ color: "#FF6B6B" }}>{error}</p>}
