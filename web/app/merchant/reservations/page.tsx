@@ -38,6 +38,7 @@ export default function MerchantReservationsPage() {
 
   const [manualCode, setManualCode] = useState("");
   const [validating, setValidating] = useState(false);
+  const [cancelingId, setCancelingId] = useState<string | null>(null);
   const [validateMessage, setValidateMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const [scanning, setScanning] = useState(false);
@@ -116,6 +117,50 @@ export default function MerchantReservationsPage() {
       setValidateMessage({ type: "error", text: "Impossible de contacter le serveur" });
     } finally {
       setValidating(false);
+    }
+  };
+
+  const handleMerchantCancel = async (orderId: string) => {
+    const confirmed = window.confirm(
+      "Annuler cette commande et rembourser integralement le client ?"
+    );
+    if (!confirmed) return;
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setValidateMessage({ type: "error", text: "Vous devez etre connecte" });
+      return;
+    }
+
+    setCancelingId(orderId);
+    setValidateMessage(null);
+
+    try {
+      const res = await fetch(`${API_URL}/orders/merchant/cancel`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ orderId }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setValidateMessage({
+          type: "error",
+          text: data.message || "Impossible d'annuler la commande",
+        });
+        return;
+      }
+
+      setValidateMessage({ type: "success", text: data.message });
+      loadOrders();
+    } catch {
+      setValidateMessage({ type: "error", text: "Impossible de contacter le serveur" });
+    } finally {
+      setCancelingId(null);
     }
   };
 
@@ -341,6 +386,19 @@ export default function MerchantReservationsPage() {
                       Utiliser
                     </button>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => handleMerchantCancel(order.id)}
+                    disabled={cancelingId === order.id}
+                    className="mt-3 rounded-full px-4 py-2 text-xs font-bold uppercase tracking-wide"
+                    style={{
+                      backgroundColor: "rgba(255,107,107,0.12)",
+                      color: "#FF6B6B",
+                      border: "1px solid rgba(255,107,107,0.35)",
+                    }}
+                  >
+                    {cancelingId === order.id ? "Annulation..." : "Annuler et rembourser"}
+                  </button>
                 </div>
               ))}
             </div>

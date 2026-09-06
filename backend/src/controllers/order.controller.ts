@@ -458,6 +458,119 @@ export const cancelOrder = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const cancelOrderByMerchant = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId;
+    const { orderId } = req.body;
+
+    if (!orderId) {
+      return res.status(400).json({ message: "orderId manquant" });
+    }
+
+    const merchant = await prisma.merchant.findUnique({
+      where: { ownerId: userId },
+    });
+
+    if (!merchant) {
+      return res.status(404).json({ message: "Aucun commerce trouve" });
+    }
+
+    const order = await prisma.order.findFirst({
+      where: {
+        id: orderId,
+        offer: { merchantId: merchant.id },
+      },
+      include: { offer: true },
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: "Commande introuvable pour ce commerce" });
+    }
+
+    if (order.status !== "CONFIRMED") {
+      return res.status(400).json({
+        message: order.status === "CANCELLED"
+          ? "Cette commande est deja annulee"
+          : "Cette commande ne peut pas etre annulee",
+      });
+    }
+
+    if (!order.stripeSessionId) {
+      return res.status(400).json({ message: "Paiement Stripe introuvable" });
+    }
+
+    const claim = await prisma.order.updateMany({
+      where: { id: order.id, status: "CONFIRMED" },
+      data: { status: "CANCELLED" },
+    });
+
+    if (claim.count === 0) {
+      return res.status(409).json({ message: "Cette commande a deja ete traitee" });
+    }
+
+    let refundSucceeded = false;
+
+    try {
+      const session = await stripe.checkout.sessions.retrieve(order.stripeSessionId, {
+        expand: ["payment_intent"],
+      });
+
+      const paymentIntentId =
+        typeof session.payment_intent === "string"
+          ? session.payment_intent
+          : session.payment_intent?.id;
+
+      if (!paymentIntentId) {
+        throw new Error("PaymentIntent introuvable");
+      }
+
+      await stripe.refunds.create(
+        {
+          payment_intent: paymentIntentId,
+          reverse_transfer: true,
+          refund_application_fee: true,
+        },
+        { idempotencyKey: `merchant_cancel_${order.id}` }
+      );
+
+      refundSucceeded = true;
+
+      await prisma.offer.update({
+        where: { id: order.offerId },
+        data: { quantity: { increment: 1 } },
+      });
+
+      await createNotification(
+        order.userId,
+        `Le commerce a annule votre commande ${order.offer.title}. Votre paiement a ete rembourse.`
+      ).catch((notificationError) => {
+        console.error("Erreur notification annulation commercant:", notificationError);
+      });
+
+      return res.json({
+        message: "Commande annulee et client rembourse avec succes",
+      });
+    } catch (error) {
+      if (!refundSucceeded) {
+        await prisma.order.updateMany({
+          where: { id: order.id, status: "CANCELLED" },
+          data: { status: "CONFIRMED" },
+        });
+      }
+
+      console.error("Erreur annulation par commercant:", error);
+      return res.status(500).json({
+        message: refundSucceeded
+          ? "Le remboursement a reussi, mais le stock doit etre verifie par FoodSave."
+          : "Impossible d'effectuer le remboursement. La commande reste active.",
+      });
+    }
+  } catch (error) {
+    console.error("Erreur annulation par commercant:", error);
+    return res.status(500).json({ message: "Erreur serveur" });
+  }
+};
+
 export const getMerchantOrders = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId;
