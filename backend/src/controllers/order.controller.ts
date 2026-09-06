@@ -182,6 +182,15 @@ async function confirmPaidSession(
     });
   } catch (error: any) {
     if (error.message === "OFFER_SOLD_OUT") {
+      // The transaction has rolled back. Another handler may have confirmed
+      // this same session while we waited for the last unit, so recheck before
+      // refunding. A failed lookup must propagate instead of authorizing a refund.
+      const raceWinner = await prisma.order.findUnique({ where: { stripeSessionId: session.id } });
+      if (raceWinner) {
+        const qrCodeImage = await QRCode.toDataURL(raceWinner.pickupCode);
+        return { status: 200, body: { message: "Commande deja confirmee", order: raceWinner, qrCodeImage } };
+      }
+
       // The payment already succeeded (payment_status === "paid" was checked
       // at the top of this function), but the atomic quantity guard found
       // nothing left to sell -- another confirmation won the last unit in
