@@ -253,8 +253,7 @@ export default function MerchantReservationsPage() {
       minute: "2-digit",
     });
   };
-
-  const toRecover = orders.filter((o) => o.status !== "COMPLETED");
+  const toRecover = orders.filter((o) => o.status === "CONFIRMED");
   const recovered = orders.filter((o) => o.status === "COMPLETED");
 
   return (
