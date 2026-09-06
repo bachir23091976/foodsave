@@ -81,10 +81,20 @@ async function notifyNearbyUsers(merchantLat: number, merchantLng: number, merch
 export const createOffer = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId;
-    const { title, description, imageUrl, originalPrice, discountedPrice, quantity, pickupStart, pickupEnd } = req.body;
+    const { title, description, category, imageUrl, originalPrice, discountedPrice, quantity, pickupStart, pickupEnd } = req.body;
+
+    const allowedCategories = new Set([
+      "EPICERIE", "PLATS_PREPARES", "SANDWICHS", "BOULANGERIE_PATISSERIE",
+      "PIZZA_FAST_FOOD", "FRUITS_LEGUMES", "BOISSONS", "AUTRE",
+    ]);
+    const categoryValue = typeof category === "string" ? category : "AUTRE";
 
     if (!title || !originalPrice || !discountedPrice || !quantity || !pickupStart || !pickupEnd) {
       return res.status(400).json({ message: "Champs manquants" });
+    }
+
+    if (!allowedCategories.has(categoryValue)) {
+      return res.status(400).json({ message: "Categorie invalide" });
     }
 
     if (containsForbiddenContent(title) || containsForbiddenContent(description || "")) {
@@ -124,6 +134,7 @@ export const createOffer = async (req: AuthRequest, res: Response) => {
       data: {
         title,
         description,
+        category: categoryValue,
         imageUrl: imageUrl || null,
         originalPrice: originalPriceNum,
         discountedPrice: discountedPriceNum,

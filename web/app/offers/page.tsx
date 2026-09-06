@@ -23,6 +23,7 @@ interface Offer {
   id: string;
   title: string;
   description: string | null;
+  category: string;
   imageUrl: string | null;
   originalPrice: number;
   discountedPrice: number;
@@ -32,6 +33,18 @@ interface Offer {
   distanceKm?: number;
   merchant: { id: string; name: string; address: string; city: string; type?: string };
 }
+
+const OFFER_CATEGORIES = [
+  { value: "TOUT", label: "Tout" },
+  { value: "EPICERIE", label: "\u00c9picerie" },
+  { value: "PLATS_PREPARES", label: "Plats pr\u00e9par\u00e9s" },
+  { value: "SANDWICHS", label: "Sandwichs" },
+  { value: "BOULANGERIE_PATISSERIE", label: "Boulangerie / P\u00e2tisserie" },
+  { value: "PIZZA_FAST_FOOD", label: "Pizza / Fast-food" },
+  { value: "FRUITS_LEGUMES", label: "Fruits et l\u00e9gumes" },
+  { value: "BOISSONS", label: "Boissons" },
+  { value: "AUTRE", label: "Autre" },
+];
 
 function getRoleFromToken(token: string): string | null {
   try {
@@ -57,6 +70,7 @@ export default function OffersPage() {
   const [searchMessage, setSearchMessage] = useState("");
   const [favoriteMerchantIds, setFavoriteMerchantIds] = useState<string[]>([]);
   const [isMerchant, setIsMerchant] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState("TOUT");
 
   const loadOffers = () => {
     fetch(`${API_URL}/offers`)
@@ -228,6 +242,11 @@ export default function OffersPage() {
     }
   };
 
+  const filteredOffers =
+    selectedCategory === "TOUT"
+      ? offers
+      : offers.filter((offer) => offer.category === selectedCategory);
+
   return (
     <main className={body.className} style={{ backgroundColor: bg, color: "#F5F1E8", minHeight: "100vh" }}>
       <Navbar />
@@ -295,8 +314,29 @@ export default function OffersPage() {
         <p className="text-center" style={{ color: dim }}>Aucune offre disponible pour le moment.</p>
       )}
 
+
+      <div className="max-w-2xl mx-auto px-6 mb-6 overflow-x-auto">
+        <div className="flex gap-2 min-w-max pb-1">
+          {OFFER_CATEGORIES.map((category) => (
+            <button
+              key={category.value}
+              type="button"
+              onClick={() => setSelectedCategory(category.value)}
+              className="rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap"
+              style={{
+                backgroundColor: selectedCategory === category.value ? jade : "#0D1912",
+                color: selectedCategory === category.value ? bg : "#F5F1E8",
+                border: "1px solid rgba(255,255,255,0.15)",
+              }}
+            >
+              {category.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="grid gap-4 max-w-2xl mx-auto px-6 pb-20">
-        {offers.map((offer, index) => {
+        {filteredOffers.map((offer, index) => {
           const percent = Math.round(((offer.originalPrice - offer.discountedPrice) / offer.originalPrice) * 100);
           const isFavorite = favoriteMerchantIds.includes(offer.merchant.id);
           return (

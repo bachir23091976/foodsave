@@ -23,6 +23,7 @@ const inputStyle = {
 export default function NewOfferPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("PLATS_PREPARES");
   const [originalPrice, setOriginalPrice] = useState("");
   const [discountedPrice, setDiscountedPrice] = useState("");
   const [quantity, setQuantity] = useState("");
@@ -86,6 +87,7 @@ export default function NewOfferPage() {
         body: JSON.stringify({
           title,
           description,
+          category,
           imageUrl,
           originalPrice: parseFloat(originalPrice),
           discountedPrice: parseFloat(discountedPrice),
@@ -106,6 +108,7 @@ export default function NewOfferPage() {
       setMessage("Offre publiee avec succes !");
       setTitle("");
       setDescription("");
+      setCategory("PLATS_PREPARES");
       setOriginalPrice("");
       setDiscountedPrice("");
       setQuantity("");
@@ -172,6 +175,25 @@ export default function NewOfferPage() {
           style={inputStyle}
           required
         />
+
+        <label htmlFor="offer-category" className="text-sm font-medium px-1">{"Cat\u00e9gorie"}</label>
+        <select
+          id="offer-category"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          className="rounded-full px-5 py-3 outline-none"
+          style={inputStyle}
+          required
+        >
+          <option value="EPICERIE">{"\u00c9picerie"}</option>
+          <option value="PLATS_PREPARES">{"Plats pr\u00e9par\u00e9s"}</option>
+          <option value="SANDWICHS">Sandwichs</option>
+          <option value="BOULANGERIE_PATISSERIE">{"Boulangerie / P\u00e2tisserie"}</option>
+          <option value="PIZZA_FAST_FOOD">Pizza / Fast-food</option>
+          <option value="FRUITS_LEGUMES">{"Fruits et l\u00e9gumes"}</option>
+          <option value="BOISSONS">Boissons</option>
+          <option value="AUTRE">Autre</option>
+        </select>
         <label htmlFor="offer-description" className="sr-only">Description (optionnel)</label>
         <textarea
           id="offer-description"
