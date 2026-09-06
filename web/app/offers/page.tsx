@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Bebas_Neue, Space_Grotesk } from "next/font/google";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -225,7 +226,14 @@ export default function OffersPage() {
         </h1>
       </section>
 
-      <div className="max-w-2xl mx-auto px-6 flex justify-end mb-2">
+      <div className="max-w-2xl mx-auto px-6 flex items-center justify-between mb-2">
+        <Link
+          href="/reservations"
+          className="rounded-full px-4 py-2 text-xs font-bold uppercase tracking-wide"
+          style={{ backgroundColor: jade, color: bg }}
+        >
+          {"Mes r\u00e9servations"}
+        </Link>
         <NotificationBell />
       </div>
 
