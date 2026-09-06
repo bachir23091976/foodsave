@@ -23,6 +23,7 @@ interface MerchantOrder {
   offer: {
     id: string;
     title: string;
+    pickupEnd: string;
   };
   user: {
     firstName: string;
@@ -253,7 +254,11 @@ export default function MerchantReservationsPage() {
       minute: "2-digit",
     });
   };
-  const toRecover = orders.filter((o) => o.status === "CONFIRMED");
+  const toRecover = orders.filter(
+    (o) =>
+      o.status === "CONFIRMED" &&
+      new Date(o.offer.pickupEnd).getTime() >= Date.now()
+  );
   const recovered = orders.filter((o) => o.status === "COMPLETED");
 
   return (
