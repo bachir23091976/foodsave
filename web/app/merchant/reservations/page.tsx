@@ -260,6 +260,7 @@ export default function MerchantReservationsPage() {
       new Date(o.offer.pickupEnd).getTime() >= Date.now()
   );
   const recovered = orders.filter((o) => o.status === "COMPLETED");
+  const cancelled = orders.filter((o) => o.status === "CANCELLED");
 
   return (
     <main className={body.className} style={{ backgroundColor: bg, color: "#F5F1E8", minHeight: "100vh" }}>
@@ -432,6 +433,35 @@ export default function MerchantReservationsPage() {
                     Réservé le {formatDateTime(order.createdAt)}
                   </p>
                   <p className="text-xs mt-1 font-bold" style={{ color: jade }}>✓ Récupérée</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <h2 className="text-sm uppercase tracking-wide font-bold mt-10 mb-3" style={{ color: "#FF6B6B" }}>
+            {"Annul\u00e9es"} ({cancelled.length})
+          </h2>
+          {cancelled.length === 0 ? (
+            <p className="text-sm" style={{ color: dim }}>{"Aucune r\u00e9servation annul\u00e9e."}</p>
+          ) : (
+            <div className="grid gap-3">
+              {cancelled.map((order) => (
+                <div
+                  key={order.id}
+                  className="rounded-2xl p-4"
+                  style={{ backgroundColor: "#0D1912", border: "1px solid rgba(255,107,107,0.25)", opacity: 0.75 }}
+                >
+                  <div className="flex justify-between items-start mb-1">
+                    <p className="font-bold">{order.offer.title}</p>
+                    <span className="font-bold" style={{ color: "#FF6B6B" }}>{order.totalPrice.toFixed(2)} $</span>
+                  </div>
+                  <p className="text-sm" style={{ color: dim }}>
+                    {order.user.firstName} {order.user.lastName}
+                  </p>
+                  <p className="text-xs mt-1" style={{ color: dim, opacity: 0.7 }}>
+                    {"R\u00e9serv\u00e9 le "}{formatDateTime(order.createdAt)}
+                  </p>
+                  <p className="text-xs mt-1 font-bold" style={{ color: "#FF6B6B" }}>{"Annul\u00e9e"}</p>
                 </div>
               ))}
             </div>
