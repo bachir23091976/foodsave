@@ -33,6 +33,18 @@ interface Offer {
   merchant: { id: string; name: string; address: string; city: string; type?: string };
 }
 
+function getRoleFromToken(token: string): string | null {
+  try {
+    const part = token.split(".")[1];
+    if (!part) return null;
+    const base64 = part.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+    return JSON.parse(window.atob(padded))?.role || null;
+  } catch {
+    return null;
+  }
+}
+
 export default function OffersPage() {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,6 +56,7 @@ export default function OffersPage() {
   const [locating, setLocating] = useState(false);
   const [searchMessage, setSearchMessage] = useState("");
   const [favoriteMerchantIds, setFavoriteMerchantIds] = useState<string[]>([]);
+  const [isMerchant, setIsMerchant] = useState(false);
 
   const loadOffers = () => {
     fetch(`${API_URL}/offers`)
@@ -75,6 +88,8 @@ export default function OffersPage() {
     loadFavorites();
 
     const token = localStorage.getItem("token");
+    const role = token ? getRoleFromToken(token) : null;
+    setIsMerchant(role === "MERCHANT" || role === "ADMIN");
     if (!token) return;
 
     fetch(`${API_URL}/locations`, {
@@ -228,11 +243,11 @@ export default function OffersPage() {
 
       <div className="max-w-2xl mx-auto px-6 flex items-center justify-between mb-2">
         <Link
-          href="/reservations"
+          href={isMerchant ? "/merchant/reservations" : "/reservations"}
           className="rounded-full px-4 py-2 text-xs font-bold uppercase tracking-wide"
           style={{ backgroundColor: jade, color: bg }}
         >
-          {"Mes r\u00e9servations"}
+          {isMerchant ? "R\u00e9servations clients" : "Mes r\u00e9servations"}
         </Link>
         <NotificationBell />
       </div>
