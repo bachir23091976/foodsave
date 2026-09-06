@@ -19,6 +19,7 @@ interface MerchantOrder {
   status: "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED";
   totalPrice: number;
   pickupCode: string;
+  cancellationReason?: string | null;
   createdAt: string;
   offer: {
     id: string;
@@ -122,6 +123,11 @@ export default function MerchantReservationsPage() {
   };
 
   const handleMerchantCancel = async (orderId: string) => {
+    const reason = window.prompt(
+      "Motif : Produit epuise, commerce ferme, erreur dans l offre, probleme de preparation, ou autre motif"
+    );
+    if (!reason || reason.trim().length < 3) return;
+
     const confirmed = window.confirm(
       "Annuler cette commande et rembourser integralement le client ?"
     );
@@ -143,7 +149,7 @@ export default function MerchantReservationsPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ orderId }),
+        body: JSON.stringify({ orderId, reason: reason.trim() }),
       });
 
       const data = await res.json();
@@ -461,6 +467,11 @@ export default function MerchantReservationsPage() {
                   <p className="text-xs mt-1" style={{ color: dim, opacity: 0.7 }}>
                     {"R\u00e9serv\u00e9 le "}{formatDateTime(order.createdAt)}
                   </p>
+                  {order.cancellationReason && (
+                    <p className="text-xs mt-1" style={{ color: dim }}>
+                      Motif : {order.cancellationReason}
+                    </p>
+                  )}
                   <p className="text-xs mt-1 font-bold" style={{ color: "#FF6B6B" }}>{"Annul\u00e9e"}</p>
                 </div>
               ))}

@@ -106,6 +106,7 @@ model Order {
   totalPrice      Float
   pickupCode      String      @unique @default(uuid())
   stripeSessionId String?     @unique
+  cancellationReason String?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 

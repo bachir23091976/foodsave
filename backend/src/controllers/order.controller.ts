@@ -388,7 +388,7 @@ export const cancelOrder = async (req: AuthRequest, res: Response) => {
 
     const claim = await prisma.order.updateMany({
       where: { id: order.id, userId, status: "CONFIRMED" },
-      data: { status: "CANCELLED" },
+      data: { status: "CANCELLED", cancellationReason: "\u0041nnul\u00e9e par le client" },
     });
 
     if (claim.count === 0) {
@@ -441,7 +441,7 @@ export const cancelOrder = async (req: AuthRequest, res: Response) => {
       if (!refundSucceeded) {
         await prisma.order.updateMany({
           where: { id: order.id, userId, status: "CANCELLED" },
-          data: { status: "CONFIRMED" },
+          data: { status: "CONFIRMED", cancellationReason: null },
         });
       }
 
@@ -461,10 +461,17 @@ export const cancelOrder = async (req: AuthRequest, res: Response) => {
 export const cancelOrderByMerchant = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId;
-    const { orderId } = req.body;
+    const { orderId, reason } = req.body;
 
     if (!orderId) {
       return res.status(400).json({ message: "orderId manquant" });
+    }
+
+    const cancellationReason = typeof reason === "string" ? reason.trim() : "";
+    if (cancellationReason.length < 3 || cancellationReason.length > 200) {
+      return res.status(400).json({
+        message: "Veuillez choisir ou saisir un motif d annulation valide",
+      });
     }
 
     const merchant = await prisma.merchant.findUnique({
@@ -501,7 +508,7 @@ export const cancelOrderByMerchant = async (req: AuthRequest, res: Response) => 
 
     const claim = await prisma.order.updateMany({
       where: { id: order.id, status: "CONFIRMED" },
-      data: { status: "CANCELLED" },
+      data: { status: "CANCELLED", cancellationReason },
     });
 
     if (claim.count === 0) {
@@ -542,7 +549,7 @@ export const cancelOrderByMerchant = async (req: AuthRequest, res: Response) => 
 
       await createNotification(
         order.userId,
-        `Le commerce a annule votre commande ${order.offer.title}. Votre paiement a ete rembourse.`
+        `Le commerce a annule votre commande ${order.offer.title}. Motif : ${cancellationReason}. Votre paiement a ete rembourse.`
       ).catch((notificationError) => {
         console.error("Erreur notification annulation commercant:", notificationError);
       });
@@ -554,7 +561,7 @@ export const cancelOrderByMerchant = async (req: AuthRequest, res: Response) => 
       if (!refundSucceeded) {
         await prisma.order.updateMany({
           where: { id: order.id, status: "CANCELLED" },
-          data: { status: "CONFIRMED" },
+          data: { status: "CONFIRMED", cancellationReason: null },
         });
       }
 

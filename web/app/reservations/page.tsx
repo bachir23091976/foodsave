@@ -9,6 +9,7 @@ interface Order {
   status: "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED";
   totalPrice: number;
   pickupCode: string;
+  cancellationReason?: string | null;
   createdAt: string;
   offer: {
     title: string;
@@ -155,6 +156,12 @@ export default function ReservationsPage() {
             <p>
               Code de recuperation : <strong style={{ color: "#FFB100" }}>{order.pickupCode}</strong>
             </p>
+
+            {order.status === "CANCELLED" && order.cancellationReason && (
+              <p className="text-sm" style={{ color: "#FF6B6B" }}>
+                Motif : {order.cancellationReason}
+              </p>
+            )}
 
             {order.status === "CONFIRMED" && (
               Date.now() < new Date(order.offer.pickupStart).getTime() - 60 * 60 * 1000 ? (
