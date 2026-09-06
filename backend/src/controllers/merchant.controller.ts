@@ -103,6 +103,20 @@ export const connectStripe = async (req: AuthRequest, res: Response) => {
 
     let stripeAccountId = merchant.stripeAccountId;
 
+    if (stripeAccountId) {
+      try {
+        await stripe.accounts.retrieve(stripeAccountId);
+      } catch (error: any) {
+        if (error.code !== "resource_missing") throw error;
+
+        await prisma.merchant.updateMany({
+          where: { id: merchant.id, stripeAccountId },
+          data: { stripeAccountId: null },
+        });
+        stripeAccountId = null;
+      }
+    }
+
     if (!stripeAccountId) {
       const account = await stripe.accounts.create({
         type: "express",
