@@ -170,3 +170,52 @@ enum OrderStatus {
   COMPLETED
   CANCELLED
 }
+
+enum SoldOutRefundStatus {
+  NOT_REQUESTED
+  UNKNOWN
+  PENDING
+  REQUIRES_ACTION
+  SUCCEEDED
+  FAILED
+  CANCELED
+  NEEDS_REVIEW
+}
+
+model SoldOutResolution {
+  stripeSessionId      String              @id
+  paymentIntentId      String?
+  refundId             String?             @unique
+  refundStatus         SoldOutRefundStatus @default(NOT_REQUESTED)
+  refundFirstAttemptAt DateTime?
+  recoveryOwnerToken   String?
+  lastError            String?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  manualSettlement SoldOutManualSettlement?
+
+  @@index([refundStatus, updatedAt])
+}
+
+enum ManualSettlementMethod {
+  BANK_TRANSFER
+  PAYMENT_PROVIDER
+}
+
+model SoldOutManualSettlement {
+  stripeSessionId   String                 @id
+  operatorId        String
+  completedAt       DateTime
+  recordedAt        DateTime               @default(now())
+  method            ManualSettlementMethod
+  evidenceReference String
+  paymentIntentId   String
+  amountMinor       BigInt
+  currency          String                 @db.VarChar(3)
+  reason            String
+
+  resolution SoldOutResolution @relation(fields: [stripeSessionId], references: [stripeSessionId], onDelete: Restrict, onUpdate: Restrict, map: "SoldOutManualSettlement_resolution_fkey")
+
+  @@unique([method, evidenceReference])
+}

@@ -1,8 +1,10 @@
 import { Request, Response } from "express";
 import Stripe from "stripe";
+import { Prisma } from "@prisma/client";
 import QRCode from "qrcode";
 import { prisma } from "../lib/prisma";
 import { stripe } from "../lib/stripe";
+import { lockCheckout, recoveryToken, acquireRecovery, assertRecoveryOwner, releaseRecovery } from "../lib/sold-out-recovery-coordination";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { createNotification } from "./notification.controller";
 import { checkAndCreateReward } from "./loyalty.controller";
@@ -98,19 +100,180 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
   }
 };
 
-type ConfirmResult = { status: number; body: Record<string, unknown> };
+type ConfirmResult = { status: number; body: Record<string, unknown>; retryWebhook?: boolean };
+type RefundStatus = "NOT_REQUESTED" | "UNKNOWN" | "PENDING" | "REQUIRES_ACTION" |
+  "SUCCEEDED" | "FAILED" | "CANCELED" | "NEEDS_REVIEW";
+type Resolution = {
+  stripeSessionId: string;
+  paymentIntentId: string | null;
+  refundId: string | null;
+  refundStatus: RefundStatus;
+  refundFirstAttemptAt: Date | null;
+  manuallySettled?: boolean;
+  recoveryOwnerToken?: string | null;
+};
+const REFUND_RETRY_WINDOW_MS = 23 * 60 * 60 * 1000;
+const decisionOptions = { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted };
 
-// Shared, idempotent order-confirmation logic used by both confirmOrder
-// (client-triggered, right after Stripe redirects back to success_url) and
-// the /orders/webhook handler (Stripe-triggered, authoritative). Both call
-// sites end up doing exactly the same validation and the exact same atomic
-// "decrement offer quantity + create order" transaction, so a bug fixed here
-// is fixed for both paths instead of drifting between two copies.
-//
-// requestUserId is only provided by confirmOrder (the authenticated caller);
-// the webhook has no logged-in user making the request, so that ownership
-// check is skipped there and the metadata.userId Stripe already recorded at
-// checkout-creation time is trusted instead.
+// Parameterized SQL accesses only the additive table. Its presence permanently
+// means REFUND_REQUIRED, independent of refund progress or stock restoration.
+async function readResolution(tx: Prisma.TransactionClient, sessionId: string) {
+  const rows = await tx.$queryRaw<Resolution[]>`
+    SELECT r.*, EXISTS (SELECT 1 FROM "SoldOutManualSettlement" m
+      WHERE m."stripeSessionId" = r."stripeSessionId") AS "manuallySettled"
+    FROM "SoldOutResolution" r WHERE r."stripeSessionId" = ${sessionId}
+  `;
+  return rows[0] ?? null;
+}
+
+async function existingOrderResult(order: { pickupCode: string }): Promise<ConfirmResult> {
+  const qrCodeImage = await QRCode.toDataURL(order.pickupCode);
+  return { status: 200, body: { message: "Commande deja confirmee", order, qrCodeImage } };
+}
+
+function refundResult(resolution: Resolution): ConfirmResult {
+  const succeeded = resolution.refundStatus === "SUCCEEDED" || !!resolution.manuallySettled;
+  return {
+    status: 409,
+    body: { message: resolution.manuallySettled
+      ? "Cette offre est epuisee. Votre remboursement a ete effectue et verifie par FoodSave."
+      : succeeded
+      ? "Cette offre est epuisee : un autre client a reserve la derniere unite entre-temps. Votre paiement a ete rembourse automatiquement."
+      : "Cette offre est epuisee. Votre remboursement est en cours de traitement ou de verification par FoodSave." },
+    retryWebhook: !succeeded,
+  };
+}
+
+// The database predicate excludes SUCCEEDED. No-ID errors cannot erase a saved
+// refund ID. Conflicting IDs are retained and flagged, never overwritten.
+async function persistRefundState(
+  sessionId: string, expectedPaymentIntent: string | null,
+  incoming: RefundStatus, refundId: string | null = null, errorMessage: string | null = null,
+  ownerToken: string | null = null, definitive = true
+) {
+  return prisma.$transaction(async (tx) => {
+    await lockCheckout(tx, sessionId);
+    const order = await tx.order.findUnique({ where: { stripeSessionId: sessionId } });
+    if (order) return { order, resolution: null };
+    const current = await readResolution(tx, sessionId);
+    if (!current) throw new Error("Resolution de remboursement introuvable");
+    if (current.refundStatus === "SUCCEEDED" || current.manuallySettled) return { order: null, resolution: current };
+    assertRecoveryOwner(current.recoveryOwnerToken, ownerToken);
+    const conflict = current.paymentIntentId !== expectedPaymentIntent ||
+      (!!refundId && !!current.refundId && current.refundId !== refundId);
+    const status = conflict ? "NEEDS_REVIEW" : incoming;
+    const acceptedId = conflict ? null : refundId;
+    const message = conflict ? "Identifiants de remboursement incoherents" : errorMessage;
+    await tx.$executeRaw`
+      UPDATE "SoldOutResolution"
+      SET "refundStatus" = CAST(${status} AS "SoldOutRefundStatus"),
+          "refundId" = COALESCE(CAST(${acceptedId} AS text), "refundId"),
+          "lastError" = ${status === "SUCCEEDED" ? null : message},
+          "updatedAt" = CURRENT_TIMESTAMP
+      WHERE "stripeSessionId" = ${sessionId}
+        AND "refundStatus" <> 'SUCCEEDED'
+        AND (CAST(${acceptedId} AS text) IS NULL OR "refundId" IS NULL OR "refundId" = ${acceptedId})
+    `;
+    if (ownerToken && definitive && !conflict && incoming !== "UNKNOWN") await releaseRecovery(tx, sessionId, ownerToken);
+    return { order: null, resolution: (await readResolution(tx, sessionId))! };
+  }, decisionOptions);
+}
+
+async function recoverSoldOutRefund(sessionId: string): Promise<ConfirmResult> {
+  const token = recoveryToken();
+  // No Stripe call until the decision AND this first-attempt claim commit.
+  const claim = await prisma.$transaction(async (tx) => {
+    await lockCheckout(tx, sessionId);
+    const order = await tx.order.findUnique({ where: { stripeSessionId: sessionId } });
+    if (order) return { order, resolution: null, first: false };
+    const resolution = await readResolution(tx, sessionId);
+    if (!resolution) throw new Error("Resolution de remboursement introuvable");
+    if (resolution.refundStatus === "SUCCEEDED" || resolution.manuallySettled ||
+        resolution.recoveryOwnerToken || ["FAILED", "CANCELED", "NEEDS_REVIEW"].includes(resolution.refundStatus)) {
+      return { order: null, resolution, first: false, stopped: true };
+    }
+    await acquireRecovery(tx, sessionId, token);
+    let first = false;
+    if (!resolution.manuallySettled && resolution.paymentIntentId && resolution.refundStatus === "NOT_REQUESTED") {
+      const count = await tx.$executeRaw`
+        UPDATE "SoldOutResolution"
+        SET "refundStatus" = 'UNKNOWN', "refundFirstAttemptAt" = CURRENT_TIMESTAMP,
+            "lastError" = NULL, "updatedAt" = CURRENT_TIMESTAMP
+        WHERE "stripeSessionId" = ${sessionId} AND "refundStatus" = 'NOT_REQUESTED'
+          AND "refundFirstAttemptAt" IS NULL AND "refundId" IS NULL
+      `;
+      first = count === 1;
+    }
+    return { order: null, resolution: (await readResolution(tx, sessionId))!, first };
+  }, decisionOptions);
+  if (claim.order) return existingOrderResult(claim.order);
+  const resolution = claim.resolution!;
+  if ("stopped" in claim && claim.stopped) return refundResult(resolution);
+  const paymentIntentId = resolution.paymentIntentId;
+  const finish = async (status: RefundStatus, id: string | null = null, message: string | null = null, definitive = true) => {
+    const saved = await persistRefundState(sessionId, paymentIntentId, status, id, message, token, definitive);
+    return saved.order ? existingOrderResult(saved.order) : refundResult(saved.resolution!);
+  };
+  if (resolution.refundStatus === "SUCCEEDED" || resolution.manuallySettled) return refundResult(resolution);
+  if (!paymentIntentId) return finish("NEEDS_REVIEW", null, "PaymentIntent manquant");
+  if (["FAILED", "CANCELED", "NEEDS_REVIEW"].includes(resolution.refundStatus)) return refundResult(resolution);
+
+  try {
+    let refund: Stripe.Refund | undefined;
+    if (resolution.refundId) {
+      refund = await stripe.refunds.retrieve(resolution.refundId);
+    } else if (!claim.first) {
+      // Paginate: a first-page miss is not evidence that no refund exists.
+      // Multiple or partial refunds require review rather than another refund.
+      const found: Stripe.Refund[] = [];
+      for await (const candidate of stripe.refunds.list({ payment_intent: paymentIntentId, limit: 100 })) {
+        found.push(candidate);
+        if (found.length > 1) break;
+      }
+      if (found.length > 1) return finish("NEEDS_REVIEW", null, "Plusieurs remboursements a verifier");
+      if (found.length === 1) {
+        const payment = await stripe.paymentIntents.retrieve(paymentIntentId);
+        if (found[0].amount !== payment.amount_received) {
+          return finish("NEEDS_REVIEW", null, "Remboursement partiel a verifier");
+        }
+        refund = found[0];
+      }
+    }
+    if (!refund) {
+      const age = resolution.refundFirstAttemptAt
+        ? Date.now() - resolution.refundFirstAttemptAt.getTime() : NaN;
+      if (!Number.isFinite(age) || age < 0 || age >= REFUND_RETRY_WINDOW_MS) {
+        return finish("NEEDS_REVIEW", null, "Tentative incertaine hors de la fenetre de reprise");
+      }
+      refund = await stripe.refunds.create({
+        payment_intent: paymentIntentId,
+        reverse_transfer: true,
+        refund_application_fee: true,
+      }, { idempotencyKey: `refund_sold_out_${sessionId}` });
+    }
+    const refundPaymentIntent = typeof refund.payment_intent === "string"
+      ? refund.payment_intent : refund.payment_intent?.id;
+    if (refundPaymentIntent !== paymentIntentId ||
+        (resolution.refundId && resolution.refundId !== refund.id)) {
+      return finish("NEEDS_REVIEW", null, "Le remboursement ne correspond pas au paiement attendu", false);
+    }
+    const statuses: Record<string, RefundStatus> = {
+      succeeded: "SUCCEEDED", pending: "PENDING", requires_action: "REQUIRES_ACTION",
+      failed: "FAILED", canceled: "CANCELED",
+    };
+    const status = refund.status ? statuses[refund.status] : undefined;
+    return finish(status ?? "UNKNOWN", refund.id,
+      status ? null : "Statut Stripe non reconnu");
+  } catch (error) {
+    const saved = await persistRefundState(sessionId, paymentIntentId, "UNKNOWN", null,
+      "Resultat Stripe incertain; verification necessaire", token);
+    if (saved.order) return existingOrderResult(saved.order);
+    if (saved.resolution!.refundStatus === "SUCCEEDED" || saved.resolution!.manuallySettled) return refundResult(saved.resolution!);
+    throw error;
+  }
+}
+
+// Both callers use the same lock and committed order-or-refund decision.
 async function confirmPaidSession(
   session: Pick<Stripe.Checkout.Session, "id" | "payment_status" | "metadata" | "payment_intent">,
   requestUserId?: string
@@ -118,154 +281,47 @@ async function confirmPaidSession(
   if (session.payment_status !== "paid") {
     return { status: 400, body: { message: "Paiement non confirme" } };
   }
-
   const offerId = session.metadata?.offerId;
   const userId = session.metadata?.userId;
-
-  if (!offerId || !userId) {
-    return { status: 400, body: { message: "Metadonnees manquantes" } };
-  }
-
+  if (!offerId || !userId) return { status: 400, body: { message: "Metadonnees manquantes" } };
   if (requestUserId && userId !== requestUserId) {
     return { status: 403, body: { message: "Cette session de paiement ne vous appartient pas" } };
   }
-
-  // Sole idempotency key: this exact Stripe Checkout Session. Because
-  // stripeSessionId is unique in the database, at most one order can ever
-  // exist for a given session.id -- if one is already there (created by an
-  // earlier confirmOrder call, an earlier webhook delivery, or the other of
-  // the two racing each other), we just return it instead of creating a
-  // second order for the same payment. This is deliberately scoped to the
-  // session alone: the same user buying the same offer again through a
-  // *different* paid Checkout Session is a separate purchase and must
-  // produce a separate order.
-  const existingBySession = await prisma.order.findUnique({ where: { stripeSessionId: session.id } });
-  if (existingBySession) {
-    const qrCodeImage = await QRCode.toDataURL(existingBySession.pickupCode);
-    return { status: 200, body: { message: "Commande deja confirmee", order: existingBySession, qrCodeImage } };
-  }
-
-  const offer = await prisma.offer.findUnique({ where: { id: offerId }, include: { merchant: true } });
-  if (!offer) {
-    return { status: 400, body: { message: "Offre indisponible" } };
-  }
-
-  let order;
-  try {
-    order = await prisma.$transaction(async (tx) => {
-      // Atomic, conditional decrement: only succeeds if quantity is still > 0
-      // at the moment the row is locked, preventing a lost-update race where
-      // two near-simultaneous confirmations both read the same stale quantity
-      // and both believe they got the last unit.
-      const decremented = await tx.offer.updateMany({
-        where: { id: offerId, quantity: { gt: 0 } },
-        data: { quantity: { decrement: 1 } },
-      });
-
-      if (decremented.count === 0) {
-        throw new Error("OFFER_SOLD_OUT");
-      }
-
-      // stripeSessionId is unique, so if another request (the webhook vs.
-      // confirmOrder, or two retried webhook deliveries) already created the
-      // order for this exact session between our check above and this
-      // transaction, this insert throws instead of creating a duplicate.
-      return tx.order.create({
-        data: {
-          userId,
-          offerId,
-          totalPrice: offer.discountedPrice,
-          status: "CONFIRMED",
-          stripeSessionId: session.id,
-        },
-      });
+  const paymentIntentId = typeof session.payment_intent === "string"
+    ? session.payment_intent : session.payment_intent?.id ?? null;
+  const decision = await prisma.$transaction(async (tx) => {
+    await lockCheckout(tx, session.id);
+    // Issue #1: a legitimate same-session order always wins, before refund lookup.
+    const existing = await tx.order.findUnique({ where: { stripeSessionId: session.id } });
+    if (existing) return { kind: "EXISTING" as const, order: existing };
+    if (await readResolution(tx, session.id)) return { kind: "REFUND" as const };
+    const offer = await tx.offer.findUnique({ where: { id: offerId }, include: { merchant: true } });
+    if (!offer) return { kind: "MISSING" as const };
+    const decremented = await tx.offer.updateMany({
+      where: { id: offerId, quantity: { gt: 0 } },
+      data: { quantity: { decrement: 1 } },
     });
-  } catch (error: any) {
-    if (error.message === "OFFER_SOLD_OUT") {
-      // The transaction has rolled back. Another handler may have confirmed
-      // this same session while we waited for the last unit, so recheck before
-      // refunding. A failed lookup must propagate instead of authorizing a refund.
-      const raceWinner = await prisma.order.findUnique({ where: { stripeSessionId: session.id } });
-      if (raceWinner) {
-        const qrCodeImage = await QRCode.toDataURL(raceWinner.pickupCode);
-        return { status: 200, body: { message: "Commande deja confirmee", order: raceWinner, qrCodeImage } };
-      }
-
-      // The payment already succeeded (payment_status === "paid" was checked
-      // at the top of this function), but the atomic quantity guard found
-      // nothing left to sell -- another confirmation won the last unit in
-      // the moment between our check and the transaction's lock. The
-      // customer was charged for something that no longer exists, so refund
-      // them automatically instead of leaving them out of pocket with no
-      // order to show for it.
-      const paymentIntentId =
-        typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id;
-
-      if (!paymentIntentId) {
-        // Nothing to refund against. Rethrow so the webhook responds 500 and
-        // Stripe retries delivery -- never silently tell the customer they
-        // were refunded when no refund could be attempted.
-        console.error(
-          `[stripe-webhook] Offre epuisee pour la session ${session.id} mais aucun payment_intent -- remboursement impossible`
-        );
-        throw error;
-      }
-
-      try {
-        // Idempotency key derived from the Checkout Session id: if Stripe
-        // retries this webhook delivery (e.g. this handler failed after the
-        // refund but before returning a 2xx), the retried call reuses the
-        // same key and Stripe's API returns the original refund instead of
-        // creating a second one -- the customer is never refunded twice for
-        // the same session.
-        await stripe.refunds.create(
-          {
-            payment_intent: paymentIntentId,
-            reverse_transfer: true,
-            refund_application_fee: true,
-          },
-          { idempotencyKey: `refund_sold_out_${session.id}` }
-        );
-      } catch (refundError: any) {
-        // The refund attempt itself failed -- rethrow so the webhook
-        // responds 500 and Stripe retries delivery (which will retry the
-        // refund too, safely, via the same idempotency key).
-        console.error(`[stripe-webhook] Echec du remboursement pour la session ${session.id}:`, refundError);
-        throw error;
-      }
-
-      return {
-        status: 409,
-        body: {
-          message:
-            "Cette offre est epuisee : un autre client a reserve la derniere unite entre-temps. Votre paiement a ete rembourse automatiquement.",
-        },
-      };
+    if (decremented.count === 0) {
+      await tx.$executeRaw`
+        INSERT INTO "SoldOutResolution" ("stripeSessionId", "paymentIntentId", "updatedAt")
+        VALUES (${session.id}, ${paymentIntentId}, CURRENT_TIMESTAMP)
+      `;
+      return { kind: "REFUND" as const }; // Commit, never roll back this decision.
     }
-
-    // P2002 = Prisma unique constraint violation on stripeSessionId. The
-    // whole transaction (including the quantity decrement) was rolled back
-    // automatically, so nothing was double-counted -- the other request that
-    // won the race already created the order, so fetch and return it.
-    if (error.code === "P2002") {
-      const raceWinner = await prisma.order.findUnique({ where: { stripeSessionId: session.id } });
-      if (raceWinner) {
-        const qrCodeImage = await QRCode.toDataURL(raceWinner.pickupCode);
-        return { status: 200, body: { message: "Commande deja confirmee", order: raceWinner, qrCodeImage } };
-      }
-    }
-
-    throw error;
-  }
-
-  const clientMessage = "Votre reservation pour " + offer.title + " est confirmee";
-  await createNotification(userId, clientMessage);
-
-  const merchantMessage = "Nouvelle commande recue pour " + offer.title;
-  await createNotification(offer.merchant.ownerId, merchantMessage);
-
+    const order = await tx.order.create({ data: {
+      userId, offerId, totalPrice: offer.discountedPrice,
+      status: "CONFIRMED", stripeSessionId: session.id,
+    } });
+    return { kind: "CREATED" as const, order, offer };
+  }, decisionOptions);
+  // A rejected/uncertain commit cannot authorize any Stripe call.
+  if (decision.kind === "EXISTING") return existingOrderResult(decision.order);
+  if (decision.kind === "REFUND") return recoverSoldOutRefund(session.id);
+  if (decision.kind === "MISSING") return { status: 400, body: { message: "Offre indisponible" } };
+  const { order, offer } = decision;
+  await createNotification(userId, "Votre reservation pour " + offer.title + " est confirmee");
+  await createNotification(offer.merchant.ownerId, "Nouvelle commande recue pour " + offer.title);
   const qrCodeImage = await QRCode.toDataURL(order.pickupCode);
-
   return { status: 201, body: { message: "Reservation confirmee", order, qrCodeImage } };
 }
 
@@ -324,6 +380,7 @@ export const stripeWebhook = async (req: Request, res: Response) => {
     const session = event.data.object as Stripe.Checkout.Session;
     try {
       const result = await confirmPaidSession(session);
+      if (result.retryWebhook) return res.status(500).json({ message: "Erreur serveur" });
       if (result.status >= 400) {
         console.error("[stripe-webhook] checkout.session.completed non traite:", result.body);
       }
