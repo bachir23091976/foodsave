@@ -477,7 +477,7 @@ export const cancelOrder = async (req: AuthRequest, res: Response) => {
         throw new Error("PaymentIntent introuvable");
       }
 
-      await stripe.refunds.create(
+      const refund = await stripe.refunds.create(
         {
           payment_intent: paymentIntentId,
           reverse_transfer: true,
@@ -486,6 +486,14 @@ export const cancelOrder = async (req: AuthRequest, res: Response) => {
         { idempotencyKey: `customer_cancel_${order.id}` }
       );
 
+      if (refund.status !== "succeeded") {
+        const message = refund.status === "pending" || refund.status === "requires_action"
+          ? "Annulation acceptee. Le remboursement est incomplet et en cours de traitement."
+          : refund.status === "failed" || refund.status === "canceled"
+          ? "Annulation acceptee. Le remboursement necessite une investigation."
+          : "Annulation acceptee. Le resultat du remboursement est incertain et doit etre verifie.";
+        return res.status(202).json({ message });
+      }
       refundSucceeded = true;
 
       await prisma.offer.update({
@@ -504,18 +512,12 @@ export const cancelOrder = async (req: AuthRequest, res: Response) => {
         message: "Commande annulee. Le remboursement a ete envoye vers votre moyen de paiement.",
       });
     } catch (error) {
-      if (!refundSucceeded) {
-        await prisma.order.updateMany({
-          where: { id: order.id, userId, status: "CANCELLED" },
-          data: { status: "CONFIRMED", cancellationReason: null },
-        });
-      }
-
+      // An accepted cancellation never becomes fulfillable after provider uncertainty.
       console.error("Erreur annulation commande:", error);
       return res.status(500).json({
         message: refundSucceeded
           ? "Le remboursement a reussi, mais le stock doit etre verifie par FoodSave."
-          : "Impossible d'effectuer le remboursement. La commande reste active.",
+          : "Annulation acceptee. Le resultat du remboursement est incertain et doit etre verifie.",
       });
     }
   } catch (error) {
@@ -597,7 +599,7 @@ export const cancelOrderByMerchant = async (req: AuthRequest, res: Response) => 
         throw new Error("PaymentIntent introuvable");
       }
 
-      await stripe.refunds.create(
+      const refund = await stripe.refunds.create(
         {
           payment_intent: paymentIntentId,
           reverse_transfer: true,
@@ -606,6 +608,14 @@ export const cancelOrderByMerchant = async (req: AuthRequest, res: Response) => 
         { idempotencyKey: `merchant_cancel_${order.id}` }
       );
 
+      if (refund.status !== "succeeded") {
+        const message = refund.status === "pending" || refund.status === "requires_action"
+          ? "Annulation acceptee. Le remboursement est incomplet et en cours de traitement."
+          : refund.status === "failed" || refund.status === "canceled"
+          ? "Annulation acceptee. Le remboursement necessite une investigation."
+          : "Annulation acceptee. Le resultat du remboursement est incertain et doit etre verifie.";
+        return res.status(202).json({ message });
+      }
       refundSucceeded = true;
 
       await prisma.offer.update({
@@ -624,18 +634,12 @@ export const cancelOrderByMerchant = async (req: AuthRequest, res: Response) => 
         message: "Commande annulee et client rembourse avec succes",
       });
     } catch (error) {
-      if (!refundSucceeded) {
-        await prisma.order.updateMany({
-          where: { id: order.id, status: "CANCELLED" },
-          data: { status: "CONFIRMED", cancellationReason: null },
-        });
-      }
-
+      // An accepted cancellation never becomes fulfillable after provider uncertainty.
       console.error("Erreur annulation par commercant:", error);
       return res.status(500).json({
         message: refundSucceeded
           ? "Le remboursement a reussi, mais le stock doit etre verifie par FoodSave."
-          : "Impossible d'effectuer le remboursement. La commande reste active.",
+          : "Annulation acceptee. Le resultat du remboursement est incertain et doit etre verifie.",
       });
     }
   } catch (error) {
