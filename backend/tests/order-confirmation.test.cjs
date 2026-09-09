@@ -250,7 +250,7 @@ test("a different paid session losing the last unit still receives the existing 
   ]);
   assert.equal(winner.status, 201);
   assert.equal(loser.status, 409);
-  assert.match(loser.body.message, /rembourse automatiquement/);
+  assert.equal(loser.body.message, "Cette offre n’est plus disponible. Votre paiement a été remboursé automatiquement.");
   assert.equal(state.orders.length, 1);
   assert.equal(state.orders[0].stripeSessionId, "winner");
   assert.equal(state.orders.some((order) => order.stripeSessionId === "loser"), false);
@@ -396,7 +396,7 @@ test("pending refund has truthful browser message and retryable webhook response
   h.state.refundOutcome = "pending";
   const result = await h.testConfirmPaidSession(paidSession("sold"));
   assert.equal(result.status, 409);
-  assert.doesNotMatch(result.body.message, /rembourse automatiquement/);
+  assert.doesNotMatch(result.body.message, /remboursé automatiquement/);
   const res = response();
   await h.stripeWebhook({ headers: { "stripe-signature": "test" }, body: paidSession("sold") }, res);
   assert.equal(res.statusCode, 500);
@@ -418,7 +418,7 @@ test("ownership excludes concurrent writers and completed success cannot be down
   await slow;
   await h.persistRefundState("sold", "pi_sold", "SUCCEEDED", "re_sold");
   const result = await h.testConfirmPaidSession(paidSession("sold"));
-  assert.match(result.body.message, /rembourse automatiquement/);
+  assert.equal(result.body.message, "Cette offre n’est plus disponible. Votre paiement a été remboursé automatiquement.");
   for (const status of ["PENDING", "UNKNOWN", "FAILED", "CANCELED", "NEEDS_REVIEW"]) {
     await h.persistRefundState("sold", "pi_sold", status);
     assert.equal(h.state.resolutions.get("sold").refundStatus, "SUCCEEDED");

@@ -136,10 +136,10 @@ function refundResult(resolution: Resolution): ConfirmResult {
   return {
     status: 409,
     body: { message: resolution.manuallySettled
-      ? "Cette offre est epuisee. Votre remboursement a ete effectue et verifie par FoodSave."
+      ? "Cette offre n’est plus disponible. Votre remboursement a ete effectue et verifie par FoodSave."
       : succeeded
-      ? "Cette offre est epuisee : un autre client a reserve la derniere unite entre-temps. Votre paiement a ete rembourse automatiquement."
-      : "Cette offre est epuisee. Votre remboursement est en cours de traitement ou de verification par FoodSave." },
+      ? "Cette offre n’est plus disponible. Votre paiement a été remboursé automatiquement."
+      : "Cette offre n’est plus disponible. Votre remboursement est en cours de traitement ou de verification par FoodSave." },
     retryWebhook: !succeeded,
   };
 }
