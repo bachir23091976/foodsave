@@ -102,6 +102,7 @@ model Offer {
 }
 
 model Order {
+  customerCancellationRefund CustomerCancellationRefund?
   id              String      @id @default(uuid())
   status          OrderStatus @default(PENDING)
   totalPrice      Float
@@ -169,6 +170,34 @@ enum OrderStatus {
   CONFIRMED
   COMPLETED
   CANCELLED
+}
+
+enum CustomerCancellationRefundStatus {
+  NOT_REQUESTED
+  UNKNOWN
+  PENDING
+  REQUIRES_ACTION
+  SUCCEEDED
+  FAILED
+  CANCELED
+  NEEDS_REVIEW
+}
+
+model CustomerCancellationRefund {
+  orderId String @id
+  order Order @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  stripeSessionId String @unique
+  paymentIntentId String?
+  refundId String? @unique
+  refundStatus CustomerCancellationRefundStatus @default(NOT_REQUESTED)
+  firstAttemptAt DateTime?
+  lastError String?
+  recoveryOwnerToken String?
+  reconciliationOwnerToken String?
+  creationDispatched Boolean @default(false)
+  inventoryRestored Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum SoldOutRefundStatus {

@@ -36,6 +36,7 @@ function loadController(prisma, stripe) {
     qrcode: QRCode,
     "@prisma/client": { Prisma: { TransactionIsolationLevel: { ReadCommitted: "ReadCommitted" } } },
     "../lib/prisma": { prisma }, "../lib/stripe": { stripe },
+    "../lib/customer-cancellation-refund": require("./customer-cancellation-refund.test.cjs").loadService(),
     "../lib/sold-out-recovery-coordination": loadCoordination(),
     "./notification.controller": { createNotification: async () => {} },
     "./loyalty.controller": { checkAndCreateReward: async () => {} },

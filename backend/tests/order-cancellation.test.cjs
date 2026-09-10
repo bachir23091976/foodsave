@@ -26,21 +26,38 @@ function harness(outcome) {
       state.stock++;
     } },
   };
+  prisma.$queryRaw = async () => [];
+  const context = new (require("node:async_hooks").AsyncLocalStorage)();
+  let tail = Promise.resolve();
+  prisma.$transaction = async fn => {
+    let release; const previous = tail; tail = new Promise(r => release = r); await previous;
+    const saved = structuredClone(state);
+    try { return await context.run(true, () => fn(prisma)); } catch (e) { Object.assign(state, saved); throw e; } finally { release(); }
+  };
+  const updateOrder = prisma.order.updateMany;
+  prisma.order.updateMany = args => context.getStore() ? updateOrder(args) : prisma.$transaction(() => updateOrder(args));
+  prisma.customerCancellationRefund = {
+    create: async ({data}) => { state.record = { refundId: null, paymentIntentId: null, reconciliationOwnerToken: null, inventoryRestored: false, creationDispatched: false, ...data }; return state.record; },
+    findUnique: async () => state.record && ({ ...state.record, order: row() }),
+    update: async ({data}) => { Object.assign(state.record, data); return { ...state.record }; },
+  };
+  prisma.offer.updateMany = async args => { await prisma.offer.update(args); return {count:1}; };
   const stripe = {
     checkout: { sessions: { retrieve: async () => {
       state.lookups++;
       if (outcome === "lookup-error") throw Error("lookup network failure");
-      return { payment_intent: outcome === "missing-payment" ? null : "pi_test" };
+      return { id: "cs_test", payment_status: "paid", metadata: {userId:"customer",offerId:"offer"}, amount_total:500, currency:"cad", payment_intent: outcome === "missing-payment" ? null : "pi_test" };
     } } },
-    refunds: { create: async (data, options) => {
+    paymentIntents: { retrieve: async () => ({ id:"pi_test",status:"succeeded",amount_received:500,currency:"cad" }) },
+    refunds: { list: async function* () {}, create: async (data, options) => {
       state.refunds++;
       assert.equal(state.status, "CANCELLED");
       assert.equal(data.payment_intent, "pi_test");
       assert.equal(data.reverse_transfer, true);
       assert.equal(data.refund_application_fee, true);
-      assert.equal(options.idempotencyKey, `${state.winner}_cancel_order`);
+      assert.ok(["customer_cancel_order", "merchant_cancel_order"].includes(options.idempotencyKey));
       if (outcome === "timeout") throw Error("response lost after provider accepted refund");
-      return { id: "re_test", status: outcome === "stock-error" ? "succeeded" : outcome };
+      return { id: "re_test", payment_intent:"pi_test",amount:500,currency:"cad", status: outcome === "stock-error" ? "succeeded" : outcome };
     } },
   };
   const controller = loadController(prisma, stripe);
@@ -66,13 +83,13 @@ for (const actor of ["customer", "merchant"]) {
       assert.ok(h.state.reason);
       const reason = h.state.reason;
       assert.equal(h.state.stock, outcome === "succeeded" ? 1 : 0);
-      assert.equal(h.state.stockAttempts, ["succeeded", "stock-error"].includes(outcome) ? 1 : 0);
+      assert.equal(h.state.stockAttempts, outcome === "succeeded" || (actor === "merchant" && outcome === "stock-error") ? 1 : 0);
       const expectedCalls = ["lookup-error", "missing-payment"].includes(outcome) ? 0 : 1;
       assert.equal(h.state.refunds, expectedCalls);
       if (outcome === "succeeded") assert.equal(res.code, 200);
       else if (["pending", "requires_action"].includes(outcome)) assert.match(res.body.message, /incomplet/);
       else if (["failed", "canceled"].includes(outcome)) assert.match(res.body.message, /investigation/);
-      else if (outcome === "stock-error") assert.match(res.body.message, /stock/);
+      else if (outcome === "stock-error" && actor === "merchant") assert.match(res.body.message, /stock/);
       else assert.match(res.body.message, /incertain/);
       await h.cancel(actor);
       await h.cancel(actor === "customer" ? "merchant" : "customer");

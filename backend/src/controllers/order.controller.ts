@@ -5,6 +5,7 @@ import QRCode from "qrcode";
 import { prisma } from "../lib/prisma";
 import { stripe } from "../lib/stripe";
 import { lockCheckout, recoveryToken, acquireRecovery, assertRecoveryOwner, releaseRecovery } from "../lib/sold-out-recovery-coordination";
+import { cancellationRefundService } from "../lib/customer-cancellation-refund";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { createNotification } from "./notification.controller";
 import { checkAndCreateReward } from "./loyalty.controller";
@@ -452,73 +453,27 @@ export const cancelOrder = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: "Paiement Stripe introuvable" });
     }
 
-    const claim = await prisma.order.updateMany({
-      where: { id: order.id, userId, status: "CONFIRMED" },
-      data: { status: "CANCELLED", cancellationReason: "\u0041nnul\u00e9e par le client" },
-    });
-
-    if (claim.count === 0) {
-      return res.status(409).json({ message: "Cette commande a deja ete traitee" });
-    }
-
-    let refundSucceeded = false;
-
+    const recovery = cancellationRefundService(prisma);
+    const token = await recovery.claim(order.id, userId!);
     try {
-      const session = await stripe.checkout.sessions.retrieve(order.stripeSessionId, {
-        expand: ["payment_intent"],
-      });
-
-      const paymentIntentId =
-        typeof session.payment_intent === "string"
-          ? session.payment_intent
-          : session.payment_intent?.id;
-
-      if (!paymentIntentId) {
-        throw new Error("PaymentIntent introuvable");
+      const refund = await recovery.attempt(order.id, token, stripe);
+      if (refund.refundStatus === "SUCCEEDED") {
+        await createNotification(userId!, `Votre commande ${order.offer.title} a ete annulee et remboursee`)
+          .catch(() => console.error("Erreur notification annulation"));
+        return res.json({
+        message: refund.inventoryRestored
+          ? "Commande annulee et remboursement reussi."
+          : "Commande annulee et remboursement reussi. Le stock doit etre verifie par FoodSave.",
+        });
       }
-
-      const refund = await stripe.refunds.create(
-        {
-          payment_intent: paymentIntentId,
-          reverse_transfer: true,
-          refund_application_fee: true,
-        },
-        { idempotencyKey: `customer_cancel_${order.id}` }
-      );
-
-      if (refund.status !== "succeeded") {
-        const message = refund.status === "pending" || refund.status === "requires_action"
-          ? "Annulation acceptee. Le remboursement est incomplet et en cours de traitement."
-          : refund.status === "failed" || refund.status === "canceled"
-          ? "Annulation acceptee. Le remboursement necessite une investigation."
-          : "Annulation acceptee. Le resultat du remboursement est incertain et doit etre verifie.";
-        return res.status(202).json({ message });
-      }
-      refundSucceeded = true;
-
-      await prisma.offer.update({
-        where: { id: order.offerId },
-        data: { quantity: { increment: 1 } },
-      });
-
-      await createNotification(
-        userId as string,
-        `Votre commande ${order.offer.title} a ete annulee et remboursee`
-      ).catch((notificationError) => {
-        console.error("Erreur notification annulation:", notificationError);
-      });
-
-      return res.json({
-        message: "Commande annulee. Le remboursement a ete envoye vers votre moyen de paiement.",
-      });
-    } catch (error) {
-      // An accepted cancellation never becomes fulfillable after provider uncertainty.
-      console.error("Erreur annulation commande:", error);
-      return res.status(500).json({
-        message: refundSucceeded
-          ? "Le remboursement a reussi, mais le stock doit etre verifie par FoodSave."
-          : "Annulation acceptee. Le resultat du remboursement est incertain et doit etre verifie.",
-      });
+      const message = ["PENDING", "REQUIRES_ACTION"].includes(refund.refundStatus)
+        ? "Annulation acceptee. Le remboursement est incomplet et en cours de traitement."
+        : ["FAILED", "CANCELED", "NEEDS_REVIEW"].includes(refund.refundStatus)
+        ? "Annulation acceptee. Le remboursement necessite une investigation."
+        : "Annulation acceptee. Le resultat du remboursement est incertain et doit etre verifie.";
+      return res.status(202).json({ message });
+    } catch {
+      return res.status(500).json({ message: "Annulation acceptee. Le resultat du remboursement est incertain et doit etre verifie." });
     }
   } catch (error) {
     console.error("Erreur annulation commande:", error);
