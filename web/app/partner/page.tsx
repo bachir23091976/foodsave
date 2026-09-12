@@ -1,102 +1,28 @@
-﻿"use client";
-
 import Link from "next/link";
-import { Bebas_Neue, Space_Grotesk } from "next/font/google";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import FoodSaveImage from "../components/FoodSaveImage";
-
-const display = Bebas_Neue({ subsets: ["latin"], weight: "400" });
-const body = Space_Grotesk({ subsets: ["latin"], weight: ["400", "500", "700"] });
-
-const bg = "#06110C";
-const amber = "#FFB100";
-const jade = "#17C989";
-const dim = "#8FA396";
+import s from "../components/public.module.css";
 
 export default function PartnerPage() {
-  return (
-    <main className={body.className} style={{ backgroundColor: bg, color: "#F5F1E8" }}>
-      <style>{`
-        .benefit-card { transition: transform 0.3s ease, box-shadow 0.3s ease; }
-        .benefit-card:hover { transform: translateY(-6px); box-shadow: 0 18px 45px rgba(0,0,0,0.35); }
-        .btn-primary { transition: transform 0.2s ease; }
-        .btn-primary:hover { transform: scale(1.04); }
-      `}</style>
-
-      <Navbar />
-
-      <section className="relative overflow-hidden px-6 pt-16 pb-16 max-w-5xl mx-auto grid md:grid-cols-2 gap-12 items-center">
-        <div>
-          <p className="text-xs tracking-[0.4em] uppercase mb-6" style={{ color: amber }}>
-            Pour les commerces d Ottawa
-          </p>
-          <h1 className={display.className} style={{ fontSize: "clamp(2.4rem, 6vw, 4.5rem)", lineHeight: 1 }}>
-            TRANSFORMEZ VOS SURPLUS
-            <br />
-            <span style={{ color: jade }}>EN OPPORTUNITES</span>
-          </h1>
-          <p className="max-w-md mt-6 text-lg" style={{ color: dim }}>
-            FoodSave aide les restaurants, cafes, boulangeries et commerces locaux a reduire
-            leurs pertes, recuperer des revenus et attirer de nouveaux clients.
-          </p>
-          <div className="mt-8">
-            <Link href="/register-merchant" className="btn-primary inline-block px-10 py-4 rounded-full font-bold uppercase tracking-wide text-sm" style={{ backgroundColor: jade, color: bg }}>
-              Devenir partenaire
-            </Link>
-          </div>
-        </div>
-
-        <FoodSaveImage url={null} alt="Commerce partenaire FoodSave" variant="hero" merchantType={null} className="rounded-2xl" />
-      </section>
-
-      <section className="px-6 py-20 max-w-5xl mx-auto grid md:grid-cols-2 gap-6">
-        {[
-          ["Reduisez le gaspillage", "Donnez une deuxieme chance a vos surplus alimentaires plutot que de les jeter."],
-          ["Recuperez des revenus", "Transformez vos invendus en revenus supplementaires, 85% pour vous, sans frais fixe."],
-          ["Faites decouvrir votre commerce", "Attirez de nouveaux clients locaux qui decouvrent votre commerce via FoodSave."],
-          ["Aidez votre communaute", "Participez a une initiative locale contre le gaspillage alimentaire a Ottawa."],
-        ].map(([title, text]) => (
-          <div key={title} className="benefit-card rounded-2xl p-8" style={{ backgroundColor: "#0D1912", border: "1px solid rgba(255,255,255,0.1)" }}>
-            <p className="font-bold text-xl mb-2" style={{ color: amber }}>{title}</p>
-            <p style={{ color: dim }}>{text}</p>
-          </div>
-        ))}
-      </section>
-
-      <section className="px-6 py-20 max-w-4xl mx-auto">
-        <h2 className={display.className} style={{ fontSize: "clamp(2rem, 5vw, 3rem)", color: jade, textAlign: "center", marginBottom: "3rem" }}>
-          COMMENT CA MARCHE POUR VOUS
-        </h2>
-        <div className="grid md:grid-cols-3 gap-8">
-          {[
-            ["1", "Inscrivez votre commerce", "Creez votre profil commerce en quelques minutes, sans frais d inscription."],
-            ["2", "Publiez vos invendus", "Ajoutez une offre avec photo en quelques clics des que vous avez du surplus."],
-            ["3", "Recevez vos paiements", "Les clients reservent et paient en ligne, vous recevez vos fonds automatiquement."],
-          ].map(([n, title, text]) => (
-            <div key={n} className="text-center">
-              <div className="mx-auto mb-4 w-14 h-14 rounded-full flex items-center justify-center font-bold" style={{ backgroundColor: "#06110C", border: "1px solid rgba(23,201,137,0.4)", color: jade }}>
-                {n}
-              </div>
-              <p className="font-bold text-lg mb-1">{title}</p>
-              <p style={{ color: dim }}>{text}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="px-6 py-20 text-center" style={{ backgroundColor: "#0D1912" }}>
-        <p className={display.className} style={{ fontSize: "clamp(1.8rem, 4vw, 2.6rem)" }}>
-          PRET A REDUIRE VOTRE GASPILLAGE ?
-        </p>
-        <div className="mt-8">
-          <Link href="/register-merchant" className="btn-primary inline-block px-10 py-4 rounded-full font-bold uppercase tracking-wide text-sm" style={{ backgroundColor: amber, color: bg }}>
-            Devenir partenaire des maintenant
-          </Link>
-        </div>
-      </section>
-
-      <Footer />
-    </main>
-  );
+  return <main className={s.page}>
+    <Navbar />
+    <div className={s.partnerHero}><section className={s.container + " " + s.hero}>
+      <div><p className={s.eyebrow}>Pour les commerces d’Ottawa</p><h1 className={s.title}>Vos invendus.<br /><em>De nouvelles possibilités.</em></h1><p className={s.lede}>Transformez vos invendus en revenus et faites découvrir votre commerce à des clients près de chez vous.</p><div className={s.actions}><Link href="/register-merchant" className={s.button}>Inscrire mon commerce ↗</Link><a href="#parcours-commercant" className={s.quiet}>Comment ça marche</a></div></div>
+      <aside className={s.partnerBoard}><p className={s.eyebrow}>Un outil pour votre quotidien</p><h2>Du surplus en vitrine<br />à la récupération en boutique.</h2><ol><li>Présentez votre commerce</li><li>Publiez vos offres disponibles</li><li>Accueillez les clients</li></ol><p style={{ marginTop: 22, color: "#d2dfcc", fontSize: 13 }}>Restaurants · Boulangeries · Cafés · Épiceries</p></aside>
+    </section></div>
+    <section className={s.container + " " + s.section}><div className={s.sectionHead}><h2 className={s.heading}>Bon pour votre commerce.<br />Bon pour votre quartier.</h2></div><div className={s.grid3}>{[
+      ["Attirez de nouveaux clients", "Rendez vos offres visibles auprès des personnes qui explorent les commerces locaux."],
+      ["Réduisez le gaspillage", "Proposez vos produits encore disponibles à prix réduit plutôt que de les laisser se perdre."],
+      ["Publiez simplement", "Présentez le contenu, le prix, la quantité et le créneau de récupération de votre offre."],
+    ].map(([title,description]) => <article key={title} className={s.benefit}><h3>{title}</h3><p>{description}</p></article>)}</div></section>
+    <section id="parcours-commercant" className={s.band} style={{ scrollMarginTop: 90 }}><div className={s.container + " " + s.section}><p className={s.eyebrow}>Votre parcours partenaire</p><h2 className={s.heading}>Vous gardez la main sur vos offres.</h2><div className={s.grid3}>{[
+      ["01", "Préparez votre compte", "Créez votre compte commerçant, complétez votre profil et configurez vos paiements."],
+      ["02", "Publiez vos invendus", "Ajoutez votre offre. Les clients consultent les informations, puis réservent et paient en ligne."],
+      ["03", "Validez la récupération", "À l’arrivée du client, scannez son QR ou saisissez son code pour valider la récupération."],
+    ].map(([n,title,description]) => <article key={n} className={s.step}><span className={s.number}>{n}</span><h3>{title}</h3><p>{description}</p></article>)}</div></div></section>
+    <section className={s.container + " " + s.promise}><div><p className={s.eyebrow}>Des paiements, en toute simplicité</p><h2 className={s.heading}>Paiements sécurisés avec Stripe.</h2></div><div><p className={s.muted}>Stripe est notre partenaire de paiement. Il sécurise les paiements des clients et permet le versement de vos revenus sur votre compte bancaire.</p><p className={s.muted} style={{ marginTop: 16 }}>La configuration et la vérification de votre compte doivent être terminées. Les versements restent soumis à l’admissibilité et au calendrier applicables.</p><Link href="/merchant/profile" className={s.quiet}>Configurer mes paiements →</Link></div></section>
+    <section className={s.container + " " + s.section}><div className={s.faq}><h2 className={s.heading}>Avant de vous lancer</h2><details><summary>Quelles informations dois-je préparer ?</summary><p>Le nom et les coordonnées de votre commerce, sa présentation, puis les informations nécessaires à la configuration de vos paiements.</p></details><details><summary>Comment le client récupère-t-il sa réservation ?</summary><p>Il se présente au commerce dans le créneau indiqué avec son QR ou son code de réservation. Vous validez la récupération depuis votre espace commerçant.</p></details><details><summary>Une question sur FoodSave ?</summary><p>Écrivez-nous à <a href="mailto:info@foodsave.ca">info@foodsave.ca</a>.</p></details></div></section>
+    <section className={s.container + " " + s.section}><div className={s.merchantCta}><div><h2 className={s.heading}>Prêt à donner une seconde<br />chance à vos invendus ?</h2><p>Votre prochaine étape : créer votre compte commerçant.</p></div><Link href="/register-merchant" className={s.button}>Devenir partenaire ↗</Link></div></section>
+    <Footer />
+  </main>;
 }

@@ -14,13 +14,13 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "FoodSave — Sauvez les surplus alimentaires",
-  description: "FoodSave connecte les commerces qui ont des surplus alimentaires aux clients qui veulent les sauver, a prix reduit.",
+  description: "FoodSave connecte les commerces qui ont des surplus alimentaires aux clients qui veulent les sauver, à prix réduit.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
-      lang="en"
+      lang="fr-CA"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>

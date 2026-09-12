@@ -1,52 +1,16 @@
-﻿"use client";
-
 import Link from "next/link";
-
-const amber = "#FFB100";
-const dim = "#8FA396";
+import s from "./public.module.css";
 
 export default function Footer() {
-  return (
-    <footer id="contact" className="border-t px-6 py-14" style={{ borderColor: "rgba(255,255,255,0.08)", backgroundColor: "#06110C", color: "#F5F1E8" }}>
-      <div className="max-w-6xl mx-auto grid md:grid-cols-4 gap-10 text-sm">
-        <div>
-          <p className="font-bold text-lg mb-2">
-            Food<span style={{ color: amber }}>Save</span>
-          </p>
-          <p style={{ color: dim }}>
-            Marketplace anti-gaspillage alimentaire a Ottawa. Sauvez de la nourriture, economisez de l argent.
-          </p>
-        </div>
-
-        <div>
-          <p className="font-bold mb-3">Navigation</p>
-          <div className="flex flex-col gap-2" style={{ color: dim }}>
-            <Link href="/" className="hover:text-white">Accueil</Link>
-            <Link href="/offers" className="hover:text-white">Offres</Link>
-            <Link href="/register-merchant" className="hover:text-white">Devenir partenaire</Link>
-          </div>
-        </div>
-
-        <div>
-          <p className="font-bold mb-3">Contact</p>
-          <div className="flex flex-col gap-2" style={{ color: dim }}>
-            <span>Ottawa, Ontario</span>
-            <span>info@foodsave.ca</span>
-          </div>
-        </div>
-
-        <div>
-          <p className="font-bold mb-3">Legal</p>
-          <div className="flex flex-col gap-2" style={{ color: dim }}>
-            <span>Conditions d utilisation</span>
-            <span>Politique de confidentialite</span>
-          </div>
-        </div>
+  return <footer id="contact" className={s.footer}>
+    <div className={s.container}>
+      <div className={s.footerGrid}>
+        <div><Link href="/" className={s.logo}>FoodSave<span aria-hidden="true" style={{ color: "#6b8b43" }}>↗</span></Link><p>Marketplace anti-gaspillage alimentaire à Ottawa.<br />Sauvez de la nourriture, économisez de l’argent.</p></div>
+        <div><h2>Navigation</h2><div className={s.footerLinks}><Link href="/">Accueil</Link><Link href="/offers">Offres</Link><Link href="/partner">Devenir partenaire</Link></div></div>
+        <div><h2>Contact</h2><div className={s.footerLinks}><span>Ottawa, Ontario</span><a href="mailto:info@foodsave.ca">info@foodsave.ca</a></div></div>
+        <div><h2>Informations légales</h2><div className={s.footerLinks}><span>Conditions d’utilisation</span><span>Politique de confidentialité</span><small>Documents à venir.</small></div></div>
       </div>
-
-      <p className="text-center mt-10 text-xs" style={{ color: dim }}>
-        FoodSave - Ottawa, Canada
-      </p>
-    </footer>
-  );
+      <div className={s.footerBottom}><span>FoodSave · Ottawa, Canada</span><span>De bons repas, une seconde chance.</span></div>
+    </div>
+  </footer>;
 }

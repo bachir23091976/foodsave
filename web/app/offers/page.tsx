@@ -2,22 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Bebas_Neue, Space_Grotesk } from "next/font/google";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import NotificationBell from "../components/NotificationBell";
 import LoyaltyBanner from "../components/LoyaltyBanner";
 import FoodSaveImage from "../components/FoodSaveImage";
-import ScrollReveal from "../components/ScrollReveal";
 import { API_URL } from "../lib/api";
 
-const display = Bebas_Neue({ subsets: ["latin"], weight: "400" });
-const body = Space_Grotesk({ subsets: ["latin"], weight: ["400", "500", "700"] });
-
-const bg = "#06110C";
-const amber = "#FFB100";
-const jade = "#17C989";
-const dim = "#8FA396";
+import s from "../components/public.module.css";
 
 interface Offer {
   id: string;
@@ -74,7 +66,7 @@ export default function OffersPage() {
 
   const loadOffers = () => {
     fetch(`${API_URL}/offers`)
-      .then(function (res) { return res.json(); })
+      .then(function (res) { if (!res.ok) throw new Error("Offers unavailable"); return res.json(); })
       .then(function (data) {
         setOffers(data.offers || []);
         setLoading(false);
@@ -132,7 +124,7 @@ export default function OffersPage() {
       const geoRes = await fetch("https://nominatim.openstreetmap.org/search?q=" + encodeURIComponent(addressInput) + "&format=json&limit=1");
       const geoData = await geoRes.json();
       if (!geoData || geoData.length === 0) {
-        setSearchMessage("Adresse introuvable, essayez une adresse plus precise");
+        setSearchMessage("Adresse introuvable, essayez une adresse plus précise");
         setSearching(false);
         return;
       }
@@ -142,7 +134,7 @@ export default function OffersPage() {
       const data = await res.json();
       setOffers(data.offers || []);
       if (!data.offers || data.offers.length === 0) {
-        setSearchMessage("Aucune offre trouvee pres de cette adresse");
+        setSearchMessage("Aucune offre trouvée près de cette adresse");
       }
     } catch {
       setSearchMessage("Erreur lors de la recherche");
@@ -152,7 +144,7 @@ export default function OffersPage() {
   };
   const handleUseLocation = () => {
     if (!navigator.geolocation) {
-      setSearchMessage("La geolocalisation n'est pas disponible sur cet appareil");
+      setSearchMessage("La géolocalisation n'est pas disponible sur cet appareil");
       return;
     }
 
@@ -170,7 +162,7 @@ export default function OffersPage() {
 
           setOffers(data.offers || []);
           if (!data.offers || data.offers.length === 0) {
-            setSearchMessage("Aucune offre trouvee pres de votre position");
+            setSearchMessage("Aucune offre trouvée près de votre position");
           }
         } catch {
           setSearchMessage("Erreur lors de la recherche par GPS");
@@ -180,7 +172,7 @@ export default function OffersPage() {
       },
       () => {
         setSearchMessage(
-          "Position refusee ou indisponible. Vous pouvez saisir une adresse."
+          "Position refusée ou indisponible. Vous pouvez saisir une adresse."
         );
         setLocating(false);
       },
@@ -194,7 +186,7 @@ export default function OffersPage() {
   const handleReserve = async (offerId: string) => {
     const token = localStorage.getItem("token");
     if (!token) {
-      setConfirmations((prev) => ({ ...prev, [offerId]: "Vous devez etre connecte pour reserver" }));
+      setConfirmations((prev) => ({ ...prev, [offerId]: "Vous devez être connecté pour réserver" }));
       return;
     }
     setReserving(offerId);
@@ -206,7 +198,7 @@ export default function OffersPage() {
       });
       const data = await res.json();
       if (!res.ok || !data.checkoutUrl) {
-        setConfirmations((prev) => ({ ...prev, [offerId]: data.message || "Erreur lors de la reservation" }));
+        setConfirmations((prev) => ({ ...prev, [offerId]: data.message || "Erreur lors de la réservation" }));
         setReserving(null);
         return;
       }
@@ -248,176 +240,56 @@ export default function OffersPage() {
       : offers.filter((offer) => offer.category === selectedCategory);
 
   return (
-    <main className={body.className} style={{ backgroundColor: bg, color: "#F5F1E8", minHeight: "100vh" }}>
+    <main className={s.page}>
       <Navbar />
-
-      <section className="px-6 pt-14 pb-6 text-center">
-        <p className="text-xs tracking-[0.4em] uppercase mb-3" style={{ color: jade }}>
-          Ce soir a Ottawa
-        </p>
-        <h1 className={display.className} style={{ fontSize: "clamp(2.2rem, 6vw, 4rem)" }}>
-          OFFRES DISPONIBLES
-        </h1>
-      </section>
-
-      <div className="max-w-2xl mx-auto px-6 flex items-center justify-between mb-2">
-        <Link
-          href={isMerchant ? "/merchant/reservations" : "/reservations"}
-          className="rounded-full px-4 py-2 text-xs font-bold uppercase tracking-wide"
-          style={{ backgroundColor: jade, color: bg }}
-        >
-          {isMerchant ? "R\u00e9servations clients" : "Mes r\u00e9servations"}
-        </Link>
-        <NotificationBell />
-      </div>
-
-      <div className="max-w-2xl mx-auto px-6">
+      <div className={s.container}>
+        <section className={s.marketIntro}>
+          <div><p className={s.eyebrow}>Ce soir à Ottawa</p><h1 className={s.title}>Sauvez de bons repas<br />près de chez vous</h1><p className={s.lede}>Découvrez les invendus de commerces locaux à prix réduit.</p></div>
+          <div className={s.accountActions}><Link href={isMerchant ? "/merchant/reservations" : "/reservations"} className={s.secondary}>{isMerchant ? "Réservations clients" : "Mes réservations"}</Link><NotificationBell /></div>
+        </section>
         <LoyaltyBanner />
-      </div>
-
-      <div className="max-w-2xl mx-auto px-6 mb-8 flex flex-wrap gap-2">
-        <label htmlFor="offers-address-search" className="sr-only">Entrez une adresse pour voir les offres proches</label>
-        <input
-          id="offers-address-search"
-          type="text"
-          placeholder="Entrez une adresse pour voir les offres proches"
-          value={addressInput}
-          onChange={(e) => setAddressInput(e.target.value)}
-          className="rounded-full px-5 py-3 outline-none flex-1"
-          style={{ backgroundColor: "#0D1912", border: "1px solid rgba(255,255,255,0.15)", color: "#F5F1E8" }}
-        />
-        <button
-          onClick={handleSearchNearby}
-          disabled={searching}
-          className="rounded-full px-6 font-bold uppercase tracking-wide text-xs"
-          style={{ backgroundColor: amber, color: bg }}
-        >
-          {searching ? "..." : "Chercher"}
-        </button>
-        <button
-          onClick={handleUseLocation}
-          disabled={locating || searching}
-          className="rounded-full px-6 py-3 font-bold uppercase tracking-wide text-xs"
-          style={{
-            backgroundColor: jade,
-            color: bg,
-          }}
-        >
-          {locating ? "Localisation..." : "Utiliser ma position"}
-        </button>
-      </div>
-
-      {searchMessage && <p className="text-center mb-4" style={{ color: dim }}>{searchMessage}</p>}
-      {loading && <p className="text-center" style={{ color: dim }}>Chargement...</p>}
-      {error && <p className="text-center" style={{ color: "#FF6B6B" }}>{error}</p>}
-      {!loading && offers.length === 0 && !searchMessage && (
-        <p className="text-center" style={{ color: dim }}>Aucune offre disponible pour le moment.</p>
-      )}
-
-
-      <div className="max-w-2xl mx-auto px-6 mb-6 overflow-x-auto">
-        <div className="flex gap-2 min-w-max pb-1">
-          {OFFER_CATEGORIES.map((category) => (
-            <button
-              key={category.value}
-              type="button"
-              onClick={() => setSelectedCategory(category.value)}
-              className="rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap"
-              style={{
-                backgroundColor: selectedCategory === category.value ? jade : "#0D1912",
-                color: selectedCategory === category.value ? bg : "#F5F1E8",
-                border: "1px solid rgba(255,255,255,0.15)",
-              }}
-            >
-              {category.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="grid gap-4 max-w-2xl mx-auto px-6 pb-20">
-        {filteredOffers.map((offer, index) => {
-          const percent = Math.round(((offer.originalPrice - offer.discountedPrice) / offer.originalPrice) * 100);
-          const isFavorite = favoriteMerchantIds.includes(offer.merchant.id);
-          return (
-            <ScrollReveal key={offer.id} index={index}>
-              <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: "#0D1912", border: "1px solid rgba(255,255,255,0.1)" }}>
-                <FoodSaveImage url={offer.imageUrl} alt={offer.title} variant="offer" merchantType={offer.merchant.type} />
-
-                <div className="p-5 flex flex-col gap-1">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h2 className="text-lg font-bold">{offer.title}</h2>
-                      <p className="text-sm flex items-center gap-1" style={{ color: dim }}>
-                        {offer.merchant.name} - {offer.merchant.city}
-                        {offer.distanceKm !== undefined && (
-                          <span style={{ color: jade }} className="font-medium whitespace-nowrap"> - {offer.distanceKm.toFixed(1)} km</span>
-                        )}
-                        <button
-                          onClick={() => toggleFavorite(offer.merchant.id)}
-                          className="ml-1"
-                          style={{ color: amber }}
-                          aria-label="Ajouter aux favoris"
-                        >
-                       {isFavorite ? "\u2605" : "\u2606"}
-                        </button>
-                      </p>
-                    </div>
-                    <span className="text-xs font-bold px-2 py-1 rounded" style={{ backgroundColor: amber, color: bg }}>
-                      -{percent}%
-                    </span>
-                  </div>
-
-                  {offer.description && <p className="text-sm" style={{ color: dim }}>{offer.description}</p>}
-
-                  <div className="flex items-baseline gap-2 mt-1">
-                    <span className="line-through text-sm" style={{ color: dim }}>{offer.originalPrice.toFixed(2)} $</span>
-                    <span className="font-bold text-lg" style={{ color: amber }}>{offer.discountedPrice.toFixed(2)} $</span>
-                  </div>
-
-                  <p className="text-sm" style={{ color: dim }}>
-                    Recuperation : {formatTime(offer.pickupStart)} - {formatTime(offer.pickupEnd)}
-                  </p>
-                  <p className="text-sm" style={{ color: dim }}>
-                    {offer.quantity} disponible{offer.quantity > 1 ? "s" : ""}
-                  </p>
-
-                  <p className="text-xs mt-2" style={{ color: amber }}>
-                    Annulation gratuite jusqu&apos;à 60 minutes avant la récupération.
-                  </p>
-
-                  <button
-                    onClick={() => handleReserve(offer.id)}
-                    disabled={reserving === offer.id || offer.quantity < 1}
-                    className="mt-3 rounded-full py-3 font-bold uppercase tracking-wide text-sm"
-                    style={{ backgroundColor: jade, color: bg }}
-                  >
-                    {reserving === offer.id ? "Redirection..." : "Reserver"}
-                  </button>
-<a
-  href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-    `${offer.merchant.address}, ${offer.merchant.city}`
-  )}`}
-  target="_blank"
-  rel="noopener noreferrer"
-  className="mt-3 rounded-full py-3 text-center font-bold uppercase tracking-wide text-sm"
-  style={{
-    backgroundColor: "rgba(255,177,0,0.15)",
-    color: amber,
-    border: "1px solid rgba(255,177,0,0.4)",
-  }}
->
-  Itinéraire
-</a>
-
-                  {confirmations[offer.id] && <p className="text-sm mt-1" style={{ color: "#FF6B6B" }}>{confirmations[offer.id]}</p>}
-                </div>
+        <section className={s.search} aria-label="Rechercher des offres par lieu">
+          <label htmlFor="offers-address-search">Où souhaitez-vous récupérer votre repas ?</label>
+          <div className={s.searchRow}>
+            <input id="offers-address-search" type="text" placeholder="Votre adresse ou votre quartier" value={addressInput} onChange={(e) => setAddressInput(e.target.value)} />
+            <button type="button" onClick={handleSearchNearby} disabled={searching} className={s.button}>{searching ? "Recherche…" : "Chercher"}</button>
+            <button type="button" onClick={handleUseLocation} disabled={locating || searching} className={s.secondary}><span aria-hidden="true">⌖</span>{locating ? "Localisation…" : "Utiliser ma position"}</button>
+          </div>
+          <p className={s.searchNote}>Une adresse suffit pour explorer les offres à proximité.</p>
+          {searchMessage && <p role="status" className={s.searchNote}>{searchMessage}</p>}
+        </section>
+        <section className={s.filters} aria-label="Catégories d’offres"><div className={s.filterRow}>
+          {OFFER_CATEGORIES.map(category => <button key={category.value} type="button" onClick={() => setSelectedCategory(category.value)} aria-pressed={selectedCategory === category.value} className={s.chip}>{category.label}</button>)}
+        </div></section>
+        <section className={s.results} aria-label="Offres disponibles" aria-busy={loading || searching || locating}>
+          {loading && <p className={s.empty} role="status">Recherche des offres disponibles…</p>}
+          {error && <p className={s.alert} role="alert">{error}</p>}
+          {!loading && !error && !searching && !locating && filteredOffers.length === 0 && <div className={s.empty}>
+            <svg width="72" height="72" viewBox="0 0 72 72" fill="none" aria-hidden="true"><circle cx="36" cy="36" r="36" fill="#e0eacb" /><path d="m19 30 5 25h24l5-25H19Zm10 0v-5a7 7 0 0 1 14 0v5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /><path d="M31 42c6 0 10-6 10-6 1 8-3 13-9 12m-1 1 9-12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
+            <h2>{offers.length === 0 ? "Aucune offre près de vous pour le moment." : "Aucune offre dans cette catégorie pour le moment."}</h2>
+            <p>De nouvelles offres peuvent apparaître au cours de la journée.</p>
+            {selectedCategory !== "TOUT" && <button type="button" className={s.secondary} style={{ marginTop: 22 }} onClick={() => setSelectedCategory("TOUT")}>Voir toutes les catégories</button>}
+          </div>}
+          {!loading && !error && filteredOffers.length > 0 && <p className={s.resultsLabel}>{filteredOffers.length} offre{filteredOffers.length > 1 ? "s" : ""} à découvrir · Vérifiez le créneau de récupération</p>}
+          <div className={s.offerGrid}>{filteredOffers.map(offer => {
+            const percent = Math.round(((offer.originalPrice - offer.discountedPrice) / offer.originalPrice) * 100);
+            const isFavorite = favoriteMerchantIds.includes(offer.merchant.id);
+            return <article key={offer.id} className={s.card}>
+              <FoodSaveImage url={offer.imageUrl} alt={offer.title} variant="offer" merchantType={offer.merchant.type} />
+              <div className={s.cardBody}>
+                <div className={s.cardTop}><div><h2>{offer.title}</h2><p className={s.merchant}>{offer.merchant.name} · {offer.merchant.city}{offer.distanceKm !== undefined && <span>· {offer.distanceKm.toFixed(1)} km</span>}</p></div><span className={s.badge}>−{percent} %</span></div>
+                {offer.description && <p className={s.muted} style={{ fontSize: 14, overflowWrap: "anywhere" }}>{offer.description}</p>}
+                <div className={s.cardTop}><p className={s.price}><strong>{offer.discountedPrice.toFixed(2)} $</strong><del>{offer.originalPrice.toFixed(2)} $</del></p><button type="button" className={s.favorite} onClick={() => toggleFavorite(offer.merchant.id)} aria-pressed={isFavorite} aria-label={isFavorite ? "Retirer des favoris" : "Ajouter aux favoris"}>{isFavorite ? "★" : "☆"}</button></div>
+                <p className={s.pickup}>Récupération : {formatTime(offer.pickupStart)} – {formatTime(offer.pickupEnd)}<br />{offer.quantity} disponible{offer.quantity > 1 ? "s" : ""}</p>
+                <p className={s.muted} style={{ fontSize: 12 }}>Annulation gratuite jusqu’à 60 minutes avant la récupération.</p>
+                <button type="button" onClick={() => handleReserve(offer.id)} disabled={reserving === offer.id || offer.quantity < 1} className={s.button}>{reserving === offer.id ? "Redirection…" : "Réserver"}</button>
+                <a href={"https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(offer.merchant.address + ", " + offer.merchant.city)} target="_blank" rel="noopener noreferrer" className={s.quiet}>Itinéraire ↗</a>
+                {confirmations[offer.id] && <p role="alert" className={s.alert}>{confirmations[offer.id]}</p>}
               </div>
-            </ScrollReveal>
-          );
-        })}
+            </article>;
+          })}</div>
+        </section>
       </div>
-
       <Footer />
     </main>
   );

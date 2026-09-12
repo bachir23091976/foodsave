@@ -4,13 +4,12 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
-const bg = "#06110C";
-const amber = "#FFB100";
-const jade = "#17C989";
+import s from "./public.module.css";
 
 const NAV_LINKS = [
   { href: "/", label: "Accueil" },
   { href: "/offers", label: "Offres" },
+  { href: "/#comment-ca-marche", label: "Comment ça marche" },
   { href: "/partner", label: "Devenir partenaire" },
 ];
 
@@ -69,170 +68,27 @@ setIsMerchant(!!token && (role === "MERCHANT" || role === "ADMIN"));
   };
 
   return (
-    <nav className="sticky top-0 z-50" style={{ backgroundColor: "rgba(6,17,12,0.92)", backdropFilter: "blur(8px)", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-      <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-        <Link href="/" className="font-bold text-lg" style={{ color: "#F5F1E8" }}>
-          Food<span style={{ color: amber }}>Save</span>
-        </Link>
-
-        <div className="hidden md:flex items-center gap-7 text-sm" style={{ color: "#8FA396" }}>
-          {NAV_LINKS.map((link) => (
-            <Link key={link.href} href={link.href} className="hover:text-white">
-              {link.label}
-            </Link>
-          ))}
-          {!isLoggedIn && (
-            <>
-              <Link href="/login" className="hover:text-white">
-                Se connecter
-              </Link>
-              <Link href="/register" className="hover:text-white">
-                S&apos;inscrire
-              </Link>
-            </>
-          )}
-          {isLoggedIn && !isMerchant && (
-            <Link href="/reservations" className="hover:text-white">
-              {"Mes r\u00e9servations"}
-            </Link>
-          )}
-          {isMerchant && (
-            <Link href="/merchant/profile" className="hover:text-white">
-              Espace commerçant
-            </Link>
-          )}
-          {isLoggedIn && (
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="hover:text-white"
-              style={{ background: "none", border: "none", padding: 0, font: "inherit", color: "#8FA396", cursor: "pointer" }}
-            >
-              Se déconnecter
-            </button>
-          )}
-          <Link href={CONTACT_LINK.href} className="hover:text-white">
-            {CONTACT_LINK.label}
-          </Link>
+    <nav className={s.nav} aria-label="Navigation principale" onKeyDown={(event) => { if (event.key === "Escape") setOpen(false); }}>
+      <div className={s.navInner}>
+        <Link href="/" className={s.logo} aria-label="FoodSave — Accueil"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><rect width="32" height="32" rx="10" fill="#215d43" /><path d="M15 25C5 23 6 12 10 10c6 0 9 5 8 10 1-8 7-10 10-9 0 9-6 14-13 14Z" fill="#d8ee97" /></svg>FoodSave</Link>
+        <div className={s.navLinks}>{NAV_LINKS.map(link => <Link key={link.href} href={link.href} aria-current={pathname === link.href ? "page" : undefined}>{link.label}</Link>)}</div>
+        <div className={s.navActions}>
+          {!isLoggedIn && <Link href="/login">Se connecter</Link>}
+          {isLoggedIn && <Link href={isMerchant ? "/merchant/profile" : "/reservations"}>{isMerchant ? "Mon commerce" : "Mes réservations"}</Link>}
+          {isLoggedIn && <button type="button" onClick={handleLogout}>Se déconnecter</button>}
+          <Link href="/offers" className={s.button}>Voir les offres</Link>
         </div>
-
-        <div className="flex items-center gap-3">
-          <Link
-            href="/offers"
-            className="hidden md:inline px-5 py-2 rounded-full font-bold uppercase tracking-wide text-xs"
-            style={{ backgroundColor: amber, color: bg }}
-          >
-            Voir les offres
-          </Link>
-
-          <button
-            type="button"
-            className="md:hidden flex items-center justify-center w-10 h-10 rounded-full shrink-0"
-            style={{ border: "1px solid rgba(255,255,255,0.15)", color: "#F5F1E8", backgroundColor: "transparent" }}
-            aria-label={open ? "Fermer le menu" : "Ouvrir le menu"}
-            aria-expanded={open}
-            aria-controls="mobile-nav"
-            onClick={() => setOpen((v) => !v)}
-          >
-            {open ? (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            ) : (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            )}
-          </button>
-        </div>
+        <button type="button" className={s.menuButton} aria-label={open ? "Fermer le menu" : "Ouvrir le menu"} aria-expanded={open} aria-controls="mobile-nav" onClick={() => setOpen(v => !v)}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d={open ? "M6 6l12 12M18 6L6 18" : "M4 7h16M4 12h16M4 17h16"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+        </button>
       </div>
-
-      {open && (
-        <div
-          id="mobile-nav"
-          className="md:hidden px-6 pb-6 flex flex-col gap-1 text-sm"
-          style={{ color: "#8FA396", borderTop: "1px solid rgba(255,255,255,0.08)" }}
-        >
-          {NAV_LINKS.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="py-3 hover:text-white"
-              style={{ color: "#8FA396" }}
-              onClick={() => setOpen(false)}
-            >
-              {link.label}
-            </Link>
-          ))}
-          {!isLoggedIn && (
-            <>
-              <Link
-                href="/login"
-                className="py-3 hover:text-white"
-                style={{ color: "#8FA396" }}
-                onClick={() => setOpen(false)}
-              >
-                Se connecter
-              </Link>
-              <Link
-                href="/register"
-                className="py-3 hover:text-white"
-                style={{ color: "#8FA396" }}
-                onClick={() => setOpen(false)}
-              >
-                S&apos;inscrire
-              </Link>
-            </>
-          )}
-          {isLoggedIn && !isMerchant && (
-            <Link
-              href="/reservations"
-              className="py-3 hover:text-white"
-              style={{ color: "#8FA396" }}
-              onClick={() => setOpen(false)}
-            >
-              {"Mes r\u00e9servations"}
-            </Link>
-          )}
-          {isMerchant && (
-            <Link
-              href="/merchant/profile"
-              className="py-3 hover:text-white"
-              style={{ color: "#8FA396" }}
-              onClick={() => setOpen(false)}
-            >
-              Espace commerçant
-            </Link>
-          )}
-          {isLoggedIn && (
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="py-3 px-0 w-full text-left hover:text-white"
-              style={{ background: "none", border: "none", font: "inherit", color: "#8FA396", cursor: "pointer" }}
-            >
-              Se déconnecter
-            </button>
-          )}
-          <Link
-            href={CONTACT_LINK.href}
-            className="py-3 hover:text-white"
-            style={{ color: "#8FA396" }}
-            onClick={() => setOpen(false)}
-          >
-            {CONTACT_LINK.label}
-          </Link>
-
-          <Link
-            href="/offers"
-            onClick={() => setOpen(false)}
-            className="mt-2 text-center rounded-full px-5 py-3 font-bold uppercase tracking-wide text-xs"
-            style={{ backgroundColor: amber, color: bg }}
-          >
-            Voir les offres
-          </Link>
-        </div>
-      )}
+      {open && <div id="mobile-nav" className={s.mobileMenu}>
+        {NAV_LINKS.map(link => <Link key={link.href} href={link.href} aria-current={pathname === link.href ? "page" : undefined} onClick={() => setOpen(false)}>{link.label}</Link>)}
+        {!isLoggedIn && <><Link href="/login" onClick={() => setOpen(false)}>Se connecter</Link><Link href="/register" onClick={() => setOpen(false)}>Créer un compte</Link></>}
+        {isLoggedIn && <><Link href={isMerchant ? "/merchant/profile" : "/reservations"} onClick={() => setOpen(false)}>{isMerchant ? "Espace commerçant" : "Mes réservations"}</Link><button type="button" onClick={handleLogout}>Se déconnecter</button></>}
+        <Link href={CONTACT_LINK.href} onClick={() => setOpen(false)}>{CONTACT_LINK.label}</Link>
+        <Link href="/offers" className={s.button} onClick={() => setOpen(false)}>Voir les offres</Link>
+      </div>}
     </nav>
   );
 }
