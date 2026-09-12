@@ -1,19 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bebas_Neue, Space_Grotesk } from "next/font/google";
-import Navbar from "../../components/Navbar";
-import Footer from "../../components/Footer";
-import ScrollReveal from "../../components/ScrollReveal";
+import MerchantShell from "../../components/merchant/MerchantShell";
+import s from "../../components/merchant/merchant.module.css";
+import ui from "../../components/public.module.css";
 import { API_URL } from "../../lib/api";
-
-const display = Bebas_Neue({ subsets: ["latin"], weight: "400" });
-const body = Space_Grotesk({ subsets: ["latin"], weight: ["400", "500", "700"] });
-
-const bg = "#06110C";
-const amber = "#FFB100";
-const jade = "#17C989";
-const dim = "#8FA396";
 
 interface Sale {
   id: string;
@@ -40,7 +31,7 @@ export default function MerchantSalesPage() {
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
-      setError("Vous devez etre connecte");
+      setError("Vous devez être connecté");
       setLoading(false);
       return;
     }
@@ -48,7 +39,7 @@ export default function MerchantSalesPage() {
     fetch(`${API_URL}/merchants/sales`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then((res) => res.json())
+      .then((res) => { if (!res.ok) throw new Error("Sales unavailable"); return res.json(); })
       .then((data) => {
         setSales(data.sales || []);
         setSummary(data.summary || null);
@@ -70,65 +61,22 @@ export default function MerchantSalesPage() {
   };
 
   return (
-    <main className={body.className} style={{ backgroundColor: bg, color: "#F5F1E8", minHeight: "100vh" }}>
-      <Navbar />
-
-      <section className="px-6 pt-14 pb-6 text-center">
-        <p className="text-xs tracking-[0.4em] uppercase mb-3" style={{ color: jade }}>
-          Performance
-        </p>
-        <h1 className={display.className} style={{ fontSize: "clamp(2.2rem, 6vw, 4rem)" }}>
-          MES VENTES
-        </h1>
-      </section>
-
-      {loading && <p className="text-center" style={{ color: dim }}>Chargement...</p>}
-      {error && <p className="text-center" style={{ color: "#FF6B6B" }}>{error}</p>}
-
-      {summary && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto px-6 mb-12">
-          {[
-            [summary.totalSales.toString(), "Ventes completees", "#F5F1E8"],
-            [summary.totalRevenue.toFixed(2) + " $", "Chiffre d'affaires", jade],
-            [summary.totalCommission.toFixed(2) + " $", "Commission FoodSave", amber],
-            [summary.totalNet.toFixed(2) + " $", "Montant net recu", "#F5F1E8"],
-          ].map(([value, label, color], i) => (
-            <ScrollReveal key={label} index={i}>
-              <div className="rounded-2xl p-5 text-center h-full" style={{ backgroundColor: "#0D1912", border: "1px solid rgba(255,255,255,0.1)" }}>
-                <p className="text-2xl font-bold" style={{ color }}>{value}</p>
-                <p className="text-sm mt-1" style={{ color: dim }}>{label}</p>
-              </div>
-            </ScrollReveal>
-          ))}
-        </div>
-      )}
-
-      {!loading && sales.length === 0 && (
-        <p className="text-center" style={{ color: dim }}>Aucune vente completee pour le moment.</p>
-      )}
-
-      <div className="grid gap-3 max-w-2xl mx-auto px-6 pb-20">
-        {sales.map((sale, index) => (
-          <ScrollReveal key={sale.id} index={index}>
-            <div
-              className="rounded-2xl p-4 flex justify-between items-center"
-              style={{ backgroundColor: "#0D1912", border: "1px solid rgba(255,255,255,0.1)" }}
-            >
-              <div>
-                <p className="font-bold">{sale.title}</p>
-                <p className="text-xs" style={{ color: dim, opacity: 0.7 }}>{formatDate(sale.date)}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm" style={{ color: dim }}>Total : {sale.totalPrice.toFixed(2)} $</p>
-                <p className="text-sm" style={{ color: amber }}>Commission : -{sale.commission.toFixed(2)} $</p>
-                <p className="text-sm font-bold" style={{ color: jade }}>Net : {sale.net.toFixed(2)} $</p>
-              </div>
-            </div>
-          </ScrollReveal>
-        ))}
-      </div>
-
-      <Footer />
-    </main>
+    <MerchantShell title="Mes ventes" description="Consultez vos ventes terminées et les montants associés, sans les confondre avec les versements bancaires.">
+      {loading && <p role="status" className={s.notice}>Chargement de vos ventes…</p>}
+      {error && <p role="alert" className={s.notice + " " + s.error}>{error}</p>}
+      {!loading && !error && <>
+        {summary && <dl className={s.summary}>{[
+          [summary.totalSales.toString(), "Ventes terminées"],
+          [summary.totalRevenue.toFixed(2) + " $", "Chiffre d’affaires"],
+          [summary.totalCommission.toFixed(2) + " $", "Commission FoodSave"],
+          [summary.totalNet.toFixed(2) + " $", "Montant net des ventes"],
+        ].map(([value,label]) => <div className={s.metric} key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>}
+        <p className={s.help} style={{ marginBottom: 24 }}>Ces montants décrivent vos ventes. Ils ne confirment pas qu’un versement a été reçu sur votre compte bancaire.</p>
+        {sales.length === 0 ? <div className={s.empty}><h2>Aucune vente terminée pour le moment.</h2><p>Vos ventes apparaîtront ici lorsqu’elles seront enregistrées comme terminées.</p></div> : <section aria-label="Historique des ventes" className={s.cards}>{sales.map((sale) => <article key={sale.id} className={s.card + " " + s.sale}>
+          <div><h3>{sale.title}</h3><p className={s.help}>{formatDate(sale.date)}</p></div>
+          <dl className={s.saleNumbers}><div><dt>Total</dt><dd>{sale.totalPrice.toFixed(2)} $</dd></div><div><dt>Commission</dt><dd>−{sale.commission.toFixed(2)} $</dd></div><div><dt>Net</dt><dd><strong>{sale.net.toFixed(2)} $</strong></dd></div></dl>
+        </article>)}</section>}
+      </>}
+    </MerchantShell>
   );
 }

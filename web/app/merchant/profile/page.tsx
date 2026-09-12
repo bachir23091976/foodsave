@@ -2,25 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Bebas_Neue, Space_Grotesk } from "next/font/google";
-import Navbar from "../../components/Navbar";
-import Footer from "../../components/Footer";
-import FoodSaveImage from "../../components/FoodSaveImage";
+import MerchantShell from "../../components/merchant/MerchantShell";
+import s from "../../components/merchant/merchant.module.css";
+import ui from "../../components/public.module.css";
 import { API_URL } from "../../lib/api";
-
-const display = Bebas_Neue({ subsets: ["latin"], weight: "400" });
-const body = Space_Grotesk({ subsets: ["latin"], weight: ["400", "500", "700"] });
-
-const bg = "#06110C";
-const amber = "#FFB100";
-const jade = "#17C989";
-const dim = "#8FA396";
-
-const inputStyle = {
-  backgroundColor: "#0D1912",
-  border: "1px solid rgba(255,255,255,0.15)",
-  color: "#F5F1E8",
-};
 
 interface Merchant {
   id: string;
@@ -55,6 +40,7 @@ export default function MerchantProfilePage() {
   const [message, setMessage] = useState("");
   const [merchant, setMerchant] = useState<Merchant | null>(null);
   const [loadingMerchant, setLoadingMerchant] = useState(true);
+  const [profileError, setProfileError] = useState("");
   const [stripeStatus, setStripeStatus] = useState<StripeStatus | null>(null);
   const [loadingStripeStatus, setLoadingStripeStatus] = useState(true);
   const [connectingStripe, setConnectingStripe] = useState(false);
@@ -64,19 +50,21 @@ export default function MerchantProfilePage() {
     const token = localStorage.getItem("token");
     if (!token) {
       setLoadingMerchant(false);
+      setProfileError("Vous devez être connecté pour consulter votre commerce.");
       return;
     }
 
     fetch(`${API_URL}/merchants/me`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then((res) => (res.status === 404 ? null : res.json()))
+      .then((res) => { if (res.status === 404) return null; if (!res.ok) throw new Error("Profile unavailable"); return res.json(); })
       .then((data) => {
+        if (data !== null && !data?.merchant) throw new Error("Profile unavailable");
         if (data?.merchant) {
           setMerchant(data.merchant);
         }
       })
-      .catch(() => {})
+      .catch(() => setProfileError("Impossible de charger votre profil. Actualisez la page avant de continuer."))
       .finally(() => setLoadingMerchant(false));
   }, []);
 
@@ -175,259 +163,36 @@ export default function MerchantProfilePage() {
   };
 
   return (
-    <main className={body.className} style={{ backgroundColor: bg, color: "#F5F1E8", minHeight: "100vh" }}>
-      <Navbar />
-
-      <section className="px-6 py-16 max-w-5xl mx-auto grid md:grid-cols-2 gap-12 items-start">
-        <div>
-          <p className="text-xs tracking-[0.4em] uppercase mb-4" style={{ color: jade }}>
-            Espace commerçant
-          </p>
-          <h1 className={display.className} style={{ fontSize: "clamp(2.2rem, 6vw, 3.8rem)", lineHeight: 1 }}>
-            GÉREZ VOTRE
-            <br />
-            <span style={{ color: amber }}>COMMERCE</span>
-          </h1>
-          {loadingMerchant ? (
-            <p className="mt-4" style={{ color: dim }}>Chargement...</p>
-          ) : merchant ? (
-            <>
-              <p className="mt-4" style={{ color: dim }}>
-                Voici les informations de votre commerce enregistrées sur FoodSave.
-              </p>
-
-              <div
-                className="mt-8 rounded-2xl p-5 flex flex-col gap-1"
-                style={{ backgroundColor: "#0D1912", border: "1px solid rgba(255,255,255,0.1)" }}
-              >
-                <p className="font-bold text-lg">{merchant.name}</p>
-                <p className="text-sm" style={{ color: dim }}>{merchant.type}</p>
-                {merchant.description && (
-                  <p className="text-sm mt-1" style={{ color: dim }}>{merchant.description}</p>
-                )}
-                <p className="text-sm mt-2" style={{ color: dim }}>
-                  {merchant.address}, {merchant.city}, {merchant.province} {merchant.postalCode}
-                </p>
-                {merchant.phone && <p className="text-sm" style={{ color: dim }}>{merchant.phone}</p>}
-              </div>
-
-              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
-  <Link
-    href="/merchant/new-offer"
-    className="flex min-h-12 items-center justify-center rounded-full px-6 py-3 text-center font-bold uppercase tracking-wide text-sm"
-    style={{ backgroundColor: amber, color: bg }}
-  >
-    Créer une offre
-  </Link>
-
-  <Link
-    href="/merchant/offers"
-    className="flex min-h-12 items-center justify-center rounded-full px-6 py-3 text-center font-bold uppercase tracking-wide text-sm"
-    style={{
-      backgroundColor: "rgba(255,255,255,0.08)",
-      color: "#F5F1E8",
-      border: "1px solid rgba(255,255,255,0.15)",
-    }}
-  >
-    Mes offres
-  </Link>
-
-  <Link
-    href="/merchant/reservations"
-    className="flex min-h-12 items-center justify-center rounded-full px-6 py-3 text-center font-bold uppercase tracking-wide text-sm"
-    style={{
-      backgroundColor: "rgba(23,201,137,0.15)",
-      color: jade,
-      border: "1px solid rgba(23,201,137,0.4)",
-    }}
-  >
-    Réservations
-  </Link>
-
-  <Link
-    href="/merchant/sales"
-    className="flex min-h-12 items-center justify-center rounded-full px-6 py-3 text-center font-bold uppercase tracking-wide text-sm"
-    style={{
-      backgroundColor: "rgba(255,177,0,0.15)",
-      color: amber,
-      border: "1px solid rgba(255,177,0,0.4)",
-    }}
-  >
-    Mes ventes
-  </Link>
-</div>
-            </>
-          ) : (
-            <>
-              <p className="mt-4" style={{ color: dim }}>
-                Créez votre profil commerce pour commencer à publier vos surplus sur FoodSave.
-              </p>
-
-              <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-8">
-            <label htmlFor="merchant-name" className="sr-only">Nom du commerce</label>
-            <input
-              id="merchant-name"
-              type="text"
-              placeholder="Nom du commerce"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="rounded-full px-5 py-3 outline-none"
-              style={inputStyle}
-              required
-            />
-
-            <label htmlFor="merchant-type" className="sr-only">Type de commerce</label>
-            <select
-              id="merchant-type"
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-              className="rounded-full px-5 py-3 outline-none"
-              style={inputStyle}
-            >
-              <option value="RESTAURANT">Restaurant</option>
-              <option value="CAFE">Café</option>
-              <option value="BAKERY">Boulangerie</option>
-              <option value="GROCERY">Épicerie</option>
-              <option value="SUPERMARKET">Grande surface</option>
-              <option value="HOTEL">Hôtel</option>
-              <option value="OTHER">Autre</option>
-            </select>
-
-            <label htmlFor="merchant-description" className="sr-only">Description (optionnel)</label>
-            <textarea
-              id="merchant-description"
-              placeholder="Description (optionnel)"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="rounded-2xl px-5 py-3 outline-none"
-              style={inputStyle}
-            />
-
-            <label htmlFor="merchant-address" className="sr-only">Adresse</label>
-            <input
-              id="merchant-address"
-              type="text"
-              placeholder="Adresse"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              className="rounded-full px-5 py-3 outline-none"
-              style={inputStyle}
-              required
-            />
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="merchant-city" className="sr-only">Ville</label>
-                <input
-                  id="merchant-city"
-                  type="text"
-                  placeholder="Ville"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  className="rounded-full px-5 py-3 outline-none w-full"
-                  style={inputStyle}
-                  required
-                />
-              </div>
-              <div>
-                <label htmlFor="merchant-province" className="sr-only">Province</label>
-                <input
-                  id="merchant-province"
-                  type="text"
-                  placeholder="Province"
-                  value={province}
-                  onChange={(e) => setProvince(e.target.value)}
-                  className="rounded-full px-5 py-3 outline-none w-full"
-                  style={inputStyle}
-                  required
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="merchant-postalcode" className="sr-only">Code postal</label>
-                <input
-                  id="merchant-postalcode"
-                  type="text"
-                  placeholder="Code postal"
-                  value={postalCode}
-                  onChange={(e) => setPostalCode(e.target.value)}
-                  className="rounded-full px-5 py-3 outline-none w-full"
-                  style={inputStyle}
-                  required
-                />
-              </div>
-              <div>
-              <label htmlFor="merchant-phone" className="sr-only">Téléphone (optionnel)</label>
-              <input
-                id="merchant-phone"
-                type="text"
-                placeholder="Téléphone (optionnel)"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="rounded-full px-5 py-3 outline-none w-full"
-                style={inputStyle}
-              />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={submittingProfile}
-              className="rounded-full px-6 py-3 font-bold uppercase tracking-wide text-sm mt-2"
-              style={{ backgroundColor: amber, color: bg, opacity: submittingProfile ? 0.7 : 1 }}
-            >
-              {submittingProfile ? "Création..." : "Créer mon profil"}
-                </button>
-              </form>
-            </>
-          )}
-
-          {message && <p className="mt-4" style={{ color: dim }}>{message}</p>}
-
-          <div
-            className="mt-6 rounded-2xl p-5 text-sm"
-            style={{ backgroundColor: "#0D1912", border: "1px solid rgba(23,201,137,0.3)", color: "#F5F1E8" }}
-          >
-            <span style={{ color: jade }} className="font-bold">🎁 Programme de fidélité — </span>
-            <span style={{ color: dim }}>
-              FoodSave offre des réductions de fidélité à vos clients réguliers, entièrement financées par notre
-              commission — sans aucun coût pour vous. Ça vous aide à fidéliser une clientèle qui revient régulièrement !
-            </span>
-          </div>
-
-          {merchant && (
-            loadingStripeStatus ? (
-              <p className="mt-4" style={{ color: dim }}>Vérification du statut Stripe...</p>
-            ) : stripeStatus?.status === "READY" ? (
-              <p className="mt-4 font-bold" style={{ color: jade }}>
-                ✓ Compte Stripe connecté et prêt à recevoir des paiements
-              </p>
-            ) : (
-              <button
-                onClick={handleConnectStripe}
-                disabled={connectingStripe}
-                className="mt-4 rounded-full px-6 py-3 font-bold uppercase tracking-wide text-sm"
-                style={{ backgroundColor: jade, color: bg }}
-              >
-                {connectingStripe
-                  ? "Connexion..."
-                  : stripeStatus?.status === "ONBOARDING_INCOMPLETE"
-                  ? "Continuer la configuration Stripe"
-                  : "Connecter mon compte Stripe"}
-              </button>
-            )
-          )}
+    <MerchantShell title="Mon commerce" description="Votre profil, vos offres et vos paiements : l’essentiel pour votre journée." action={merchant && <Link href="/merchant/new-offer" className={ui.button}>Créer une offre +</Link>}>
+      {loadingMerchant ? <p role="status" className={s.notice}>Chargement de votre commerce…</p> : profileError ? <p role="alert" className={s.notice + " " + s.error}>{profileError}</p> : merchant ? <>
+        <div className={s.quickLinks}><Link href="/merchant/offers">Mes offres →<small>Consultez vos quantités et disponibilités</small></Link><Link href="/merchant/reservations">Réservations →<small>Accueillez vos clients et validez les récupérations</small></Link></div>
+        <div className={s.twoColumns}>
+          <section className={s.panel}><div className={s.cardTop}><h2>{merchant.name}</h2><span className={s.badge}>Profil enregistré</span></div><p className={s.muted}>{({ RESTAURANT: "Restaurant", CAFE: "Café", BAKERY: "Boulangerie", GROCERY: "Épicerie", SUPERMARKET: "Grande surface", HOTEL: "Hôtel", OTHER: "Autre" } as Record<string,string>)[merchant.type] || merchant.type}</p>
+            {merchant.description && <p className={s.help}>{merchant.description}</p>}
+            <dl className={s.facts}><div><dt>Adresse du commerce</dt><dd>{merchant.address}, {merchant.city}, {merchant.province} {merchant.postalCode}</dd></div>{merchant.phone && <div><dt>Téléphone</dt><dd>{merchant.phone}</dd></div>}</dl>
+          </section>
+          <section id="paiements" className={s.panel + " " + s.payment}><h2>Vos paiements</h2><p className={s.help}>Stripe est notre partenaire de paiement. Configurez votre compte pour recevoir les paiements des clients et les versements admissibles.</p>
+            <div className={s.paymentStatus} role="status">{loadingStripeStatus ? "Vérification de votre compte…" : stripeStatus?.status === "READY" ? <span className={s.badge + " " + s.success}>Configuration prête</span> : stripeStatus?.status === "ONBOARDING_INCOMPLETE" ? <span className={s.badge + " " + s.warning}>Configuration ou vérification incomplète</span> : stripeStatus?.status === "NOT_CONNECTED" ? <span className={s.badge}>Paiements non connectés</span> : "Statut momentanément indisponible."}</div>
+            {!loadingStripeStatus && stripeStatus?.status !== "READY" && <button onClick={handleConnectStripe} disabled={connectingStripe} className={ui.button}>{connectingStripe ? "Connexion…" : stripeStatus?.status === "ONBOARDING_INCOMPLETE" ? "Continuer la configuration" : "Configurer mes paiements"}</button>}
+            <p className={s.help}>Le calendrier des versements dépend de votre compte et de son admissibilité.</p>
+          </section>
         </div>
-
-        <div className="hidden md:block sticky top-24">
-          <FoodSaveImage url={null} alt={merchant?.name || name || "Votre commerce"} variant="hero" merchantType={merchant?.type || type} className="rounded-2xl" />
-          <p className="mt-4 text-sm text-center" style={{ color: dim }}>
-            Un aperçu qui s adapte au type de commerce que vous choisissez.
-          </p>
-        </div>
-      </section>
-
-      <Footer />
-    </main>
+        <section className={s.panel}><h2>Suivez votre activité</h2><p className={s.help}>Consultez les ventes terminées et les montants associés.</p><div className={s.actions}><Link href="/merchant/sales" className={ui.secondary}>Voir mes ventes →</Link><Link href="/offers" className={ui.quiet}>Voir les offres publiques</Link></div></section>
+      </> : <div className={s.twoColumns}>
+        <section className={s.panel}><h2>Présentez votre commerce</h2><p className={s.help}>Ces informations permettent aux clients de vous identifier et de vous trouver.</p>
+          <form onSubmit={handleSubmit} className={s.form} style={{ marginTop: 24 }}>
+            <label className={s.field} htmlFor="merchant-name">Nom du commerce<input id="merchant-name" type="text" value={name} onChange={(e) => setName(e.target.value)} required /></label>
+            <label className={s.field} htmlFor="merchant-type">Type de commerce<select id="merchant-type" value={type} onChange={(e) => setType(e.target.value)}><option value="RESTAURANT">Restaurant</option><option value="CAFE">Café</option><option value="BAKERY">Boulangerie</option><option value="GROCERY">Épicerie</option><option value="SUPERMARKET">Grande surface</option><option value="HOTEL">Hôtel</option><option value="OTHER">Autre</option></select></label>
+            <label className={s.field} htmlFor="merchant-description">Description (optionnel)<textarea id="merchant-description" rows={4} value={description} onChange={(e) => setDescription(e.target.value)} /></label>
+            <label className={s.field} htmlFor="merchant-address">Adresse<input id="merchant-address" type="text" value={address} onChange={(e) => setAddress(e.target.value)} required /></label>
+            <div className={s.fieldRow}><label className={s.field} htmlFor="merchant-city">Ville<input id="merchant-city" type="text" value={city} onChange={(e) => setCity(e.target.value)} required /></label><label className={s.field} htmlFor="merchant-province">Province<input id="merchant-province" type="text" value={province} onChange={(e) => setProvince(e.target.value)} required /></label></div>
+            <div className={s.fieldRow}><label className={s.field} htmlFor="merchant-postalcode">Code postal<input id="merchant-postalcode" type="text" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} required /></label><label className={s.field} htmlFor="merchant-phone">Téléphone (optionnel)<input id="merchant-phone" type="text" value={phone} onChange={(e) => setPhone(e.target.value)}  /></label></div>
+            <button type="submit" disabled={submittingProfile} className={ui.button}>{submittingProfile ? "Création…" : "Créer mon profil"}</button>
+          </form>
+        </section>
+        <aside className={s.panel}><span className={s.badge}>Pour bien commencer</span><h2 style={{ marginTop: 16 }}>Votre parcours commerçant</h2><ol className={s.steps}><li>Enregistrez les coordonnées de votre commerce.</li><li>Complétez la configuration et la vérification des paiements.</li><li>Publiez vos invendus et leurs créneaux de récupération.</li></ol></aside>
+      </div>}
+      {message && <p role="status" className={s.notice}>{message}</p>}
+    </MerchantShell>
   );
 }

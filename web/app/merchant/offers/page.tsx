@@ -2,20 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Bebas_Neue, Space_Grotesk } from "next/font/google";
-import Navbar from "../../components/Navbar";
-import Footer from "../../components/Footer";
 import FoodSaveImage from "../../components/FoodSaveImage";
-import ScrollReveal from "../../components/ScrollReveal";
+import MerchantShell from "../../components/merchant/MerchantShell";
+import s from "../../components/merchant/merchant.module.css";
+import ui from "../../components/public.module.css";
 import { API_URL } from "../../lib/api";
-
-const display = Bebas_Neue({ subsets: ["latin"], weight: "400" });
-const body = Space_Grotesk({ subsets: ["latin"], weight: ["400", "500", "700"] });
-
-const bg = "#06110C";
-const amber = "#FFB100";
-const jade = "#17C989";
-const dim = "#8FA396";
 
 interface Offer {
   id: string;
@@ -39,7 +30,7 @@ export default function MerchantOffersPage() {
   const loadOffers = () => {
     const token = localStorage.getItem("token");
     if (!token) {
-      setError("Vous devez etre connecte");
+      setError("Vous devez être connecté");
       setLoading(false);
       return;
     }
@@ -48,7 +39,7 @@ export default function MerchantOffersPage() {
     fetch(`${API_URL}/offers/mine`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then((res) => res.json())
+      .then((res) => { if (!res.ok) throw new Error("Offers unavailable"); return res.json(); })
       .then((data) => {
         setOffers(data.offers || []);
         setLoading(false);
@@ -71,7 +62,7 @@ export default function MerchantOffersPage() {
 
     const token = localStorage.getItem("token");
     if (!token) {
-      setError("Vous devez etre connecte");
+      setError("Vous devez être connecté");
       return;
     }
 
@@ -108,94 +99,21 @@ export default function MerchantOffersPage() {
   };
 
   return (
-    <main className={body.className} style={{ backgroundColor: bg, color: "#F5F1E8", minHeight: "100vh" }}>
-      <Navbar />
-
-      <section className="px-6 pt-14 pb-6 text-center">
-        <p className="text-xs tracking-[0.4em] uppercase mb-3" style={{ color: jade }}>
-          Votre vitrine
-        </p>
-        <h1 className={display.className} style={{ fontSize: "clamp(2.2rem, 6vw, 4rem)" }}>
-          MES OFFRES
-        </h1>
-      </section>
-
-      <div className="max-w-2xl mx-auto px-6 mb-6 flex justify-end">
-        <Link
-          href="/merchant/new-offer"
-          className="rounded-full px-6 py-3 font-bold uppercase tracking-wide text-sm"
-          style={{ backgroundColor: jade, color: bg }}
-        >
-          {"Cr\u00e9er une offre"}
-        </Link>
-      </div>
-
-      {loading && <p className="text-center" style={{ color: dim }}>Chargement...</p>}
-      {error && <p className="text-center" style={{ color: "#FF6B6B" }}>{error}</p>}
-      {!loading && offers.length === 0 && (
-        <p className="text-center" style={{ color: dim }}>
-          Vous n&apos;avez encore publie aucune offre.
-        </p>
-      )}
-
-      <div className="grid gap-4 max-w-2xl mx-auto px-6 pb-20">
-        {offers.map((offer, index) => (
-          <ScrollReveal key={offer.id} index={index}>
-            <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: "#0D1912", border: "1px solid rgba(255,255,255,0.1)" }}>
-              <FoodSaveImage url={offer.imageUrl} alt={offer.title} variant="offer" merchantType={null} />
-
-              <div className="p-5 flex flex-col gap-1">
-                <div className="flex justify-between items-start mb-1">
-                  <h2 className="text-lg font-bold">{offer.title}</h2>
-                  <span
-                    className="text-xs font-bold px-2 py-1 rounded"
-                    style={
-                      offer.quantity > 0
-                        ? { backgroundColor: "rgba(23,201,137,0.15)", color: jade }
-                        : { backgroundColor: "rgba(255,255,255,0.08)", color: dim }
-                    }
-                  >
-                    {offer.quantity > 0 ? `${offer.quantity} restante(s)` : "Indisponible"}
-                  </span>
-                </div>
-
-                {offer.description && (
-                  <p className="text-sm mb-2" style={{ color: dim }}>{offer.description}</p>
-                )}
-
-                <div className="flex items-baseline gap-2 mb-1">
-                  <span className="line-through text-sm" style={{ color: dim }}>
-                    {offer.originalPrice.toFixed(2)} $
-                  </span>
-                  <span className="font-bold" style={{ color: amber }}>
-                    {offer.discountedPrice.toFixed(2)} $
-                  </span>
-                </div>
-
-                <p className="text-sm" style={{ color: dim }}>
-                  Recuperation : {formatDateTime(offer.pickupStart)} - {formatDateTime(offer.pickupEnd)}
-                </p>
-                <p className="text-xs mt-1" style={{ color: dim, opacity: 0.7 }}>
-                  Publiee le {formatDateTime(offer.createdAt)}
-                </p>
-
-                {offer.quantity > 0 && (
-                  <button
-                    onClick={() => handleDeactivate(offer.id, offer.title)}
-                    disabled={deactivatingId === offer.id}
-                    className="mt-3 self-start rounded-full px-4 py-2 text-xs font-bold uppercase tracking-wide"
-                    style={{ backgroundColor: "rgba(255,107,107,0.12)", color: "#FF6B6B", border: "1px solid rgba(255,107,107,0.35)" }}
-                  >
-                    {deactivatingId === offer.id ? "Désactivation..." : "Désactiver"}
-                  </button>
-                )}
-              </div>
-            </div>
-          </ScrollReveal>
-        ))}
-      </div>
-
-      <Footer />
-    </main>
+    <MerchantShell title="Mes offres" description="Retrouvez les offres de votre commerce et leurs quantités disponibles." action={<Link href="/merchant/new-offer" className={ui.button}>Créer une offre +</Link>}>
+      {loading && <p role="status" className={s.notice}>Chargement de vos offres…</p>}
+      {error && <p role="alert" className={s.notice + " " + s.error}>{error}</p>}
+      {!loading && !error && offers.length === 0 && <div className={s.empty}><h2>Votre première offre commence ici.</h2><p>Présentez vos invendus, leur prix et un créneau de récupération.</p><Link href="/merchant/new-offer" className={ui.secondary} style={{ marginTop: 20 }}>Créer une offre</Link></div>}
+      {!loading && !error && <div className={s.cards}>{offers.map((offer) => <article key={offer.id} className={s.card + " " + s.offerCard}>
+        <div className={s.offerImage}><FoodSaveImage url={offer.imageUrl} alt={offer.title} variant="offer" merchantType={null} /></div>
+        <div className={s.offerBody}>
+          <div className={s.cardTop}><h2>{offer.title}</h2><span className={s.badge + (offer.quantity > 0 ? " " + s.success : "")}>{offer.quantity > 0 ? offer.quantity + " restante(s)" : "Indisponible"}</span></div>
+          {offer.description && <p className={s.muted} style={{ overflowWrap: "anywhere" }}>{offer.description}</p>}
+          <p className={s.price}><strong>{offer.discountedPrice.toFixed(2)} $</strong><del>{offer.originalPrice.toFixed(2)} $</del></p>
+          <p className={s.help}>Récupération : {formatDateTime(offer.pickupStart)} – {formatDateTime(offer.pickupEnd)}</p>
+          <p className={s.help}>Publiée le {formatDateTime(offer.createdAt)}</p>
+          {offer.quantity > 0 && <div className={s.actions}><button type="button" onClick={() => handleDeactivate(offer.id, offer.title)} disabled={deactivatingId === offer.id} className={s.dangerButton}>{deactivatingId === offer.id ? "Désactivation…" : "Désactiver"}</button></div>}
+        </div>
+      </article>)}</div>}
+    </MerchantShell>
   );
 }

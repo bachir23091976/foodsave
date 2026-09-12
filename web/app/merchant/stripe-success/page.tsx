@@ -2,17 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import MerchantShell from "../../components/merchant/MerchantShell";
+import s from "../../components/merchant/merchant.module.css";
+import ui from "../../components/public.module.css";
 import { API_URL } from "../../lib/api";
-import { Bebas_Neue, Space_Grotesk } from "next/font/google";
-import Navbar from "../../components/Navbar";
-import Footer from "../../components/Footer";
-
-const display = Bebas_Neue({ subsets: ["latin"], weight: "400" });
-const body = Space_Grotesk({ subsets: ["latin"], weight: ["400", "700"] });
-
-const bg = "#06110C";
-const jade = "#17C989";
-const dim = "#8FA396";
 
 export default function StripeSuccessPage() {
   const [status, setStatus] = useState("LOADING");
@@ -37,28 +30,14 @@ export default function StripeSuccessPage() {
     ERROR: "Statut momentanément indisponible.",
   };
   return (
-    <main className={body.className} style={{ backgroundColor: bg, color: "#F5F1E8", minHeight: "100vh" }}>
-      <Navbar />
-      <div className="flex flex-col items-center justify-center px-6 py-24 text-center">
-        {status === "READY" && <div
-          className="w-16 h-16 rounded-full flex items-center justify-center mb-6"
-          style={{ backgroundColor: "rgba(23,201,137,0.15)", border: "1px solid rgba(23,201,137,0.4)" }}
-        >
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-            <path d="M5 13l4 4L19 7" stroke={jade} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </div>}
-        <h1 className={display.className} style={{ fontSize: "clamp(2rem, 5vw, 3rem)" }}>
-          Configuration des paiements
-        </h1>
-        <p role="status" className="mt-4 max-w-sm" style={{ color: dim }}>
-          {messages[status]}
-        </p>
-        <Link href="/merchant/profile" className="mt-8" style={{ color: jade }}>
-          Retour à mon profil
-        </Link>
-      </div>
-      <Footer />
-    </main>
+    <MerchantShell title="Configuration des paiements" description="Le retour depuis la configuration ne confirme pas à lui seul que votre compte est prêt.">
+      <section className={s.panel + " " + s.payment}>
+        <span aria-hidden="true" className={s.paymentSymbol}>{status === "READY" ? "✓" : "↗"}</span>
+        <h2>Votre compte de paiement</h2>
+        <p role="status" className={s.notice + (status === "ERROR" ? " " + s.error : "")}>{messages[status]}</p>
+        <p className={s.help}>Retrouvez les prochaines étapes dans votre profil commerçant. Aucun versement n’est déclenché par cette page.</p>
+        <div className={s.actions}><Link href="/merchant/profile#paiements" className={ui.button}>Retour à mon profil</Link></div>
+      </section>
+    </MerchantShell>
   );
 }

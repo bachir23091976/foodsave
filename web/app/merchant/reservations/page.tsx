@@ -1,18 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Bebas_Neue, Space_Grotesk } from "next/font/google";
-import Navbar from "../../components/Navbar";
-import Footer from "../../components/Footer";
+import MerchantShell from "../../components/merchant/MerchantShell";
+import s from "../../components/merchant/merchant.module.css";
+import ui from "../../components/public.module.css";
 import { API_URL } from "../../lib/api";
-
-const display = Bebas_Neue({ subsets: ["latin"], weight: "400" });
-const body = Space_Grotesk({ subsets: ["latin"], weight: ["400", "500", "700"] });
-
-const bg = "#06110C";
-const amber = "#FFB100";
-const jade = "#17C989";
-const dim = "#8FA396";
 
 interface MerchantOrder {
   id: string;
@@ -124,18 +116,18 @@ export default function MerchantReservationsPage() {
 
   const handleMerchantCancel = async (orderId: string) => {
     const reason = window.prompt(
-      "Motif : Produit epuise, commerce ferme, erreur dans l offre, probleme de preparation, ou autre motif"
+      "Motif : Produit épuisé, commerce fermé, erreur dans l’offre, problème de préparation, ou autre motif"
     );
     if (!reason || reason.trim().length < 3) return;
 
     const confirmed = window.confirm(
-      "Annuler cette commande et rembourser integralement le client ?"
+      "Annuler cette commande et rembourser intégralement le client ?"
     );
     if (!confirmed) return;
 
     const token = localStorage.getItem("token");
     if (!token) {
-      setValidateMessage({ type: "error", text: "Vous devez etre connecte" });
+      setValidateMessage({ type: "error", text: "Vous devez être connecté" });
       return;
     }
 
@@ -273,223 +265,44 @@ export default function MerchantReservationsPage() {
   const cancelled = orders.filter((o) => o.status === "CANCELLED");
 
   return (
-    <main className={body.className} style={{ backgroundColor: bg, color: "#F5F1E8", minHeight: "100vh" }}>
-      <Navbar />
-
-      <section className="px-6 pt-14 pb-6 text-center">
-        <p className="text-xs tracking-[0.4em] uppercase mb-3" style={{ color: jade }}>
-          Espace commerçant
-        </p>
-        <h1 className={display.className} style={{ fontSize: "clamp(2.2rem, 6vw, 4rem)" }}>
-          RÉSERVATIONS
-        </h1>
-        <p className="mt-3 max-w-md mx-auto" style={{ color: dim }}>
-          Scannez le QR code du client ou saisissez le code de réservation pour valider une récupération.
-        </p>
+    <MerchantShell title="Réservations" description="Accueillez vos clients et validez leur récupération avec un QR ou un code de réservation.">
+      <section className={s.panel + " " + s.scanner} aria-label="Valider une récupération">
+        <div className={s.scanArea}><h2>Scanner le QR code</h2><p className={s.help}>Présentez le code du client devant la caméra. La lecture lance la validation existante.</p>
+          {scanning ? <><video ref={videoRef} muted playsInline /><canvas ref={canvasRef} hidden /><button type="button" onClick={stopScan} className={ui.secondary}>Arrêter le scan</button></> : <button type="button" onClick={startScan} className={ui.button}>Scanner le QR code</button>}
+          {scanError && <p role="alert" className={s.notice + " " + s.error}>{scanError}</p>}
+        </div>
+        <div><h2>Ou saisir le code</h2><p className={s.help}>Le client peut aussi vous présenter son code de réservation.</p>
+          <label className={s.field} htmlFor="manual-pickup-code" style={{ marginTop: 18 }}>Code de réservation</label>
+          <div className={s.manualEntry}><input id="manual-pickup-code" type="text" placeholder="Coller ou saisir le code" value={manualCode} onChange={(e) => setManualCode(e.target.value)} className={s.codeInput} /><button type="button" onClick={() => handleValidate()} disabled={validating || !manualCode.trim()} className={ui.button}>{validating ? "Validation…" : "Valider"}</button></div>
+        </div>
       </section>
-
-      <div className="max-w-md mx-auto px-6 mb-10">
-        <div
-          className="rounded-2xl p-5"
-          style={{ backgroundColor: "#0D1912", border: "1px solid rgba(255,255,255,0.1)" }}
-        >
-          {scanning ? (
-            <div className="flex flex-col gap-3">
-              <div className="relative rounded-xl overflow-hidden" style={{ backgroundColor: "#000" }}>
-                <video ref={videoRef} className="w-full h-auto" muted playsInline />
-              </div>
-              <canvas ref={canvasRef} className="hidden" />
-              <button
-                onClick={stopScan}
-                className="rounded-full px-6 py-3 font-bold uppercase tracking-wide text-sm"
-                style={{ backgroundColor: "rgba(255,255,255,0.08)", color: "#F5F1E8" }}
-              >
-                Arrêter le scan
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={startScan}
-              className="w-full rounded-full px-6 py-3 font-bold uppercase tracking-wide text-sm"
-              style={{ backgroundColor: jade, color: bg }}
-            >
-              Scanner le QR code
-            </button>
-          )}
-
-          {scanError && <p className="text-sm mt-3" style={{ color: "#FF6B6B" }}>{scanError}</p>}
-
-          <div className="flex items-center gap-3 my-4">
-            <div className="flex-1 h-px" style={{ backgroundColor: "rgba(255,255,255,0.1)" }} />
-            <span className="text-xs uppercase tracking-wide" style={{ color: dim }}>ou</span>
-            <div className="flex-1 h-px" style={{ backgroundColor: "rgba(255,255,255,0.1)" }} />
-          </div>
-
-          <label htmlFor="manual-pickup-code" className="sr-only">Code de réservation</label>
-          <div className="flex gap-2">
-            <input
-              id="manual-pickup-code"
-              type="text"
-              placeholder="Coller ou saisir le code de réservation"
-              value={manualCode}
-              onChange={(e) => setManualCode(e.target.value)}
-              className="rounded-full px-5 py-3 outline-none flex-1 text-sm"
-              style={{ backgroundColor: "#06110C", border: "1px solid rgba(255,255,255,0.15)", color: "#F5F1E8" }}
-            />
-            <button
-              onClick={() => handleValidate()}
-              disabled={validating || !manualCode.trim()}
-              className="rounded-full px-6 font-bold uppercase tracking-wide text-xs"
-              style={{ backgroundColor: amber, color: bg, opacity: validating || !manualCode.trim() ? 0.6 : 1 }}
-            >
-              {validating ? "..." : "Valider"}
-            </button>
-          </div>
-
-          {validateMessage && (
-            <p
-              className="text-sm mt-3 font-bold"
-              style={{ color: validateMessage.type === "success" ? jade : "#FF6B6B" }}
-            >
-              {validateMessage.type === "success" ? "✓ " : ""}
-              {validateMessage.text}
-            </p>
-          )}
-        </div>
-      </div>
-
-      {loadingOrders && <p className="text-center" style={{ color: dim }}>Chargement des réservations...</p>}
-      {listError && <p className="text-center" style={{ color: "#FF6B6B" }}>{listError}</p>}
-
-      {!loadingOrders && !listError && (
-        <div className="max-w-2xl mx-auto px-6 pb-20">
-          {[
-            { title: "À récupérer", orders: toRecover },
-            { title: "Fenêtre de récupération terminée", orders: expired },
-          ].map((group) => <section key={group.title}>
-          <h2 className="text-sm uppercase tracking-wide font-bold mb-3" style={{ color: amber }}>
-            {group.title} ({group.orders.length})
-          </h2>
-          {group.orders.length === 0 ? (
-            <p className="text-sm mb-8" style={{ color: dim }}>Aucune réservation dans cette catégorie.</p>
-          ) : (
-            <div className="grid gap-3 mb-10">
-              {group.orders.map((order) => (
-                <div
-                  key={order.id}
-                  className="rounded-2xl p-4"
-                  style={{ backgroundColor: "#0D1912", border: "1px solid rgba(255,177,0,0.3)" }}
-                >
-                  <div className="flex justify-between items-start mb-1">
-                    <p className="font-bold">{order.offer.title}</p>
-                    <span className="font-bold" style={{ color: amber }}>{order.totalPrice.toFixed(2)} $</span>
-                  </div>
-                  <p className="text-sm" style={{ color: dim }}>
-                    {order.user.firstName} {order.user.lastName}
-                  </p>
-                  <p className="text-xs mt-1" style={{ color: dim, opacity: 0.7 }}>
-                    Réservé le {formatDateTime(order.createdAt)}
-                  </p>
-                  <div className="flex items-center justify-between gap-2 mt-2">
-                    <code
-                      className="text-xs px-2 py-1 rounded flex-1 truncate"
-                      style={{ backgroundColor: "#06110C", color: "#F5F1E8" }}
-                    >
-                      {order.pickupCode}
-                    </code>
-                    <button
-                     onClick={() => handleValidate(order.pickupCode)}
-                      className="text-xs px-3 py-1 rounded-full font-bold uppercase whitespace-nowrap"
-                      style={{ backgroundColor: "rgba(255,255,255,0.08)", color: "#F5F1E8" }}
-                    >
-                      Utiliser
-                    </button>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleMerchantCancel(order.id)}
-                    disabled={cancelingId === order.id}
-                    className="mt-3 rounded-full px-4 py-2 text-xs font-bold uppercase tracking-wide"
-                    style={{
-                      backgroundColor: "rgba(255,107,107,0.12)",
-                      color: "#FF6B6B",
-                      border: "1px solid rgba(255,107,107,0.35)",
-                    }}
-                  >
-                    {cancelingId === order.id ? "Annulation..." : "Annuler et rembourser"}
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-          </section>)}
-
-          <h2 className="text-sm uppercase tracking-wide font-bold mb-3" style={{ color: jade }}>
-            Déjà récupérées ({recovered.length})
-          </h2>
-          {recovered.length === 0 ? (
-            <p className="text-sm" style={{ color: dim }}>Aucune réservation récupérée pour le moment.</p>
-          ) : (
-            <div className="grid gap-3">
-              {recovered.map((order) => (
-                <div
-                  key={order.id}
-                  className="rounded-2xl p-4"
-                  style={{ backgroundColor: "#0D1912", border: "1px solid rgba(23,201,137,0.2)", opacity: 0.75 }}
-                >
-                  <div className="flex justify-between items-start mb-1">
-                    <p className="font-bold">{order.offer.title}</p>
-                    <span className="font-bold" style={{ color: jade }}>{order.totalPrice.toFixed(2)} $</span>
-                  </div>
-                  <p className="text-sm" style={{ color: dim }}>
-                    {order.user.firstName} {order.user.lastName}
-                  </p>
-                  <p className="text-xs mt-1" style={{ color: dim, opacity: 0.7 }}>
-                    Réservé le {formatDateTime(order.createdAt)}
-                  </p>
-                  <p className="text-xs mt-1 font-bold" style={{ color: jade }}>✓ Récupérée</p>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <h2 className="text-sm uppercase tracking-wide font-bold mt-10 mb-3" style={{ color: "#FF6B6B" }}>
-            {"Annul\u00e9es"} ({cancelled.length})
-          </h2>
-          {cancelled.length === 0 ? (
-            <p className="text-sm" style={{ color: dim }}>{"Aucune r\u00e9servation annul\u00e9e."}</p>
-          ) : (
-            <div className="grid gap-3">
-              {cancelled.map((order) => (
-                <div
-                  key={order.id}
-                  className="rounded-2xl p-4"
-                  style={{ backgroundColor: "#0D1912", border: "1px solid rgba(255,107,107,0.25)", opacity: 0.75 }}
-                >
-                  <div className="flex justify-between items-start mb-1">
-                    <p className="font-bold">{order.offer.title}</p>
-                    <span className="font-bold" style={{ color: "#FF6B6B" }}>{order.totalPrice.toFixed(2)} $</span>
-                  </div>
-                  <p className="text-sm" style={{ color: dim }}>
-                    {order.user.firstName} {order.user.lastName}
-                  </p>
-                  <p className="text-xs mt-1" style={{ color: dim, opacity: 0.7 }}>
-                    {"R\u00e9serv\u00e9 le "}{formatDateTime(order.createdAt)}
-                  </p>
-                  {order.cancellationReason && (
-                    <p className="text-xs mt-1" style={{ color: dim }}>
-                      Motif : {order.cancellationReason}
-                    </p>
-                  )}
-                  <p className="text-xs mt-1 font-bold" style={{ color: "#FF6B6B" }}>{"Annul\u00e9e"}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      <Footer />
-    </main>
+      {validateMessage && <p role="status" className={s.notice + (validateMessage.type === "error" ? " " + s.error : "")}>{validateMessage.text}</p>}
+      {loadingOrders && <p role="status" className={s.notice}>Chargement des réservations…</p>}
+      {listError && <p role="alert" className={s.notice + " " + s.error}>{listError}</p>}
+      {!loadingOrders && !listError && <>
+        {[
+          { title: "À récupérer", orders: toRecover },
+          { title: "Fenêtre de récupération terminée", orders: expired },
+        ].map(group => <section key={group.title}>
+          <h2 className={s.groupTitle}>{group.title} ({group.orders.length})</h2>
+          {group.orders.length === 0 ? <div className={s.empty}><p>Aucune réservation dans cette catégorie.</p></div> : <div className={s.cards}>{group.orders.map(order => <article key={order.id} className={s.card + " " + s.reservation}>
+            <div className={s.cardTop}><h3>{order.offer.title}</h3><strong>{order.totalPrice.toFixed(2)} $</strong></div>
+            <span className={s.badge + " " + s.warning}>Confirmée · À récupérer</span>
+            <p className={s.help}>{order.user.firstName} {order.user.lastName}</p><p className={s.help}>Réservé le {formatDateTime(order.createdAt)} · Fin du créneau : {formatDateTime(order.offer.pickupEnd)}</p>
+            <div className={s.codeRow}><code>{order.pickupCode}</code><button type="button" onClick={() => handleValidate(order.pickupCode)} className={ui.secondary}>Utiliser</button></div>
+            <div className={s.actions}><button type="button" onClick={() => handleMerchantCancel(order.id)} disabled={cancelingId === order.id} className={s.dangerButton}>{cancelingId === order.id ? "Annulation…" : "Annuler et rembourser"}</button></div>
+          </article>)}</div>}
+        </section>)}
+        {[
+          { title: "Déjà récupérées", orders: recovered, label: "Récupérée", tone: s.success },
+          { title: "Annulées", orders: cancelled, label: "Annulée", tone: s.danger },
+        ].map(group => <section key={group.title}><h2 className={s.groupTitle}>{group.title} ({group.orders.length})</h2>
+          {group.orders.length === 0 ? <div className={s.empty}><p>Aucune réservation dans cette catégorie.</p></div> : <div className={s.cards}>{group.orders.map(order => <article key={order.id} className={s.card}>
+            <div className={s.cardTop}><h3>{order.offer.title}</h3><span className={s.badge + " " + group.tone}>{group.label}</span></div><p className={s.help}>{order.user.firstName} {order.user.lastName} · {order.totalPrice.toFixed(2)} $</p><p className={s.help}>Réservé le {formatDateTime(order.createdAt)}</p>
+            {order.status === "CANCELLED" && order.cancellationReason && <p className={s.help}>Motif : {order.cancellationReason}</p>}
+          </article>)}</div>}
+        </section>)}
+      </>}
+    </MerchantShell>
   );
 }
