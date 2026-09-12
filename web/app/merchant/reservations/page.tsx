@@ -260,10 +260,14 @@ export default function MerchantReservationsPage() {
       minute: "2-digit",
     });
   };
+  const now = Date.now();
   const toRecover = orders.filter(
     (o) =>
       o.status === "CONFIRMED" &&
-      new Date(o.offer.pickupEnd).getTime() >= Date.now()
+      new Date(o.offer.pickupEnd).getTime() >= now
+  );
+  const expired = orders.filter(
+    (o) => o.status === "CONFIRMED" && new Date(o.offer.pickupEnd).getTime() < now
   );
   const recovered = orders.filter((o) => o.status === "COMPLETED");
   const cancelled = orders.filter((o) => o.status === "CANCELLED");
@@ -359,14 +363,18 @@ export default function MerchantReservationsPage() {
 
       {!loadingOrders && !listError && (
         <div className="max-w-2xl mx-auto px-6 pb-20">
+          {[
+            { title: "À récupérer", orders: toRecover },
+            { title: "Fenêtre de récupération terminée", orders: expired },
+          ].map((group) => <section key={group.title}>
           <h2 className="text-sm uppercase tracking-wide font-bold mb-3" style={{ color: amber }}>
-            À récupérer ({toRecover.length})
+            {group.title} ({group.orders.length})
           </h2>
-          {toRecover.length === 0 ? (
-            <p className="text-sm mb-8" style={{ color: dim }}>Aucune réservation en attente de récupération.</p>
+          {group.orders.length === 0 ? (
+            <p className="text-sm mb-8" style={{ color: dim }}>Aucune réservation dans cette catégorie.</p>
           ) : (
             <div className="grid gap-3 mb-10">
-              {toRecover.map((order) => (
+              {group.orders.map((order) => (
                 <div
                   key={order.id}
                   className="rounded-2xl p-4"
@@ -414,6 +422,7 @@ export default function MerchantReservationsPage() {
               ))}
             </div>
           )}
+          </section>)}
 
           <h2 className="text-sm uppercase tracking-wide font-bold mb-3" style={{ color: jade }}>
             Déjà récupérées ({recovered.length})

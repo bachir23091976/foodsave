@@ -401,7 +401,10 @@ export const getMyOrders = async (req: AuthRequest, res: Response) => {
 
     const orders = await prisma.order.findMany({
       where: { userId },
-      include: { offer: { include: { merchant: true } } },
+      include: {
+        offer: { include: { merchant: true } },
+        customerCancellationRefund: { select: { refundStatus: true, updatedAt: true } },
+      },
       orderBy: { createdAt: "desc" },
     });
 

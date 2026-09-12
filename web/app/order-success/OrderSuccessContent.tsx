@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Bebas_Neue, Space_Grotesk } from "next/font/google";
 import { API_URL } from "../lib/api";
@@ -13,14 +13,32 @@ const amber = "#FFB100";
 const jade = "#17C989";
 const dim = "#8FA396";
 
+type ConfirmationResponse = {
+  ok: boolean;
+  data: {
+    order?: { status: string; pickupCode?: string };
+    qrCodeImage?: string;
+    message?: string;
+  };
+};
+
 export default function OrderSuccessContent() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("session_id");
   const [message, setMessage] = useState("Confirmation en cours...");
   const [qrCode, setQrCode] = useState("");
   const [pickupCode, setPickupCode] = useState("");
+  const confirmation = useRef<{
+    sessionId: string;
+    token: string;
+    response: Promise<ConfirmationResponse>;
+  } | null>(null);
 
   useEffect(() => {
+    let active = true;
+    setQrCode("");
+    setPickupCode("");
+    setMessage("Confirmation en cours...");
     if (!sessionId) {
       setMessage("Session de paiement introuvable");
       return;
@@ -32,25 +50,50 @@ export default function OrderSuccessContent() {
       return;
     }
 
-    fetch(`${API_URL}/orders/confirm`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ sessionId }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.order) {
-          setMessage("Réservation confirmée !");
-          setQrCode(data.qrCodeImage);
-          setPickupCode(data.order.pickupCode);
+    // Reuse an in-flight request during effect replay; never retry confirmation here.
+    if (confirmation.current?.sessionId !== sessionId || confirmation.current.token !== token) {
+      confirmation.current = {
+        sessionId, token,
+        response: fetch(`${API_URL}/orders/confirm`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ sessionId }),
+        }).then(async (res) => ({ ok: res.ok, data: await res.json() })),
+      };
+    }
+    confirmation.current.response
+      .then(({ ok, data }) => {
+        if (!active) return;
+        setQrCode("");
+        setPickupCode("");
+        if (ok && data.order) {
+          switch (data.order.status) {
+            case "CONFIRMED":
+              setMessage("Réservation confirmée !");
+              setQrCode(data.qrCodeImage || "");
+              setPickupCode(data.order.pickupCode || "");
+              break;
+            case "CANCELLED":
+              setMessage("Réservation annulée");
+              break;
+            case "COMPLETED":
+              setMessage("Réservation déjà récupérée");
+              break;
+            case "PENDING":
+              setMessage("Réservation en attente de confirmation");
+              break;
+            default:
+              setMessage("Statut de la réservation indisponible");
+          }
         } else {
           setMessage(data.message || "Erreur lors de la confirmation");
         }
       })
-      .catch(() => setMessage("Impossible de contacter le serveur"));
+      .catch(() => { if (active) setMessage("Impossible de contacter le serveur"); });
+    return () => { active = false; };
   }, [sessionId]);
 
   return (
@@ -75,15 +118,15 @@ export default function OrderSuccessContent() {
           {message.toUpperCase()}
         </h1>
 
-        {qrCode && (
+        {(qrCode || pickupCode) && (
           <div
             className="mt-10 rounded-2xl p-8 flex flex-col items-center"
             style={{ backgroundColor: "#0D1912", border: "1px solid rgba(255,255,255,0.1)" }}
           >
-            <img src={qrCode} alt="QR Code de récupération" className="w-48 h-48 rounded-xl" style={{ backgroundColor: "#F5F1E8" }} />
-            <p className="text-sm mt-4" style={{ color: dim }}>
+            {qrCode && <img src={qrCode} alt="QR Code de récupération" className="w-48 h-48 rounded-xl" style={{ backgroundColor: "#F5F1E8" }} />}
+            {pickupCode && <p className="text-sm mt-4 break-all" style={{ color: dim }}>
               Code : <span className="font-bold" style={{ color: amber }}>{pickupCode}</span>
-            </p>
+            </p>}
             <p className="text-sm mt-2 text-center max-w-xs" style={{ color: dim }}>
               Montrez ce code au commerçant lors de la récupération.
             </p>

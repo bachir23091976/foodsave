@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Navbar from "../components/Navbar";
 import { API_URL } from "../lib/api";
 
@@ -10,6 +10,7 @@ interface Order {
   totalPrice: number;
   pickupCode: string;
   cancellationReason?: string | null;
+  customerCancellationRefund?: { refundStatus: string; updatedAt: string } | null;
   createdAt: string;
   offer: {
     title: string;
@@ -27,7 +28,17 @@ const statusLabels: Record<Order["status"], string> = {
   PENDING: "En attente",
   CONFIRMED: "\u00c0 r\u00e9cup\u00e9rer",
   COMPLETED: "D\u00e9j\u00e0 r\u00e9cup\u00e9r\u00e9e",
-  CANCELLED: "Annul\u00e9e",
+  CANCELLED: "Réservation annulée",
+};
+
+const refundLabels: Record<string, string> = {
+  SUCCEEDED: "Remboursement effectué",
+  PENDING: "Remboursement en attente",
+  REQUIRES_ACTION: "Remboursement incomplet — vérification nécessaire",
+  UNKNOWN: "Résultat du remboursement en cours de vérification",
+  FAILED: "Remboursement nécessitant une vérification",
+  CANCELED: "Remboursement nécessitant une vérification",
+  NEEDS_REVIEW: "Remboursement nécessitant une vérification",
 };
 
 export default function ReservationsPage() {
@@ -36,27 +47,40 @@ export default function ReservationsPage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [cancelingId, setCancelingId] = useState<string | null>(null);
+  const cancellationInFlight = useRef(false);
+  const readVersion = useRef(0);
 
-  useEffect(() => {
+  const loadOrders = useCallback(async () => {
+    const version = ++readVersion.current;
+    setLoading(true);
+    setError("");
     const token = localStorage.getItem("token");
 
     if (!token) {
       setError("Vous devez etre connecte pour voir vos reservations");
+      setOrders([]);
       setLoading(false);
       return;
     }
 
-    fetch(`${API_URL}/orders/mine`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(async (res) => {
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message || "Erreur");
-        setOrders(data.orders || []);
-      })
-      .catch(() => setError("Impossible de charger vos reservations"))
-      .finally(() => setLoading(false));
+    try {
+      const res = await fetch(`${API_URL}/orders/mine`, {
+        headers: { Authorization: `Bearer ${token}` }, cache: "no-store",
+      });
+      const data = await res.json();
+      if (!res.ok || !Array.isArray(data.orders)) throw new Error("Invalid reservation response");
+      if (version === readVersion.current) setOrders(data.orders);
+    } catch {
+      if (version === readVersion.current) {
+        setOrders([]);
+        setError("Impossible de vérifier vos réservations. Actualisez leur état avant toute autre action.");
+      }
+    } finally {
+      if (version === readVersion.current) setLoading(false);
+    }
   }, []);
+
+  useEffect(() => { void loadOrders(); }, [loadOrders]);
 
   const formatDateTime = (iso: string) =>
     new Date(iso).toLocaleString("fr-CA", {
@@ -68,6 +92,7 @@ export default function ReservationsPage() {
     });
 
   const handleCancel = async (orderId: string) => {
+    if (cancellationInFlight.current) return;
     const confirmed = window.confirm(
       "Voulez-vous annuler cette commande ? Le remboursement sera envoye vers votre moyen de paiement initial."
     );
@@ -79,6 +104,9 @@ export default function ReservationsPage() {
       return;
     }
 
+    cancellationInFlight.current = true;
+    ++readVersion.current;
+    setLoading(false);
     setCancelingId(orderId);
     setMessage("");
 
@@ -99,15 +127,12 @@ export default function ReservationsPage() {
         return;
       }
 
-      setOrders((current) =>
-        current.map((order) =>
-          order.id === orderId ? { ...order, status: "CANCELLED" } : order
-        )
-      );
       setMessage(data.message);
     } catch {
       setMessage("Impossible de contacter le serveur");
     } finally {
+      await loadOrders();
+      cancellationInFlight.current = false;
       setCancelingId(null);
     }
   };
@@ -125,6 +150,7 @@ export default function ReservationsPage() {
 
       {loading && <p className="text-center">Chargement...</p>}
       {error && <p className="text-center" style={{ color: "#FF6B6B" }}>{error}</p>}
+      {error && <button type="button" onClick={() => void loadOrders()} disabled={loading || cancelingId !== null} className="block mx-auto my-4">Actualiser les réservations</button>}
       {message && <p className="text-center px-6 mb-4" style={{ color: "#FFB100" }}>{message}</p>}
 
       {!loading && !error && orders.length === 0 && (
@@ -134,7 +160,7 @@ export default function ReservationsPage() {
       )}
 
       <div className="grid gap-4 max-w-2xl mx-auto px-6 pb-20">
-        {orders.map((order) => (
+        {!loading && !error && orders.map((order) => (
           <article
             key={order.id}
             className="rounded-2xl p-5 grid gap-2"
@@ -145,7 +171,7 @@ export default function ReservationsPage() {
           >
             <div className="flex justify-between gap-3">
               <h2 className="font-bold text-lg">{order.offer.title}</h2>
-              <span style={{ color: "#37D67A" }}>{statusLabels[order.status]}</span>
+              <span style={{ color: "#37D67A" }}>{cancelingId === order.id ? "Vérification de la réservation…" : statusLabels[order.status]}</span>
             </div>
 
             <p>{order.offer.merchant.name} - {order.offer.merchant.city}</p>
@@ -153,9 +179,13 @@ export default function ReservationsPage() {
               Recuperation : {formatDateTime(order.offer.pickupStart)} - {formatDateTime(order.offer.pickupEnd)}
             </p>
             <p>Prix : <strong>{order.totalPrice.toFixed(2)} $</strong></p>
-            <p>
+            {order.status === "CONFIRMED" && cancelingId !== order.id && <p>
               Code de recuperation : <strong style={{ color: "#FFB100" }}>{order.pickupCode}</strong>
-            </p>
+            </p>}
+
+            {order.status === "CANCELLED" && order.customerCancellationRefund && (
+              <p role="status">{refundLabels[order.customerCancellationRefund.refundStatus] || "État du remboursement non disponible"}</p>
+            )}
 
             {order.status === "CANCELLED" && order.cancellationReason && (
               <p className="text-sm" style={{ color: "#FF6B6B" }}>
@@ -177,7 +207,7 @@ export default function ReservationsPage() {
                   <button
                     type="button"
                     onClick={() => handleCancel(order.id)}
-                    disabled={cancelingId === order.id}
+                    disabled={cancelingId !== null}
                     className="mt-2 self-start rounded-full px-5 py-2 text-sm font-bold"
                     style={{
                       backgroundColor: "rgba(255,107,107,0.12)",

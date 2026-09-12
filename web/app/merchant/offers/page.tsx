@@ -155,7 +155,7 @@ export default function MerchantOffersPage() {
                         : { backgroundColor: "rgba(255,255,255,0.08)", color: dim }
                     }
                   >
-                    {offer.quantity > 0 ? `${offer.quantity} restante(s)` : "Désactivée"}
+                    {offer.quantity > 0 ? `${offer.quantity} restante(s)` : "Indisponible"}
                   </span>
                 </div>
 
