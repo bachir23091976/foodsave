@@ -1,4 +1,5 @@
-﻿"use client";
+"use client";
+import { useLocale } from "../lib/i18n/LocaleProvider";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -7,6 +8,7 @@ import AuthShell, { FutureSocialSignIn } from "../components/AuthShell";
 import s from "../components/public.module.css";
 
 export default function RegisterPage() {
+  const { t, message: msg } = useLocale();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -31,7 +33,7 @@ export default function RegisterPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.message || "Erreur lors de l’inscription");
+        setError(data.message || "ui.unable_to_register");
         setLoading(false);
         return;
       }
@@ -39,36 +41,31 @@ export default function RegisterPage() {
       localStorage.setItem("token", data.token);
       router.push("/offers");
     } catch {
-      setError("Impossible de contacter le serveur");
+      setError("ui.unable_to_contact_the_server");
       setLoading(false);
     }
   };
 
   return (
-    <AuthShell title="Créez votre compte" subtitle="Vos prochaines découvertes gourmandes vous attendent.">
+    <AuthShell title={t("ui.create_your_account")} subtitle={t("ui.your_next_food_discoveries_are_waiting")}>
       <form onSubmit={handleSubmit} className={s.form}>
-        <label className={s.field} htmlFor="register-firstname">Prénom
-          <input id="register-firstname" type="text" autoComplete="given-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
+        <label className={s.field} htmlFor="register-firstname">{t("ui.first_name")}<input id="register-firstname" type="text" autoComplete="given-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
         </label>
-        <label className={s.field} htmlFor="register-lastname">Nom
-          <input id="register-lastname" type="text" autoComplete="family-name" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
+        <label className={s.field} htmlFor="register-lastname">{t("ui.last_name")}<input id="register-lastname" type="text" autoComplete="family-name" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
         </label>
-        <label className={s.field} htmlFor="register-email">Courriel
-          <input id="register-email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        <label className={s.field} htmlFor="register-email">{t("ui.email")}<input id="register-email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </label>
-        <label className={s.field} htmlFor="register-password">Mot de passe
-          <input id="register-password" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+        <label className={s.field} htmlFor="register-password">{t("ui.password")}<input id="register-password" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         </label>
-        <details><summary>Vous avez un code de parrainage ?</summary>
-          <label className={s.field} htmlFor="register-referral" style={{ marginTop: 12 }}>Code de parrainage (facultatif)
-            <input id="register-referral" type="text" value={referralCode} onChange={(e) => setReferralCode(e.target.value)} />
+        <details><summary>{t("ui.have_a_referral_code")}</summary>
+          <label className={s.field} htmlFor="register-referral" style={{ marginTop: 12 }}>{t("ui.referral_code_optional")}<input id="register-referral" type="text" value={referralCode} onChange={(e) => setReferralCode(e.target.value)} />
           </label>
         </details>
-        <button type="submit" disabled={loading} className={s.button}>{loading ? "Création…" : "Créer mon compte"}</button>
+        <button type="submit" disabled={loading} className={s.button}>{loading ? t("ui.creating") : t("ui.create_my_account")}</button>
       </form>
-      {error && <p role="alert" className={s.alert}>{error}</p>}
+      {error && <p role="alert" className={s.alert}>{msg(error)}</p>}
       <FutureSocialSignIn />
-      <p className={s.authFooter}>Déjà un compte ? <a href="/login">Se connecter</a></p>
+      <p className={s.authFooter}>{t("ui.already_have_an_account")}{" "}<a href="/login">{t("ui.sign_in")}</a></p>
     </AuthShell>
   );
 }

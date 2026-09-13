@@ -34,6 +34,8 @@ function mount(file, fetcher, { token = "customer-token", session = "cs_fixture"
     window: { confirm: () => true, prompt: () => "reason" },
     navigator: {}, setInterval: () => 1, clearInterval() {},
     require(name) {
+      if (name.endsWith("/i18n/LocaleProvider")) return { useLocale: () => require("./i18n-fixture.cjs").localeTools("fr") };
+      if (name.endsWith("/i18n/LanguageSelector")) return () => null;
       if (name.endsWith(".module.css")) return { __esModule: true, default: new Proxy({}, { get: (_, key) => String(key) }) };
       if (name === "react") return hooks;
       if (name === "react/jsx-runtime") return require(name);

@@ -1,4 +1,5 @@
-﻿"use client";
+"use client";
+import { useLocale } from "../lib/i18n/LocaleProvider";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -27,15 +28,15 @@ interface Offer {
 }
 
 const OFFER_CATEGORIES = [
-  { value: "TOUT", label: "Tout" },
-  { value: "EPICERIE", label: "\u00c9picerie" },
-  { value: "PLATS_PREPARES", label: "Plats pr\u00e9par\u00e9s" },
-  { value: "SANDWICHS", label: "Sandwichs" },
-  { value: "BOULANGERIE_PATISSERIE", label: "Boulangerie / P\u00e2tisserie" },
-  { value: "PIZZA_FAST_FOOD", label: "Pizza / Fast-food" },
-  { value: "FRUITS_LEGUMES", label: "Fruits et l\u00e9gumes" },
-  { value: "BOISSONS", label: "Boissons" },
-  { value: "AUTRE", label: "Autre" },
+  { value: "TOUT", label: "ui.all" },
+  { value: "EPICERIE", label: "ui.grocery" },
+  { value: "PLATS_PREPARES", label: "ui.prepared_meals" },
+  { value: "SANDWICHS", label: "ui.sandwiches" },
+  { value: "BOULANGERIE_PATISSERIE", label: "ui.bakery_pastries" },
+  { value: "PIZZA_FAST_FOOD", label: "ui.pizza_fast_food" },
+  { value: "FRUITS_LEGUMES", label: "ui.fruit_and_vegetables" },
+  { value: "BOISSONS", label: "ui.drinks" },
+  { value: "AUTRE", label: "ui.other" },
 ];
 
 function getRoleFromToken(token: string): string | null {
@@ -51,6 +52,7 @@ function getRoleFromToken(token: string): string | null {
 }
 
 export default function OffersPage() {
+  const { t, text: tr, message: msg, money, number, count, intlLocale } = useLocale();
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -72,7 +74,7 @@ export default function OffersPage() {
         setLoading(false);
       })
       .catch(function () {
-        setError("Impossible de charger les offres");
+        setError("ui.unable_to_load_offers");
         setLoading(false);
       });
   };
@@ -113,7 +115,7 @@ export default function OffersPage() {
 
   const formatTime = (iso: string) => {
     const date = new Date(iso);
-    return date.toLocaleTimeString("fr-CA", { hour: "2-digit", minute: "2-digit" });
+    return date.toLocaleTimeString(intlLocale, { hour: "2-digit", minute: "2-digit" });
   };
 
   const handleSearchNearby = async () => {
@@ -124,7 +126,7 @@ export default function OffersPage() {
       const geoRes = await fetch("https://nominatim.openstreetmap.org/search?q=" + encodeURIComponent(addressInput) + "&format=json&limit=1");
       const geoData = await geoRes.json();
       if (!geoData || geoData.length === 0) {
-        setSearchMessage("Adresse introuvable, essayez une adresse plus précise");
+        setSearchMessage("ui.address_not_found_try_a_more_specific_address");
         setSearching(false);
         return;
       }
@@ -134,17 +136,17 @@ export default function OffersPage() {
       const data = await res.json();
       setOffers(data.offers || []);
       if (!data.offers || data.offers.length === 0) {
-        setSearchMessage("Aucune offre trouvée près de cette adresse");
+        setSearchMessage("ui.no_offers_found_near_this_address");
       }
     } catch {
-      setSearchMessage("Erreur lors de la recherche");
+      setSearchMessage("ui.unable_to_complete_the_search");
     } finally {
       setSearching(false);
     }
   };
   const handleUseLocation = () => {
     if (!navigator.geolocation) {
-      setSearchMessage("La géolocalisation n'est pas disponible sur cet appareil");
+      setSearchMessage("ui.geolocation_is_not_available_on_this_device");
       return;
     }
 
@@ -162,17 +164,17 @@ export default function OffersPage() {
 
           setOffers(data.offers || []);
           if (!data.offers || data.offers.length === 0) {
-            setSearchMessage("Aucune offre trouvée près de votre position");
+            setSearchMessage("ui.no_offers_found_near_your_location");
           }
         } catch {
-          setSearchMessage("Erreur lors de la recherche par GPS");
+          setSearchMessage("ui.unable_to_search_using_your_location");
         } finally {
           setLocating(false);
         }
       },
       () => {
         setSearchMessage(
-          "Position refusée ou indisponible. Vous pouvez saisir une adresse."
+          "ui.location_denied_or_unavailable_you_can_enter_an_address"
         );
         setLocating(false);
       },
@@ -186,7 +188,7 @@ export default function OffersPage() {
   const handleReserve = async (offerId: string) => {
     const token = localStorage.getItem("token");
     if (!token) {
-      setConfirmations((prev) => ({ ...prev, [offerId]: "Vous devez être connecté pour réserver" }));
+      setConfirmations((prev) => ({ ...prev, [offerId]: "ui.sign_in_to_reserve" }));
       return;
     }
     setReserving(offerId);
@@ -198,13 +200,13 @@ export default function OffersPage() {
       });
       const data = await res.json();
       if (!res.ok || !data.checkoutUrl) {
-        setConfirmations((prev) => ({ ...prev, [offerId]: data.message || "Erreur lors de la réservation" }));
+        setConfirmations((prev) => ({ ...prev, [offerId]: data.message || "ui.unable_to_make_the_reservation" }));
         setReserving(null);
         return;
       }
       window.location.href = data.checkoutUrl;
     } catch {
-      setConfirmations((prev) => ({ ...prev, [offerId]: "Impossible de contacter le serveur" }));
+      setConfirmations((prev) => ({ ...prev, [offerId]: "ui.unable_to_contact_the_server" }));
       setReserving(null);
     }
   };
@@ -244,47 +246,47 @@ export default function OffersPage() {
       <Navbar />
       <div className={s.container}>
         <section className={s.marketIntro}>
-          <div><p className={s.eyebrow}>Ce soir à Ottawa</p><h1 className={s.title}>Sauvez de bons repas<br />près de chez vous</h1><p className={s.lede}>Découvrez les invendus de commerces locaux à prix réduit.</p></div>
-          <div className={s.accountActions}><Link href={isMerchant ? "/merchant/reservations" : "/reservations"} className={s.secondary}>{isMerchant ? "Réservations clients" : "Mes réservations"}</Link><NotificationBell /></div>
+          <div><p className={s.eyebrow}>{t("ui.tonight_in_ottawa")}</p><h1 className={s.title}>{t("ui.save_good_food")}<br />{t("ui.close_to_home")}</h1><p className={s.lede}>{t("ui.discover_surplus_food_from_local_businesses_at_reduced_prices")}</p></div>
+          <div className={s.accountActions}><Link href={isMerchant ? "/merchant/reservations" : "/reservations"} className={s.secondary}>{isMerchant ? t("ui.customer_reservations") : t("ui.my_reservations")}</Link><NotificationBell /></div>
         </section>
         <LoyaltyBanner />
-        <section className={s.search} aria-label="Rechercher des offres par lieu">
-          <label htmlFor="offers-address-search">Où souhaitez-vous récupérer votre repas ?</label>
+        <section className={s.search} aria-label={t("ui.search_offers_by_location")}>
+          <label htmlFor="offers-address-search">{t("ui.where_would_you_like_to_pick_up_your_meal")}</label>
           <div className={s.searchRow}>
-            <input id="offers-address-search" type="text" placeholder="Votre adresse ou votre quartier" value={addressInput} onChange={(e) => setAddressInput(e.target.value)} />
-            <button type="button" onClick={handleSearchNearby} disabled={searching} className={s.button}>{searching ? "Recherche…" : "Chercher"}</button>
-            <button type="button" onClick={handleUseLocation} disabled={locating || searching} className={s.secondary}><span aria-hidden="true">⌖</span>{locating ? "Localisation…" : "Utiliser ma position"}</button>
+            <input id="offers-address-search" type="text" placeholder={t("ui.your_address_or_neighbourhood")} value={addressInput} onChange={(e) => setAddressInput(e.target.value)} />
+            <button type="button" onClick={handleSearchNearby} disabled={searching} className={s.button}>{searching ? t("ui.searching") : t("ui.search")}</button>
+            <button type="button" onClick={handleUseLocation} disabled={locating || searching} className={s.secondary}><span aria-hidden="true">⌖</span>{locating ? t("ui.locating") : t("ui.use_my_location")}</button>
           </div>
-          <p className={s.searchNote}>Une adresse suffit pour explorer les offres à proximité.</p>
-          {searchMessage && <p role="status" className={s.searchNote}>{searchMessage}</p>}
+          <p className={s.searchNote}>{t("ui.enter_an_address_to_explore_nearby_offers")}</p>
+          {searchMessage && <p role="status" className={s.searchNote}>{msg(searchMessage)}</p>}
         </section>
-        <section className={s.filters} aria-label="Catégories d’offres"><div className={s.filterRow}>
-          {OFFER_CATEGORIES.map(category => <button key={category.value} type="button" onClick={() => setSelectedCategory(category.value)} aria-pressed={selectedCategory === category.value} className={s.chip}>{category.label}</button>)}
+        <section className={s.filters} aria-label={t("ui.offer_categories")}><div className={s.filterRow}>
+          {OFFER_CATEGORIES.map(category => <button key={category.value} type="button" onClick={() => setSelectedCategory(category.value)} aria-pressed={selectedCategory === category.value} className={s.chip}>{tr(category.label)}</button>)}
         </div></section>
-        <section className={s.results} aria-label="Offres disponibles" aria-busy={loading || searching || locating}>
-          {loading && <p className={s.empty} role="status">Recherche des offres disponibles…</p>}
-          {error && <p className={s.alert} role="alert">{error}</p>}
+        <section className={s.results} aria-label={t("ui.available_offers")} aria-busy={loading || searching || locating}>
+          {loading && <p className={s.empty} role="status">{t("ui.finding_available_offers")}</p>}
+          {error && <p className={s.alert} role="alert">{msg(error)}</p>}
           {!loading && !error && !searching && !locating && filteredOffers.length === 0 && <div className={s.empty}>
             <svg width="72" height="72" viewBox="0 0 72 72" fill="none" aria-hidden="true"><circle cx="36" cy="36" r="36" fill="#e0eacb" /><path d="m19 30 5 25h24l5-25H19Zm10 0v-5a7 7 0 0 1 14 0v5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /><path d="M31 42c6 0 10-6 10-6 1 8-3 13-9 12m-1 1 9-12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
-            <h2>{offers.length === 0 ? "Aucune offre près de vous pour le moment." : "Aucune offre dans cette catégorie pour le moment."}</h2>
-            <p>De nouvelles offres peuvent apparaître au cours de la journée.</p>
-            {selectedCategory !== "TOUT" && <button type="button" className={s.secondary} style={{ marginTop: 22 }} onClick={() => setSelectedCategory("TOUT")}>Voir toutes les catégories</button>}
+            <h2>{offers.length === 0 ? t("ui.no_offers_near_you_right_now") : t("ui.no_offers_in_this_category_right_now")}</h2>
+            <p>{t("ui.new_offers_may_appear_throughout_the_day")}</p>
+            {selectedCategory !== "TOUT" && <button type="button" className={s.secondary} style={{ marginTop: 22 }} onClick={() => setSelectedCategory("TOUT")}>{t("ui.view_all_categories")}</button>}
           </div>}
-          {!loading && !error && filteredOffers.length > 0 && <p className={s.resultsLabel}>{filteredOffers.length} offre{filteredOffers.length > 1 ? "s" : ""} à découvrir · Vérifiez le créneau de récupération</p>}
+          {!loading && !error && filteredOffers.length > 0 && <p className={s.resultsLabel}>{count("offers.count", "offers.countPlural", filteredOffers.length)}</p>}
           <div className={s.offerGrid}>{filteredOffers.map(offer => {
             const percent = Math.round(((offer.originalPrice - offer.discountedPrice) / offer.originalPrice) * 100);
             const isFavorite = favoriteMerchantIds.includes(offer.merchant.id);
             return <article key={offer.id} className={s.card}>
               <FoodSaveImage url={offer.imageUrl} alt={offer.title} variant="offer" merchantType={offer.merchant.type} />
               <div className={s.cardBody}>
-                <div className={s.cardTop}><div><h2>{offer.title}</h2><p className={s.merchant}>{offer.merchant.name} · {offer.merchant.city}{offer.distanceKm !== undefined && <span>· {offer.distanceKm.toFixed(1)} km</span>}</p></div><span className={s.badge}>−{percent} %</span></div>
+                <div className={s.cardTop}><div><h2>{offer.title}</h2><p className={s.merchant}>{offer.merchant.name} · {offer.merchant.city}{offer.distanceKm !== undefined && <span>· {number(offer.distanceKm, 1)} km</span>}</p></div><span className={s.badge}>−{percent} %</span></div>
                 {offer.description && <p className={s.muted} style={{ fontSize: 14, overflowWrap: "anywhere" }}>{offer.description}</p>}
-                <div className={s.cardTop}><p className={s.price}><strong>{offer.discountedPrice.toFixed(2)} $</strong><del>{offer.originalPrice.toFixed(2)} $</del></p><button type="button" className={s.favorite} onClick={() => toggleFavorite(offer.merchant.id)} aria-pressed={isFavorite} aria-label={isFavorite ? "Retirer des favoris" : "Ajouter aux favoris"}>{isFavorite ? "★" : "☆"}</button></div>
-                <p className={s.pickup}>Récupération : {formatTime(offer.pickupStart)} – {formatTime(offer.pickupEnd)}<br />{offer.quantity} disponible{offer.quantity > 1 ? "s" : ""}</p>
-                <p className={s.muted} style={{ fontSize: 12 }}>Annulation gratuite jusqu’à 60 minutes avant la récupération.</p>
-                <button type="button" onClick={() => handleReserve(offer.id)} disabled={reserving === offer.id || offer.quantity < 1} className={s.button}>{reserving === offer.id ? "Redirection…" : "Réserver"}</button>
-                <a href={"https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(offer.merchant.address + ", " + offer.merchant.city)} target="_blank" rel="noopener noreferrer" className={s.quiet}>Itinéraire ↗</a>
-                {confirmations[offer.id] && <p role="alert" className={s.alert}>{confirmations[offer.id]}</p>}
+                <div className={s.cardTop}><p className={s.price}><strong>{money(offer.discountedPrice)}</strong><del>{money(offer.originalPrice)}</del></p><button type="button" className={s.favorite} onClick={() => toggleFavorite(offer.merchant.id)} aria-pressed={isFavorite} aria-label={isFavorite ? t("ui.remove_from_favourites") : t("ui.add_to_favourites")}>{isFavorite ? "★" : "☆"}</button></div>
+                <p className={s.pickup}>{t("ui.pickup")}{" "}{formatTime(offer.pickupStart)} – {formatTime(offer.pickupEnd)}<br />{count("offers.available", "offers.availablePlural", offer.quantity)}</p>
+                <p className={s.muted} style={{ fontSize: 12 }}>{t("ui.free_cancellation_up_to_60_minutes_before_pickup")}</p>
+                <button type="button" onClick={() => handleReserve(offer.id)} disabled={reserving === offer.id || offer.quantity < 1} className={s.button}>{reserving === offer.id ? t("ui.redirecting") : t("ui.reserve")}</button>
+                <a href={"https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(offer.merchant.address + ", " + offer.merchant.city)} target="_blank" rel="noopener noreferrer" className={s.quiet}>{t("ui.directions_")}</a>
+                {confirmations[offer.id] && <p role="alert" className={s.alert}>{msg(confirmations[offer.id])}</p>}
               </div>
             </article>;
           })}</div>

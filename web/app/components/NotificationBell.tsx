@@ -1,4 +1,7 @@
 "use client";
+import { notificationMessage } from "../lib/i18n/messages";
+import { useLocale } from "../lib/i18n/LocaleProvider";
+
 
 import { useEffect, useState } from "react";
 import { API_URL } from "../lib/api";
@@ -11,6 +14,7 @@ interface Notification {
 }
 
 export default function NotificationBell() {
+  const { t } = useLocale();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [open, setOpen] = useState(false);
 
@@ -61,7 +65,7 @@ export default function NotificationBell() {
         type="button"
         onClick={() => setOpen(!open)}
         className="relative flex h-12 w-12 items-center justify-center rounded-xl border border-[#ccd6c7] bg-white text-[#215d43] hover:bg-[#edf3e4] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ad6816]"
-        aria-label="Notifications"
+        aria-label={t("ui.notifications")}
         aria-expanded={open}
         aria-controls="notifications-panel"
       >
@@ -75,9 +79,9 @@ export default function NotificationBell() {
 
       {open && (
         <div id="notifications-panel" className="absolute right-0 mt-3 w-80 max-w-[calc(100vw-2rem)] bg-white border border-[#dce2d8] rounded-2xl shadow-xl z-20 max-h-80 overflow-y-auto text-[#183e32]">
-          <p className="px-4 pt-4 pb-2 font-semibold text-sm">Vos notifications</p>
+          <p className="px-4 pt-4 pb-2 font-semibold text-sm">{t("ui.your_notifications")}</p>
           {notifications.length === 0 && (
-            <p className="p-4 text-sm text-gray-500">Aucune notification</p>
+            <p className="p-4 text-sm text-gray-500">{t("ui.no_notifications")}</p>
           )}
           {notifications.map((n) => (
             <button
@@ -88,7 +92,7 @@ export default function NotificationBell() {
                 n.isRead ? "text-[#59685e]" : "text-[#183e32] font-medium bg-[#edf3e4]"
               }`}
             >
-              {n.message}
+              {t(notificationMessage(n.message).key, notificationMessage(n.message).values)}
             </button>
           ))}
         </div>

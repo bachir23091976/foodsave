@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { cookies, headers } from "next/headers";
+import { LocaleProvider } from "./lib/i18n/LocaleProvider";
+import { canadianLocale, LOCALE_COOKIE, resolveLocale, translate } from "./lib/i18n/core";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -12,18 +15,22 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "FoodSave — Sauvez les surplus alimentaires",
-  description: "FoodSave connecte les commerces qui ont des surplus alimentaires aux clients qui veulent les sauver, à prix réduit.",
-};
+async function requestLocale() {
+  return resolveLocale((await cookies()).get(LOCALE_COOKIE)?.value, (await headers()).get('accept-language'));
+}
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await requestLocale();
+  return { title: translate(locale, 'metadata.title'), description: translate(locale, 'metadata.description') };
+}
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const locale = await requestLocale();
   return (
     <html
-      lang="fr-CA"
+      lang={canadianLocale(locale)}
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col"><LocaleProvider initialLocale={locale}>{children}</LocaleProvider></body>
     </html>
   );
 }

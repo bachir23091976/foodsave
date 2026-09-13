@@ -32,6 +32,8 @@ function mount(route, fetcher, { token = "merchant-fixture" } = {}) {
     navigator: { mediaDevices: { getUserMedia: async () => { throw Error("Camera denied"); } } },
     cancelAnimationFrame() {}, requestAnimationFrame() { throw Error("No camera frames expected"); },
     require(name) {
+      if (name.endsWith("/i18n/LocaleProvider")) return { useLocale: () => require("./i18n-fixture.cjs").localeTools("fr") };
+      if (name.endsWith("/i18n/LanguageSelector")) return () => null;
       if (name === "react") return hooks;
       if (name === "react/jsx-runtime") return require(name);
       if (name.endsWith(".module.css")) return { __esModule: true, default: new Proxy({}, { get: (_, key) => String(key) }) };
@@ -131,7 +133,7 @@ for (const route of ["offers", "sales"]) {
 }
 test("sales render returned figures without claiming bank receipt", async () => {
   const page = mount("sales", () => response({ summary: { totalSales: 1, totalRevenue: 5, totalCommission: .75, totalNet: 4.25 }, sales: [{ id: "s", title: "Pain", totalPrice: 5, commission: .75, net: 4.25, date: "2026-09-15" }] }));
-  const html = await page.settle(); assert.ok(html.includes("4.25")); assert.ok(html.includes("Montant net des ventes")); assert.ok(html.includes("ne confirment pas qu’un versement"));
+  const html = await page.settle(); assert.ok(html.includes("4,25")); assert.ok(html.includes("Montant net des ventes")); assert.ok(html.includes("ne confirment pas qu’un versement"));
 });
 test("manual pickup preserves exact validation request; camera denial offers fallback", async () => {
   const page = mount("reservations", (url, options) => response(options.method === "POST" ? {} : { orders: [] }));

@@ -1,4 +1,6 @@
 "use client";
+import { useLocale } from "../../lib/i18n/LocaleProvider";
+
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -22,6 +24,7 @@ interface Offer {
 }
 
 export default function MerchantOffersPage() {
+  const { t, message: msg, money, number, count, intlLocale } = useLocale();
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -30,7 +33,7 @@ export default function MerchantOffersPage() {
   const loadOffers = () => {
     const token = localStorage.getItem("token");
     if (!token) {
-      setError("Vous devez être connecté");
+      setError("ui.you_must_be_signed_in");
       setLoading(false);
       return;
     }
@@ -45,7 +48,7 @@ export default function MerchantOffersPage() {
         setLoading(false);
       })
       .catch(() => {
-        setError("Impossible de charger vos offres");
+        setError("ui.unable_to_load_your_offers");
         setLoading(false);
       });
   };
@@ -56,13 +59,13 @@ export default function MerchantOffersPage() {
 
   const handleDeactivate = async (offerId: string, offerTitle: string) => {
     const confirmed = window.confirm(
-      `Désactiver l'offre "${offerTitle}" ? Elle ne sera plus visible dans les offres publiques.`
+      t("offers.deactivate", { title: offerTitle })
     );
     if (!confirmed) return;
 
     const token = localStorage.getItem("token");
     if (!token) {
-      setError("Vous devez être connecté");
+      setError("ui.you_must_be_signed_in");
       return;
     }
 
@@ -76,13 +79,13 @@ export default function MerchantOffersPage() {
       const data = await res.json().catch(() => null);
 
       if (!res.ok) {
-        setError(data?.message || "Impossible de désactiver l'offre");
+        setError(data?.message || "ui.unable_to_deactivate_the_offer");
         return;
       }
 
       loadOffers();
     } catch {
-      setError("Impossible de contacter le serveur");
+      setError("ui.unable_to_contact_the_server");
     } finally {
       setDeactivatingId(null);
     }
@@ -90,7 +93,7 @@ export default function MerchantOffersPage() {
 
   const formatDateTime = (iso: string) => {
     const date = new Date(iso);
-    return date.toLocaleString("fr-CA", {
+    return date.toLocaleString(intlLocale, {
       day: "2-digit",
       month: "2-digit",
       hour: "2-digit",
@@ -99,19 +102,19 @@ export default function MerchantOffersPage() {
   };
 
   return (
-    <MerchantShell title="Mes offres" description="Retrouvez les offres de votre commerce et leurs quantités disponibles." action={<Link href="/merchant/new-offer" className={ui.button}>Créer une offre +</Link>}>
-      {loading && <p role="status" className={s.notice}>Chargement de vos offres…</p>}
-      {error && <p role="alert" className={s.notice + " " + s.error}>{error}</p>}
-      {!loading && !error && offers.length === 0 && <div className={s.empty}><h2>Votre première offre commence ici.</h2><p>Présentez vos invendus, leur prix et un créneau de récupération.</p><Link href="/merchant/new-offer" className={ui.secondary} style={{ marginTop: 20 }}>Créer une offre</Link></div>}
+    <MerchantShell title={t("ui.my_offers")} description={t("ui.view_your_businesss_offers_and_available_quantities")} action={<Link href="/merchant/new-offer" className={ui.button}>{t("ui.create_an_offer_")}</Link>}>
+      {loading && <p role="status" className={s.notice}>{t("ui.loading_your_offers")}</p>}
+      {error && <p role="alert" className={s.notice + " " + s.error}>{msg(error)}</p>}
+      {!loading && !error && offers.length === 0 && <div className={s.empty}><h2>{t("ui.your_first_offer_starts_here")}</h2><p>{t("ui.describe_your_surplus_its_price_and_a_pickup_window")}</p><Link href="/merchant/new-offer" className={ui.secondary} style={{ marginTop: 20 }}>{t("ui.create_an_offer")}</Link></div>}
       {!loading && !error && <div className={s.cards}>{offers.map((offer) => <article key={offer.id} className={s.card + " " + s.offerCard}>
         <div className={s.offerImage}><FoodSaveImage url={offer.imageUrl} alt={offer.title} variant="offer" merchantType={null} /></div>
         <div className={s.offerBody}>
-          <div className={s.cardTop}><h2>{offer.title}</h2><span className={s.badge + (offer.quantity > 0 ? " " + s.success : "")}>{offer.quantity > 0 ? offer.quantity + " restante(s)" : "Indisponible"}</span></div>
+          <div className={s.cardTop}><h2>{offer.title}</h2><span className={s.badge + (offer.quantity > 0 ? " " + s.success : "")}>{offer.quantity > 0 ? count("offers.remaining", "offers.remainingPlural", offer.quantity) : t("ui.unavailable")}</span></div>
           {offer.description && <p className={s.muted} style={{ overflowWrap: "anywhere" }}>{offer.description}</p>}
-          <p className={s.price}><strong>{offer.discountedPrice.toFixed(2)} $</strong><del>{offer.originalPrice.toFixed(2)} $</del></p>
-          <p className={s.help}>Récupération : {formatDateTime(offer.pickupStart)} – {formatDateTime(offer.pickupEnd)}</p>
-          <p className={s.help}>Publiée le {formatDateTime(offer.createdAt)}</p>
-          {offer.quantity > 0 && <div className={s.actions}><button type="button" onClick={() => handleDeactivate(offer.id, offer.title)} disabled={deactivatingId === offer.id} className={s.dangerButton}>{deactivatingId === offer.id ? "Désactivation…" : "Désactiver"}</button></div>}
+          <p className={s.price}><strong>{money(offer.discountedPrice)}</strong><del>{money(offer.originalPrice)}</del></p>
+          <p className={s.help}>{t("ui.pickup")}{" "}{formatDateTime(offer.pickupStart)} – {formatDateTime(offer.pickupEnd)}</p>
+          <p className={s.help}>{t("ui.published_on")}{" "}{formatDateTime(offer.createdAt)}</p>
+          {offer.quantity > 0 && <div className={s.actions}><button type="button" onClick={() => handleDeactivate(offer.id, offer.title)} disabled={deactivatingId === offer.id} className={s.dangerButton}>{deactivatingId === offer.id ? t("ui.deactivating") : t("ui.deactivate")}</button></div>}
         </div>
       </article>)}</div>}
     </MerchantShell>

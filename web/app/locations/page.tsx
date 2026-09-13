@@ -1,4 +1,6 @@
 "use client";
+import { useLocale } from "../lib/i18n/LocaleProvider";
+
 
 import { useEffect, useState } from "react";
 import { Bebas_Neue, Space_Grotesk } from "next/font/google";
@@ -28,6 +30,7 @@ interface SavedLocation {
 }
 
 export default function LocationsPage() {
+  const { t, message: msg } = useLocale();
   const [locations, setLocations] = useState<SavedLocation[]>([]);
   const [label, setLabel] = useState("");
   const [address, setAddress] = useState("");
@@ -57,7 +60,7 @@ export default function LocationsPage() {
 
     const token = localStorage.getItem("token");
     if (!token) {
-      setMessage("Vous devez être connecté");
+      setMessage("ui.you_must_be_signed_in");
       setLoading(false);
       return;
     }
@@ -75,17 +78,17 @@ export default function LocationsPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setMessage(data.message || "Erreur");
+        setMessage(data.message || "ui.something_went_wrong");
         setLoading(false);
         return;
       }
 
-      setMessage("Adresse enregistrée !");
+      setMessage("ui.address_saved");
       setLabel("");
       setAddress("");
       loadLocations();
     } catch {
-      setMessage("Impossible de contacter le serveur");
+      setMessage("ui.unable_to_contact_the_server");
     } finally {
       setLoading(false);
     }
@@ -113,33 +116,30 @@ export default function LocationsPage() {
 
       <section className="px-6 pt-14 pb-6 text-center">
         <p className="text-xs tracking-[0.4em] uppercase mb-3" style={{ color: jade }}>
-          A proximite
-        </p>
+          {t("ui.nearby")}</p>
         <h1 className={display.className} style={{ fontSize: "clamp(2.2rem, 6vw, 4rem)" }}>
-          MES ADRESSES
-        </h1>
+          {t("ui.my_addresses")}</h1>
         <p className="mt-3 max-w-md mx-auto" style={{ color: dim }}>
-          Enregistrez vos adresses pour recevoir une alerte des qu une offre apparait pres de chez vous.
-        </p>
+          {t("ui.save_your_addresses_to_find_them_easily_later")}</p>
       </section>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full max-w-sm mx-auto px-6 mb-10">
-        <label htmlFor="location-label" className="sr-only">Nom (ex: Domicile, Travail)</label>
+        <label htmlFor="location-label" className="sr-only">{t("ui.name_eg_home_work")}</label>
         <input
           id="location-label"
           type="text"
-          placeholder="Nom (ex: Domicile, Travail)"
+          placeholder={t("ui.name_eg_home_work")}
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           className="rounded-full px-5 py-3 outline-none"
           style={inputStyle}
           required
         />
-        <label htmlFor="location-address" className="sr-only">Adresse</label>
+        <label htmlFor="location-address" className="sr-only">{t("ui.address")}</label>
         <input
           id="location-address"
           type="text"
-          placeholder="Adresse"
+          placeholder={t("ui.address")}
           value={address}
           onChange={(e) => setAddress(e.target.value)}
           className="rounded-full px-5 py-3 outline-none"
@@ -152,11 +152,11 @@ export default function LocationsPage() {
           className="rounded-full px-6 py-3 font-bold uppercase tracking-wide text-sm"
           style={{ backgroundColor: amber, color: bg, opacity: loading ? 0.6 : 1 }}
         >
-          {loading ? "Enregistrement..." : "Enregistrer cette adresse"}
+          {loading ? t("ui.saving") : t("ui.save_this_address")}
         </button>
       </form>
 
-      {message && <p className="text-center mb-4" style={{ color: dim }}>{message}</p>}
+      {message && <p className="text-center mb-4" style={{ color: dim }}>{msg(message)}</p>}
 
       <div className="w-full max-w-sm mx-auto px-6 pb-20 flex flex-col gap-3">
         {locations.map((loc, index) => (
@@ -174,8 +174,7 @@ export default function LocationsPage() {
                 className="text-sm"
                 style={{ color: "#FF6B6B" }}
               >
-                Supprimer
-              </button>
+                {t("ui.delete")}</button>
             </div>
           </ScrollReveal>
         ))}

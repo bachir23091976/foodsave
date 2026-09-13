@@ -1,4 +1,6 @@
 "use client";
+import { useLocale } from "../lib/i18n/LocaleProvider";
+
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Navbar from "../components/Navbar";
@@ -25,23 +27,24 @@ interface Order {
 }
 
 const statusLabels: Record<Order["status"], string> = {
-  PENDING: "En attente",
-  CONFIRMED: "\u00c0 r\u00e9cup\u00e9rer",
-  COMPLETED: "D\u00e9j\u00e0 r\u00e9cup\u00e9r\u00e9e",
-  CANCELLED: "Réservation annulée",
+  PENDING: "ui.pending",
+  CONFIRMED: "ui.awaiting_pickup",
+  COMPLETED: "ui.already_picked_up",
+  CANCELLED: "ui.reservation_cancelled",
 };
 
 const refundLabels: Record<string, string> = {
-  SUCCEEDED: "Remboursement effectué",
-  PENDING: "Remboursement en attente",
-  REQUIRES_ACTION: "Remboursement incomplet — vérification nécessaire",
-  UNKNOWN: "Résultat du remboursement en cours de vérification",
-  FAILED: "Remboursement nécessitant une vérification",
-  CANCELED: "Remboursement nécessitant une vérification",
-  NEEDS_REVIEW: "Remboursement nécessitant une vérification",
+  SUCCEEDED: "ui.refund_completed",
+  PENDING: "ui.refund_pending",
+  REQUIRES_ACTION: "ui.refund_incomplete_review_needed",
+  UNKNOWN: "ui.refund_outcome_under_review",
+  FAILED: "ui.refund_requires_review",
+  CANCELED: "ui.refund_requires_review",
+  NEEDS_REVIEW: "ui.refund_requires_review",
 };
 
 export default function ReservationsPage() {
+  const { t, text: tr, message: msg, money, number, intlLocale } = useLocale();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -57,7 +60,7 @@ export default function ReservationsPage() {
     const token = localStorage.getItem("token");
 
     if (!token) {
-      setError("Vous devez etre connecte pour voir vos reservations");
+      setError("ui.sign_in_to_view_your_reservations");
       setOrders([]);
       setLoading(false);
       return;
@@ -73,7 +76,7 @@ export default function ReservationsPage() {
     } catch {
       if (version === readVersion.current) {
         setOrders([]);
-        setError("Impossible de vérifier vos réservations. Actualisez leur état avant toute autre action.");
+        setError("ui.unable_to_verify_your_reservations_refresh_their_status_before");
       }
     } finally {
       if (version === readVersion.current) setLoading(false);
@@ -83,7 +86,7 @@ export default function ReservationsPage() {
   useEffect(() => { void loadOrders(); }, [loadOrders]);
 
   const formatDateTime = (iso: string) =>
-    new Date(iso).toLocaleString("fr-CA", {
+    new Date(iso).toLocaleString(intlLocale, {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -94,13 +97,13 @@ export default function ReservationsPage() {
   const handleCancel = async (orderId: string) => {
     if (cancellationInFlight.current) return;
     const confirmed = window.confirm(
-      "Voulez-vous annuler cette commande ? Le remboursement sera envoye vers votre moyen de paiement initial."
+      t("ui.cancel_this_order_any_refund_will_go_to_your")
     );
     if (!confirmed) return;
 
     const token = localStorage.getItem("token");
     if (!token) {
-      setMessage("Vous devez etre connecte");
+      setMessage("ui.you_must_be_signed_in_2");
       return;
     }
 
@@ -123,13 +126,13 @@ export default function ReservationsPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setMessage(data.message || "Impossible d'annuler la commande");
+        setMessage(data.message || "ui.unable_to_cancel_the_order");
         return;
       }
 
       setMessage(data.message);
     } catch {
-      setMessage("Impossible de contacter le serveur");
+      setMessage("ui.unable_to_contact_the_server");
     } finally {
       await loadOrders();
       cancellationInFlight.current = false;
@@ -143,20 +146,18 @@ export default function ReservationsPage() {
 
       <section className="px-6 pt-14 pb-6 text-center">
         <p className="text-xs tracking-[0.4em] uppercase mb-3" style={{ color: "#37D67A" }}>
-          Mes achats FoodSave
-        </p>
-        <h1 className="text-4xl font-bold">MES RESERVATIONS</h1>
+          {t("ui.my_foodsave_purchases")}</p>
+        <h1 className="text-4xl font-bold">{t("ui.my_reservations_2")}</h1>
       </section>
 
-      {loading && <p className="text-center">Chargement...</p>}
-      {error && <p className="text-center" style={{ color: "#FF6B6B" }}>{error}</p>}
-      {error && <button type="button" onClick={() => void loadOrders()} disabled={loading || cancelingId !== null} className="block mx-auto my-4">Actualiser les réservations</button>}
-      {message && <p className="text-center px-6 mb-4" style={{ color: "#FFB100" }}>{message}</p>}
+      {loading && <p className="text-center">{t("ui.loading")}</p>}
+      {error && <p className="text-center" style={{ color: "#FF6B6B" }}>{msg(error)}</p>}
+      {error && <button type="button" onClick={() => void loadOrders()} disabled={loading || cancelingId !== null} className="block mx-auto my-4">{t("ui.refresh_reservations")}</button>}
+      {message && <p className="text-center px-6 mb-4" style={{ color: "#FFB100" }}>{msg(message)}</p>}
 
       {!loading && !error && orders.length === 0 && (
         <p className="text-center" style={{ color: "#8FA396" }}>
-          Vous n'avez encore aucune reservation.
-        </p>
+          {t("ui.you_have_no_reservations_yet")}</p>
       )}
 
       <div className="grid gap-4 max-w-2xl mx-auto px-6 pb-20">
@@ -171,25 +172,25 @@ export default function ReservationsPage() {
           >
             <div className="flex justify-between gap-3">
               <h2 className="font-bold text-lg">{order.offer.title}</h2>
-              <span style={{ color: "#37D67A" }}>{cancelingId === order.id ? "Vérification de la réservation…" : statusLabels[order.status]}</span>
+              <span style={{ color: "#37D67A" }}>{cancelingId === order.id ? t("ui.checking_the_reservation") : tr(statusLabels[order.status])}</span>
             </div>
 
             <p>{order.offer.merchant.name} - {order.offer.merchant.city}</p>
             <p style={{ color: "#8FA396" }}>
-              Recuperation : {formatDateTime(order.offer.pickupStart)} - {formatDateTime(order.offer.pickupEnd)}
+              {t("ui.pickup_2")}{" "}{formatDateTime(order.offer.pickupStart)} - {formatDateTime(order.offer.pickupEnd)}
             </p>
-            <p>Prix : <strong>{order.totalPrice.toFixed(2)} $</strong></p>
+            <p>{t("ui.price")}{" "}<strong>{money(order.totalPrice)}</strong></p>
             {order.status === "CONFIRMED" && cancelingId !== order.id && <p>
-              Code de recuperation : <strong style={{ color: "#FFB100" }}>{order.pickupCode}</strong>
+              {t("ui.pickup_code")}{" "}<strong style={{ color: "#FFB100" }}>{order.pickupCode}</strong>
             </p>}
 
             {order.status === "CANCELLED" && order.customerCancellationRefund && (
-              <p role="status">{refundLabels[order.customerCancellationRefund.refundStatus] || "État du remboursement non disponible"}</p>
+              <p role="status">{tr(refundLabels[order.customerCancellationRefund.refundStatus] || t("ui.refund_status_unavailable"))}</p>
             )}
 
             {order.status === "CANCELLED" && order.cancellationReason && (
               <p className="text-sm" style={{ color: "#FF6B6B" }}>
-                Motif : {order.cancellationReason}
+                {t("ui.reason")}{" "}{order.cancellationReason}
               </p>
             )}
 
@@ -197,7 +198,7 @@ export default function ReservationsPage() {
               Date.now() < new Date(order.offer.pickupStart).getTime() - 60 * 60 * 1000 ? (
                 <>
                   <p className="text-sm" style={{ color: "#8FA396" }}>
-                    Annulation possible jusqu'a{" "}
+                    {t("ui.cancellation_available_until")}{" "}
                     {formatDateTime(
                       new Date(
                         new Date(order.offer.pickupStart).getTime() - 60 * 60 * 1000
@@ -215,13 +216,12 @@ export default function ReservationsPage() {
                       border: "1px solid rgba(255,107,107,0.35)",
                     }}
                   >
-                    {cancelingId === order.id ? "Annulation..." : "Annuler la commande"}
+                    {cancelingId === order.id ? t("ui.cancelling") : t("ui.cancel_order")}
                   </button>
                 </>
               ) : (
                 <p className="text-sm" style={{ color: "#FF6B6B" }}>
-                  Delai d'annulation depasse
-                </p>
+                  {t("ui.cancellation_deadline_passed")}</p>
               )
             )}
           </article>

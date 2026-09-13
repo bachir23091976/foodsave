@@ -191,3 +191,13 @@
 @media (prefers-reduced-motion: reduce) {
   .page *, .nav *, .footer * { transition: none !important; animation: none !important; }
 }
+
+.languageSelector { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 2px; padding: 3px; border: 1px solid #ccd6c7; border-radius: 9px; background: #faf8f2; color: #183e32; font: 600 12px var(--font-geist-sans), sans-serif; }
+.languageSelector button { min-width: 30px; min-height: 40px; padding: 4px; border: 0; border-radius: 6px; background: transparent; color: inherit; cursor: pointer; }
+.languageSelector button[aria-pressed='true'] { background: #e4ecd9; }
+.languageSelector button:focus-visible { outline: 2px solid #ad6816; outline-offset: 2px; }
+@media (max-width: 600px) { .navInner { gap: 10px; } .languageSelector { margin-left: auto; } }
+
+.filePicker { display: grid; gap: 10px; min-width: 0; overflow-wrap: anywhere; }
+.filePicker label { justify-self: start; cursor: pointer; }
+.filePicker:focus-within { outline: 2px solid #ad6816; outline-offset: 4px; border-radius: 8px; }

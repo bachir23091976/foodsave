@@ -1,4 +1,6 @@
 "use client";
+import { useLocale } from "../../lib/i18n/LocaleProvider";
+
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -29,6 +31,7 @@ interface StripeStatus {
 }
 
 export default function MerchantProfilePage() {
+  const { t, message: msg } = useLocale();
   const [name, setName] = useState("");
   const [type, setType] = useState("RESTAURANT");
   const [description, setDescription] = useState("");
@@ -50,7 +53,7 @@ export default function MerchantProfilePage() {
     const token = localStorage.getItem("token");
     if (!token) {
       setLoadingMerchant(false);
-      setProfileError("Vous devez être connecté pour consulter votre commerce.");
+      setProfileError("ui.sign_in_to_view_your_business");
       return;
     }
 
@@ -64,7 +67,7 @@ export default function MerchantProfilePage() {
           setMerchant(data.merchant);
         }
       })
-      .catch(() => setProfileError("Impossible de charger votre profil. Actualisez la page avant de continuer."))
+      .catch(() => setProfileError("ui.unable_to_load_your_profile_refresh_the_page_before"))
       .finally(() => setLoadingMerchant(false));
   }, []);
 
@@ -101,7 +104,7 @@ export default function MerchantProfilePage() {
 
     const token = localStorage.getItem("token");
     if (!token) {
-      setMessage("Vous devez être connecté");
+      setMessage("ui.you_must_be_signed_in");
       return;
     }
 
@@ -119,14 +122,14 @@ export default function MerchantProfilePage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setMessage(data.message || "Une erreur est survenue");
+        setMessage(data.message || "ui.something_went_wrong");
         return;
       }
 
-      setMessage("Profil de commerce créé avec succès !");
+      setMessage("ui.business_profile_created_successfully");
       setMerchant(data.merchant);
     } catch {
-      setMessage("Impossible de contacter le serveur");
+      setMessage("ui.unable_to_contact_the_server");
     } finally {
       setSubmittingProfile(false);
     }
@@ -153,46 +156,46 @@ export default function MerchantProfilePage() {
       if (res.ok && data.url) {
         window.location.href = data.url;
       } else {
-        setMessage(data.message || "Erreur lors de la connexion à Stripe");
+        setMessage(data.message || "ui.unable_to_connect_to_stripe");
       }
     } catch {
-      setMessage("Impossible de contacter le serveur");
+      setMessage("ui.unable_to_contact_the_server");
     } finally {
       setConnectingStripe(false);
     }
   };
 
   return (
-    <MerchantShell title="Mon commerce" description="Votre profil, vos offres et vos paiements : l’essentiel pour votre journée." action={merchant && <Link href="/merchant/new-offer" className={ui.button}>Créer une offre +</Link>}>
-      {loadingMerchant ? <p role="status" className={s.notice}>Chargement de votre commerce…</p> : profileError ? <p role="alert" className={s.notice + " " + s.error}>{profileError}</p> : merchant ? <>
-        <div className={s.quickLinks}><Link href="/merchant/offers">Mes offres →<small>Consultez vos quantités et disponibilités</small></Link><Link href="/merchant/reservations">Réservations →<small>Accueillez vos clients et validez les récupérations</small></Link></div>
+    <MerchantShell title={t("ui.my_business")} description={t("ui.your_profile_offers_and_payments_everything_you_need_for")} action={merchant && <Link href="/merchant/new-offer" className={ui.button}>{t("ui.create_an_offer_")}</Link>}>
+      {loadingMerchant ? <p role="status" className={s.notice}>{t("ui.loading_your_business")}</p> : profileError ? <p role="alert" className={s.notice + " " + s.error}>{msg(profileError)}</p> : merchant ? <>
+        <div className={s.quickLinks}><Link href="/merchant/offers">{t("ui.my_offers_")}<small>{t("ui.check_your_quantities_and_availability")}</small></Link><Link href="/merchant/reservations">{t("ui.reservations_")}<small>{t("ui.welcome_customers_and_validate_pickups")}</small></Link></div>
         <div className={s.twoColumns}>
-          <section className={s.panel}><div className={s.cardTop}><h2>{merchant.name}</h2><span className={s.badge}>Profil enregistré</span></div><p className={s.muted}>{({ RESTAURANT: "Restaurant", CAFE: "Café", BAKERY: "Boulangerie", GROCERY: "Épicerie", SUPERMARKET: "Grande surface", HOTEL: "Hôtel", OTHER: "Autre" } as Record<string,string>)[merchant.type] || merchant.type}</p>
+          <section className={s.panel}><div className={s.cardTop}><h2>{merchant.name}</h2><span className={s.badge}>{t("ui.profile_saved")}</span></div><p className={s.muted}>{({ RESTAURANT: t("ui.restaurant"), CAFE: t("ui.cafe"), BAKERY: t("ui.bakery"), GROCERY: t("ui.grocery"), SUPERMARKET: t("ui.supermarket"), HOTEL: t("ui.hotel"), OTHER: t("ui.other") } as Record<string,string>)[merchant.type] || merchant.type}</p>
             {merchant.description && <p className={s.help}>{merchant.description}</p>}
-            <dl className={s.facts}><div><dt>Adresse du commerce</dt><dd>{merchant.address}, {merchant.city}, {merchant.province} {merchant.postalCode}</dd></div>{merchant.phone && <div><dt>Téléphone</dt><dd>{merchant.phone}</dd></div>}</dl>
+            <dl className={s.facts}><div><dt>{t("ui.business_address")}</dt><dd>{merchant.address}, {merchant.city}, {merchant.province} {merchant.postalCode}</dd></div>{merchant.phone && <div><dt>{t("ui.phone")}</dt><dd>{merchant.phone}</dd></div>}</dl>
           </section>
-          <section id="paiements" className={s.panel + " " + s.payment}><h2>Vos paiements</h2><p className={s.help}>Stripe est notre partenaire de paiement. Configurez votre compte pour recevoir les paiements des clients et les versements admissibles.</p>
-            <div className={s.paymentStatus} role="status">{loadingStripeStatus ? "Vérification de votre compte…" : stripeStatus?.status === "READY" ? <span className={s.badge + " " + s.success}>Configuration prête</span> : stripeStatus?.status === "ONBOARDING_INCOMPLETE" ? <span className={s.badge + " " + s.warning}>Configuration ou vérification incomplète</span> : stripeStatus?.status === "NOT_CONNECTED" ? <span className={s.badge}>Paiements non connectés</span> : "Statut momentanément indisponible."}</div>
-            {!loadingStripeStatus && stripeStatus?.status !== "READY" && <button onClick={handleConnectStripe} disabled={connectingStripe} className={ui.button}>{connectingStripe ? "Connexion…" : stripeStatus?.status === "ONBOARDING_INCOMPLETE" ? "Continuer la configuration" : "Configurer mes paiements"}</button>}
-            <p className={s.help}>Le calendrier des versements dépend de votre compte et de son admissibilité.</p>
+          <section id="paiements" className={s.panel + " " + s.payment}><h2>{t("ui.your_payments")}</h2><p className={s.help}>{t("ui.stripe_is_our_payment_partner_set_up_your_account")}</p>
+            <div className={s.paymentStatus} role="status">{loadingStripeStatus ? t("ui.checking_your_account") : stripeStatus?.status === "READY" ? <span className={s.badge + " " + s.success}>{t("ui.setup_ready")}</span> : stripeStatus?.status === "ONBOARDING_INCOMPLETE" ? <span className={s.badge + " " + s.warning}>{t("ui.setup_or_verification_incomplete")}</span> : stripeStatus?.status === "NOT_CONNECTED" ? <span className={s.badge}>{t("ui.payments_not_connected")}</span> : t("ui.status_temporarily_unavailable")}</div>
+            {!loadingStripeStatus && stripeStatus?.status !== "READY" && <button onClick={handleConnectStripe} disabled={connectingStripe} className={ui.button}>{connectingStripe ? t("merchant.connecting") : stripeStatus?.status === "ONBOARDING_INCOMPLETE" ? t("ui.continue_setup") : t("ui.set_up_my_payments")}</button>}
+            <p className={s.help}>{t("ui.payout_timing_depends_on_your_account_and_its_eligibility")}</p>
           </section>
         </div>
-        <section className={s.panel}><h2>Suivez votre activité</h2><p className={s.help}>Consultez les ventes terminées et les montants associés.</p><div className={s.actions}><Link href="/merchant/sales" className={ui.secondary}>Voir mes ventes →</Link><Link href="/offers" className={ui.quiet}>Voir les offres publiques</Link></div></section>
+        <section className={s.panel}><h2>{t("ui.track_your_activity")}</h2><p className={s.help}>{t("ui.view_completed_sales_and_their_amounts")}</p><div className={s.actions}><Link href="/merchant/sales" className={ui.secondary}>{t("ui.view_my_sales_")}</Link><Link href="/offers" className={ui.quiet}>{t("ui.view_public_offers")}</Link></div></section>
       </> : <div className={s.twoColumns}>
-        <section className={s.panel}><h2>Présentez votre commerce</h2><p className={s.help}>Ces informations permettent aux clients de vous identifier et de vous trouver.</p>
+        <section className={s.panel}><h2>{t("ui.introduce_your_business")}</h2><p className={s.help}>{t("ui.these_details_help_customers_recognize_and_find_your_business")}</p>
           <form onSubmit={handleSubmit} className={s.form} style={{ marginTop: 24 }}>
-            <label className={s.field} htmlFor="merchant-name">Nom du commerce<input id="merchant-name" type="text" value={name} onChange={(e) => setName(e.target.value)} required /></label>
-            <label className={s.field} htmlFor="merchant-type">Type de commerce<select id="merchant-type" value={type} onChange={(e) => setType(e.target.value)}><option value="RESTAURANT">Restaurant</option><option value="CAFE">Café</option><option value="BAKERY">Boulangerie</option><option value="GROCERY">Épicerie</option><option value="SUPERMARKET">Grande surface</option><option value="HOTEL">Hôtel</option><option value="OTHER">Autre</option></select></label>
-            <label className={s.field} htmlFor="merchant-description">Description (optionnel)<textarea id="merchant-description" rows={4} value={description} onChange={(e) => setDescription(e.target.value)} /></label>
-            <label className={s.field} htmlFor="merchant-address">Adresse<input id="merchant-address" type="text" value={address} onChange={(e) => setAddress(e.target.value)} required /></label>
-            <div className={s.fieldRow}><label className={s.field} htmlFor="merchant-city">Ville<input id="merchant-city" type="text" value={city} onChange={(e) => setCity(e.target.value)} required /></label><label className={s.field} htmlFor="merchant-province">Province<input id="merchant-province" type="text" value={province} onChange={(e) => setProvince(e.target.value)} required /></label></div>
-            <div className={s.fieldRow}><label className={s.field} htmlFor="merchant-postalcode">Code postal<input id="merchant-postalcode" type="text" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} required /></label><label className={s.field} htmlFor="merchant-phone">Téléphone (optionnel)<input id="merchant-phone" type="text" value={phone} onChange={(e) => setPhone(e.target.value)}  /></label></div>
-            <button type="submit" disabled={submittingProfile} className={ui.button}>{submittingProfile ? "Création…" : "Créer mon profil"}</button>
+            <label className={s.field} htmlFor="merchant-name">{t("ui.business_name")}<input id="merchant-name" type="text" value={name} onChange={(e) => setName(e.target.value)} required /></label>
+            <label className={s.field} htmlFor="merchant-type">{t("ui.business_type")}<select id="merchant-type" value={type} onChange={(e) => setType(e.target.value)}><option value="RESTAURANT">{t("ui.restaurant")}</option><option value="CAFE">{t("ui.cafe")}</option><option value="BAKERY">{t("ui.bakery")}</option><option value="GROCERY">{t("ui.grocery")}</option><option value="SUPERMARKET">{t("ui.supermarket")}</option><option value="HOTEL">{t("ui.hotel")}</option><option value="OTHER">{t("ui.other")}</option></select></label>
+            <label className={s.field} htmlFor="merchant-description">{t("ui.description_optional")}<textarea id="merchant-description" rows={4} value={description} onChange={(e) => setDescription(e.target.value)} /></label>
+            <label className={s.field} htmlFor="merchant-address">{t("ui.address")}<input id="merchant-address" type="text" value={address} onChange={(e) => setAddress(e.target.value)} required /></label>
+            <div className={s.fieldRow}><label className={s.field} htmlFor="merchant-city">{t("ui.city")}<input id="merchant-city" type="text" value={city} onChange={(e) => setCity(e.target.value)} required /></label><label className={s.field} htmlFor="merchant-province">{t("ui.province")}<input id="merchant-province" type="text" value={province} onChange={(e) => setProvince(e.target.value)} required /></label></div>
+            <div className={s.fieldRow}><label className={s.field} htmlFor="merchant-postalcode">{t("ui.postal_code")}<input id="merchant-postalcode" type="text" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} required /></label><label className={s.field} htmlFor="merchant-phone">{t("ui.phone_optional")}<input id="merchant-phone" type="text" value={phone} onChange={(e) => setPhone(e.target.value)}  /></label></div>
+            <button type="submit" disabled={submittingProfile} className={ui.button}>{submittingProfile ? t("ui.creating") : t("ui.create_my_profile")}</button>
           </form>
         </section>
-        <aside className={s.panel}><span className={s.badge}>Pour bien commencer</span><h2 style={{ marginTop: 16 }}>Votre parcours commerçant</h2><ol className={s.steps}><li>Enregistrez les coordonnées de votre commerce.</li><li>Complétez la configuration et la vérification des paiements.</li><li>Publiez vos invendus et leurs créneaux de récupération.</li></ol></aside>
+        <aside className={s.panel}><span className={s.badge}>{t("ui.getting_started")}</span><h2 style={{ marginTop: 16 }}>{t("ui.your_merchant_journey")}</h2><ol className={s.steps}><li>{t("ui.save_your_businesss_contact_details")}</li><li>{t("ui.complete_payment_setup_and_verification")}</li><li>{t("ui.publish_your_surplus_and_pickup_windows")}</li></ol></aside>
       </div>}
-      {message && <p role="status" className={s.notice}>{message}</p>}
+      {message && <p role="status" className={s.notice}>{msg(message)}</p>}
     </MerchantShell>
   );
 }

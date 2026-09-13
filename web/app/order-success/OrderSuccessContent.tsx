@@ -1,4 +1,7 @@
 "use client";
+import LanguageSelector from "../lib/i18n/LanguageSelector";
+import { useLocale } from "../lib/i18n/LocaleProvider";
+
 
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -23,9 +26,10 @@ type ConfirmationResponse = {
 };
 
 export default function OrderSuccessContent() {
+  const { t, message: msg } = useLocale();
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("session_id");
-  const [message, setMessage] = useState("Confirmation en cours...");
+  const [message, setMessage] = useState("ui.confirming_your_reservation");
   const [qrCode, setQrCode] = useState("");
   const [pickupCode, setPickupCode] = useState("");
   const confirmation = useRef<{
@@ -38,15 +42,15 @@ export default function OrderSuccessContent() {
     let active = true;
     setQrCode("");
     setPickupCode("");
-    setMessage("Confirmation en cours...");
+    setMessage("ui.confirming_your_reservation");
     if (!sessionId) {
-      setMessage("Session de paiement introuvable");
+      setMessage("ui.payment_session_not_found");
       return;
     }
 
     const token = localStorage.getItem("token");
     if (!token) {
-      setMessage("Vous devez être connecté");
+      setMessage("ui.you_must_be_signed_in");
       return;
     }
 
@@ -72,32 +76,33 @@ export default function OrderSuccessContent() {
         if (ok && data.order) {
           switch (data.order.status) {
             case "CONFIRMED":
-              setMessage("Réservation confirmée !");
+              setMessage("ui.reservation_confirmed");
               setQrCode(data.qrCodeImage || "");
               setPickupCode(data.order.pickupCode || "");
               break;
             case "CANCELLED":
-              setMessage("Réservation annulée");
+              setMessage("ui.reservation_cancelled");
               break;
             case "COMPLETED":
-              setMessage("Réservation déjà récupérée");
+              setMessage("ui.reservation_already_picked_up");
               break;
             case "PENDING":
-              setMessage("Réservation en attente de confirmation");
+              setMessage("ui.reservation_awaiting_confirmation");
               break;
             default:
-              setMessage("Statut de la réservation indisponible");
+              setMessage("ui.reservation_status_unavailable");
           }
         } else {
-          setMessage(data.message || "Erreur lors de la confirmation");
+          setMessage(data.message || "ui.unable_to_confirm_the_reservation");
         }
       })
-      .catch(() => { if (active) setMessage("Impossible de contacter le serveur"); });
+      .catch(() => { if (active) setMessage("ui.unable_to_contact_the_server"); });
     return () => { active = false; };
   }, [sessionId]);
 
   return (
     <main className={body.className} style={{ backgroundColor: bg, color: "#F5F1E8", minHeight: "100vh" }}>
+      <div className="flex justify-end p-4"><LanguageSelector /></div>
       <div className="flex flex-col items-center justify-center min-h-screen px-6 py-16 text-center">
         {qrCode ? (
           <div
@@ -110,12 +115,11 @@ export default function OrderSuccessContent() {
           </div>
         ) : (
           <p className="text-xs tracking-[0.4em] uppercase mb-4" style={{ color: jade }}>
-            Reservation
-          </p>
+            {t("ui.reservation")}</p>
         )}
 
         <h1 className={display.className} style={{ fontSize: "clamp(1.8rem, 5vw, 3rem)" }}>
-          {message.toUpperCase()}
+          {msg(message).toUpperCase()}
         </h1>
 
         {(qrCode || pickupCode) && (
@@ -123,19 +127,17 @@ export default function OrderSuccessContent() {
             className="mt-10 rounded-2xl p-8 flex flex-col items-center"
             style={{ backgroundColor: "#0D1912", border: "1px solid rgba(255,255,255,0.1)" }}
           >
-            {qrCode && <img src={qrCode} alt="QR Code de récupération" className="w-48 h-48 rounded-xl" style={{ backgroundColor: "#F5F1E8" }} />}
+            {qrCode && <img src={qrCode} alt={t("ui.pickup_qr_code")} className="w-48 h-48 rounded-xl" style={{ backgroundColor: "#F5F1E8" }} />}
             {pickupCode && <p className="text-sm mt-4 break-all" style={{ color: dim }}>
-              Code : <span className="font-bold" style={{ color: amber }}>{pickupCode}</span>
+              {t("ui.code")}{" "}<span className="font-bold" style={{ color: amber }}>{pickupCode}</span>
             </p>}
             <p className="text-sm mt-2 text-center max-w-xs" style={{ color: dim }}>
-              Montrez ce code au commerçant lors de la récupération.
-            </p>
+              {t("ui.show_this_code_to_the_merchant_when_you_pick")}</p>
           </div>
         )}
 
         <a href="/offers" className="mt-8" style={{ color: jade }}>
-          Retour aux offres
-        </a>
+          {t("ui.back_to_offers")}</a>
       </div>
     </main>
   );

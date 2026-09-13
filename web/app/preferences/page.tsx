@@ -1,4 +1,6 @@
 "use client";
+import { useLocale } from "../lib/i18n/LocaleProvider";
+
 
 import { useEffect, useState } from "react";
 import { Bebas_Neue, Space_Grotesk } from "next/font/google";
@@ -16,15 +18,16 @@ const jade = "#17C989";
 const dim = "#8FA396";
 
 const OPTIONS = [
-  { value: "VEGETARIAN", label: "Végétarien" },
-  { value: "VEGAN", label: "Végan" },
-  { value: "HALAL", label: "Halal" },
-  { value: "GLUTEN_FREE", label: "Sans gluten" },
-  { value: "DAIRY_FREE", label: "Sans produits laitiers" },
-  { value: "NUT_FREE", label: "Sans noix" },
+  { value: "VEGETARIAN", label: "ui.vegetarian" },
+  { value: "VEGAN", label: "ui.vegan" },
+  { value: "HALAL", label: "ui.halal" },
+  { value: "GLUTEN_FREE", label: "ui.glutenfree" },
+  { value: "DAIRY_FREE", label: "ui.dairyfree" },
+  { value: "NUT_FREE", label: "ui.nutfree" },
 ];
 
 export default function PreferencesPage() {
+  const { t, text: tr, message: msg } = useLocale();
   const [selected, setSelected] = useState<string[]>([]);
   const [message, setMessage] = useState("");
 
@@ -54,7 +57,7 @@ export default function PreferencesPage() {
     setMessage("");
     const token = localStorage.getItem("token");
     if (!token) {
-      setMessage("Vous devez être connecté");
+      setMessage("ui.you_must_be_signed_in");
       return;
     }
 
@@ -69,13 +72,13 @@ export default function PreferencesPage() {
       });
 
       if (!res.ok) {
-        setMessage("Erreur lors de l'enregistrement");
+        setMessage("ui.unable_to_save_your_preferences");
         return;
       }
 
-      setMessage("Préférences enregistrées !");
+      setMessage("ui.preferences_saved");
     } catch {
-      setMessage("Impossible de contacter le serveur");
+      setMessage("ui.unable_to_contact_the_server");
     }
   };
 
@@ -85,14 +88,11 @@ export default function PreferencesPage() {
 
       <section className="px-6 pt-14 pb-6 text-center">
         <p className="text-xs tracking-[0.4em] uppercase mb-3" style={{ color: jade }}>
-          Personnalisation
-        </p>
+          {t("ui.personalization")}</p>
         <h1 className={display.className} style={{ fontSize: "clamp(2.2rem, 6vw, 4rem)" }}>
-          MES PRÉFÉRENCES
-        </h1>
+          {t("ui.my_preferences")}</h1>
         <p className="mt-3 max-w-md mx-auto" style={{ color: dim }}>
-          Selectionnez vos preferences alimentaires pour affiner les offres qui vous sont proposees.
-        </p>
+          {t("ui.select_your_dietary_preferences_to_refine_the_offers_suggested")}</p>
       </section>
 
       <div className="flex flex-col gap-3 w-full max-w-sm mx-auto px-6">
@@ -114,7 +114,7 @@ export default function PreferencesPage() {
                   className="w-5 h-5"
                   style={{ accentColor: jade }}
                 />
-                <span>{opt.label}</span>
+                <span>{tr(opt.label)}</span>
               </label>
             </ScrollReveal>
           );
@@ -127,10 +127,9 @@ export default function PreferencesPage() {
           className="mt-8 rounded-full px-8 py-3 font-bold uppercase tracking-wide text-sm"
           style={{ backgroundColor: amber, color: bg }}
         >
-          Enregistrer mes préférences
-        </button>
+          {t("ui.save_my_preferences")}</button>
 
-        {message && <p className="mt-4" style={{ color: dim }}>{message}</p>}
+        {message && <p className="mt-4" style={{ color: dim }}>{msg(message)}</p>}
       </div>
 
       <Footer />

@@ -1,4 +1,5 @@
-﻿"use client";
+"use client";
+import { useLocale } from "../lib/i18n/LocaleProvider";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -7,6 +8,7 @@ import AuthShell, { FutureSocialSignIn } from "../components/AuthShell";
 import s from "../components/public.module.css";
 
 export default function LoginPage() {
+  const { t, message: msg } = useLocale();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -25,32 +27,30 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.message || "Erreur de connexion");
+        setError(data.message || "ui.unable_to_sign_in");
         setLoading(false);
         return;
       }
       localStorage.setItem("token", data.token);
       router.push("/offers");
     } catch {
-      setError("Impossible de contacter le serveur");
+      setError("ui.unable_to_contact_the_server");
       setLoading(false);
     }
   };
 
   return (
-    <AuthShell title="Bon retour chez FoodSave" subtitle="Connectez-vous pour retrouver vos réservations.">
+    <AuthShell title={t("ui.welcome_back_to_foodsave")} subtitle={t("ui.sign_in_to_find_your_reservations")}>
       <form onSubmit={handleSubmit} className={s.form}>
-        <label className={s.field} htmlFor="login-email">Courriel
-          <input id="login-email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        <label className={s.field} htmlFor="login-email">{t("ui.email")}<input id="login-email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </label>
-        <label className={s.field} htmlFor="login-password">Mot de passe
-          <input id="login-password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+        <label className={s.field} htmlFor="login-password">{t("ui.password")}<input id="login-password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         </label>
-        <button type="submit" disabled={loading} className={s.button}>{loading ? "Connexion…" : "Se connecter"}</button>
+        <button type="submit" disabled={loading} className={s.button}>{loading ? t("ui.signing_in") : t("ui.sign_in")}</button>
       </form>
-      {error && <p role="alert" className={s.alert}>{error}</p>}
+      {error && <p role="alert" className={s.alert}>{msg(error)}</p>}
       <FutureSocialSignIn />
-      <p className={s.authFooter}>Pas encore de compte ? <a href="/register">Créer un compte</a></p>
+      <p className={s.authFooter}>{t("ui.new_here")}{" "}<a href="/register">{t("ui.create_an_account")}</a></p>
     </AuthShell>
   );
 }

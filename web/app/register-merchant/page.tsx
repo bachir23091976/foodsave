@@ -1,4 +1,5 @@
-﻿"use client";
+"use client";
+import { useLocale } from "../lib/i18n/LocaleProvider";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -7,6 +8,7 @@ import AuthShell from "../components/AuthShell";
 import s from "../components/public.module.css";
 
 export default function RegisterMerchantPage() {
+  const { t, message: msg } = useLocale();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -30,7 +32,7 @@ export default function RegisterMerchantPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.message || "Erreur lors de l’inscription");
+        setError(data.message || "ui.unable_to_register");
         setLoading(false);
         return;
       }
@@ -38,30 +40,26 @@ export default function RegisterMerchantPage() {
       localStorage.setItem("token", data.token);
       router.push("/merchant/profile");
     } catch {
-      setError("Impossible de contacter le serveur");
+      setError("ui.unable_to_contact_the_server");
       setLoading(false);
     }
   };
 
   return (
-    <AuthShell title="Créez votre compte commerçant" subtitle="Votre première étape pour rejoindre FoodSave." merchant>
+    <AuthShell title={t("ui.create_your_merchant_account")} subtitle={t("ui.your_first_step_towards_joining_foodsave")} merchant>
       <form onSubmit={handleSubmit} className={s.form}>
-        <label className={s.field} htmlFor="registermerchant-firstname">Prénom
-          <input id="registermerchant-firstname" type="text" autoComplete="given-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
+        <label className={s.field} htmlFor="registermerchant-firstname">{t("ui.first_name")}<input id="registermerchant-firstname" type="text" autoComplete="given-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
         </label>
-        <label className={s.field} htmlFor="registermerchant-lastname">Nom
-          <input id="registermerchant-lastname" type="text" autoComplete="family-name" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
+        <label className={s.field} htmlFor="registermerchant-lastname">{t("ui.last_name")}<input id="registermerchant-lastname" type="text" autoComplete="family-name" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
         </label>
-        <label className={s.field} htmlFor="registermerchant-email">Courriel
-          <input id="registermerchant-email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        <label className={s.field} htmlFor="registermerchant-email">{t("ui.email")}<input id="registermerchant-email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </label>
-        <label className={s.field} htmlFor="registermerchant-password">Mot de passe
-          <input id="registermerchant-password" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+        <label className={s.field} htmlFor="registermerchant-password">{t("ui.password")}<input id="registermerchant-password" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         </label>
-        <button type="submit" disabled={loading} className={s.button}>{loading ? "Création…" : "Créer mon compte"}</button>
+        <button type="submit" disabled={loading} className={s.button}>{loading ? t("ui.creating") : t("ui.create_my_account")}</button>
       </form>
-      {error && <p role="alert" className={s.alert}>{error}</p>}
-      <p className={s.authFooter}>Déjà un compte ? <a href="/login">Se connecter</a></p>
+      {error && <p role="alert" className={s.alert}>{msg(error)}</p>}
+      <p className={s.authFooter}>{t("ui.already_have_an_account")}{" "}<a href="/login">{t("ui.sign_in")}</a></p>
     </AuthShell>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useLocale } from "../lib/i18n/LocaleProvider";
 import { useEffect, useState } from "react";
 import { API_URL } from "../lib/api";
 
@@ -10,6 +11,7 @@ interface Reward {
 }
 
 export default function LoyaltyBanner() {
+  const { count } = useLocale();
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [ordersUntilNext, setOrdersUntilNext] = useState<number | null>(null);
 
@@ -36,12 +38,12 @@ export default function LoyaltyBanner() {
     <div className="max-w-2xl mx-auto mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
       {rewards.length > 0 && (
         <p className="text-green-800 font-semibold">
-          🎁 Vous avez {rewards.length} récompense{rewards.length > 1 ? "s" : ""} de fidélité disponible{rewards.length > 1 ? "s" : ""} ({rewards[0].discountCad}% de réduction) !
+          {count("loyalty.count", "loyalty.countPlural", rewards.length)}
         </p>
       )}
       {ordersUntilNext !== null && ordersUntilNext > 0 && (
         <p className="text-sm text-green-700 mt-1">
-          Plus que {ordersUntilNext} commande{ordersUntilNext > 1 ? "s" : ""} avant votre prochaine récompense !
+          {count("loyalty.next", "loyalty.nextPlural", ordersUntilNext)}
         </p>
       )}
     </div>

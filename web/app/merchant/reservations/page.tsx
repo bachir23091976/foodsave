@@ -1,4 +1,6 @@
 "use client";
+import { useLocale } from "../../lib/i18n/LocaleProvider";
+
 
 import { useEffect, useRef, useState } from "react";
 import MerchantShell from "../../components/merchant/MerchantShell";
@@ -26,6 +28,7 @@ interface MerchantOrder {
 }
 
 export default function MerchantReservationsPage() {
+  const { t, message: msg, money, number, intlLocale } = useLocale();
   const [orders, setOrders] = useState<MerchantOrder[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [listError, setListError] = useState("");
@@ -56,7 +59,7 @@ export default function MerchantReservationsPage() {
       .then(async (res) => {
         const data = await res.json().catch(() => null);
         if (!res.ok) {
-          throw new Error(data?.message || "Impossible de charger les réservations");
+          throw new Error(data?.message || "ui.unable_to_load_reservations");
         }
         return data;
       })
@@ -64,7 +67,7 @@ export default function MerchantReservationsPage() {
         setOrders(data.orders || []);
         setListError("");
       })
-      .catch((err) => setListError(err?.message || "Impossible de charger les réservations"))
+      .catch((err) => setListError(err?.message || "ui.unable_to_load_reservations"))
       .finally(() => setLoadingOrders(false));
   };
 
@@ -81,7 +84,7 @@ export default function MerchantReservationsPage() {
 
     const token = localStorage.getItem("token");
     if (!token) {
-      setValidateMessage({ type: "error", text: "Vous devez être connecté" });
+      setValidateMessage({ type: "error", text: "ui.you_must_be_signed_in" });
       setValidating(false);
       return;
     }
@@ -99,16 +102,16 @@ export default function MerchantReservationsPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setValidateMessage({ type: "error", text: data.message || "Erreur lors de la validation" });
+        setValidateMessage({ type: "error", text: data.message || "ui.unable_to_validate_the_reservation" });
         setValidating(false);
         return;
       }
 
-      setValidateMessage({ type: "success", text: "Réservation validée avec succès !" });
+      setValidateMessage({ type: "success", text: "ui.reservation_validated_successfully" });
       setManualCode("");
       loadOrders();
     } catch {
-      setValidateMessage({ type: "error", text: "Impossible de contacter le serveur" });
+      setValidateMessage({ type: "error", text: "ui.unable_to_contact_the_server" });
     } finally {
       setValidating(false);
     }
@@ -116,18 +119,18 @@ export default function MerchantReservationsPage() {
 
   const handleMerchantCancel = async (orderId: string) => {
     const reason = window.prompt(
-      "Motif : Produit épuisé, commerce fermé, erreur dans l’offre, problème de préparation, ou autre motif"
+      t("ui.reason_sold_out_business_closed_incorrect_offer_preparation_issue")
     );
     if (!reason || reason.trim().length < 3) return;
 
     const confirmed = window.confirm(
-      "Annuler cette commande et rembourser intégralement le client ?"
+      t("ui.cancel_this_order_and_fully_refund_the_customer")
     );
     if (!confirmed) return;
 
     const token = localStorage.getItem("token");
     if (!token) {
-      setValidateMessage({ type: "error", text: "Vous devez être connecté" });
+      setValidateMessage({ type: "error", text: "ui.you_must_be_signed_in" });
       return;
     }
 
@@ -149,7 +152,7 @@ export default function MerchantReservationsPage() {
       if (!res.ok) {
         setValidateMessage({
           type: "error",
-          text: data.message || "Impossible d'annuler la commande",
+          text: data.message || "ui.unable_to_cancel_the_order",
         });
         return;
       }
@@ -157,7 +160,7 @@ export default function MerchantReservationsPage() {
       setValidateMessage({ type: "success", text: data.message });
       loadOrders();
     } catch {
-      setValidateMessage({ type: "error", text: "Impossible de contacter le serveur" });
+      setValidateMessage({ type: "error", text: "ui.unable_to_contact_the_server" });
     } finally {
       setCancelingId(null);
     }
@@ -183,7 +186,7 @@ export default function MerchantReservationsPage() {
     setValidateMessage(null);
 
     if (typeof window === "undefined" || !navigator.mediaDevices?.getUserMedia) {
-      setScanError("Le scan caméra n'est pas disponible sur cet appareil/navigateur");
+      setScanError("ui.camera_scanning_is_not_available_on_this_device_or");
       return;
     }
     setScanning(true);
@@ -230,7 +233,7 @@ export default function MerchantReservationsPage() {
 
       rafRef.current = requestAnimationFrame(tick);
     } catch {
-      setScanError("Impossible d'accéder à la caméra (permission refusée ou indisponible)");
+      setScanError("ui.unable_to_access_the_camera_permission_denied_or_unavailable");
       stopScan();
     }
   };
@@ -244,7 +247,7 @@ export default function MerchantReservationsPage() {
 
   const formatDateTime = (iso: string) => {
     const date = new Date(iso);
-    return date.toLocaleString("fr-CA", {
+    return date.toLocaleString(intlLocale, {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -265,41 +268,41 @@ export default function MerchantReservationsPage() {
   const cancelled = orders.filter((o) => o.status === "CANCELLED");
 
   return (
-    <MerchantShell title="Réservations" description="Accueillez vos clients et validez leur récupération avec un QR ou un code de réservation.">
-      <section className={s.panel + " " + s.scanner} aria-label="Valider une récupération">
-        <div className={s.scanArea}><h2>Scanner le QR code</h2><p className={s.help}>Présentez le code du client devant la caméra. La lecture lance la validation existante.</p>
-          {scanning ? <><video ref={videoRef} muted playsInline /><canvas ref={canvasRef} hidden /><button type="button" onClick={stopScan} className={ui.secondary}>Arrêter le scan</button></> : <button type="button" onClick={startScan} className={ui.button}>Scanner le QR code</button>}
-          {scanError && <p role="alert" className={s.notice + " " + s.error}>{scanError}</p>}
+    <MerchantShell title={t("ui.reservations")} description={t("ui.welcome_your_customers_and_validate_pickup_with_a_qr")}>
+      <section className={s.panel + " " + s.scanner} aria-label={t("ui.validate_a_pickup")}>
+        <div className={s.scanArea}><h2>{t("ui.scan_qr_code")}</h2><p className={s.help}>{t("ui.hold_the_customers_code_in_front_of_the_camera")}</p>
+          {scanning ? <><video ref={videoRef} muted playsInline /><canvas ref={canvasRef} hidden /><button type="button" onClick={stopScan} className={ui.secondary}>{t("ui.stop_scanning")}</button></> : <button type="button" onClick={startScan} className={ui.button}>{t("ui.scan_qr_code")}</button>}
+          {scanError && <p role="alert" className={s.notice + " " + s.error}>{msg(scanError)}</p>}
         </div>
-        <div><h2>Ou saisir le code</h2><p className={s.help}>Le client peut aussi vous présenter son code de réservation.</p>
-          <label className={s.field} htmlFor="manual-pickup-code" style={{ marginTop: 18 }}>Code de réservation</label>
-          <div className={s.manualEntry}><input id="manual-pickup-code" type="text" placeholder="Coller ou saisir le code" value={manualCode} onChange={(e) => setManualCode(e.target.value)} className={s.codeInput} /><button type="button" onClick={() => handleValidate()} disabled={validating || !manualCode.trim()} className={ui.button}>{validating ? "Validation…" : "Valider"}</button></div>
+        <div><h2>{t("ui.or_enter_the_code")}</h2><p className={s.help}>{t("ui.customers_can_also_show_you_their_reservation_code")}</p>
+          <label className={s.field} htmlFor="manual-pickup-code" style={{ marginTop: 18 }}>{t("ui.reservation_code")}</label>
+          <div className={s.manualEntry}><input id="manual-pickup-code" type="text" placeholder={t("ui.paste_or_enter_the_code")} value={manualCode} onChange={(e) => setManualCode(e.target.value)} className={s.codeInput} /><button type="button" onClick={() => handleValidate()} disabled={validating || !manualCode.trim()} className={ui.button}>{validating ? t("ui.validating") : t("ui.validate")}</button></div>
         </div>
       </section>
-      {validateMessage && <p role="status" className={s.notice + (validateMessage.type === "error" ? " " + s.error : "")}>{validateMessage.text}</p>}
-      {loadingOrders && <p role="status" className={s.notice}>Chargement des réservations…</p>}
-      {listError && <p role="alert" className={s.notice + " " + s.error}>{listError}</p>}
+      {validateMessage && <p role="status" className={s.notice + (validateMessage.type === "error" ? " " + s.error : "")}>{msg(validateMessage.text)}</p>}
+      {loadingOrders && <p role="status" className={s.notice}>{t("ui.loading_reservations")}</p>}
+      {listError && <p role="alert" className={s.notice + " " + s.error}>{msg(listError)}</p>}
       {!loadingOrders && !listError && <>
         {[
-          { title: "À récupérer", orders: toRecover },
-          { title: "Fenêtre de récupération terminée", orders: expired },
+          { title: t("ui.awaiting_pickup"), orders: toRecover },
+          { title: t("ui.pickup_window_ended"), orders: expired },
         ].map(group => <section key={group.title}>
           <h2 className={s.groupTitle}>{group.title} ({group.orders.length})</h2>
-          {group.orders.length === 0 ? <div className={s.empty}><p>Aucune réservation dans cette catégorie.</p></div> : <div className={s.cards}>{group.orders.map(order => <article key={order.id} className={s.card + " " + s.reservation}>
-            <div className={s.cardTop}><h3>{order.offer.title}</h3><strong>{order.totalPrice.toFixed(2)} $</strong></div>
-            <span className={s.badge + " " + s.warning}>Confirmée · À récupérer</span>
-            <p className={s.help}>{order.user.firstName} {order.user.lastName}</p><p className={s.help}>Réservé le {formatDateTime(order.createdAt)} · Fin du créneau : {formatDateTime(order.offer.pickupEnd)}</p>
-            <div className={s.codeRow}><code>{order.pickupCode}</code><button type="button" onClick={() => handleValidate(order.pickupCode)} className={ui.secondary}>Utiliser</button></div>
-            <div className={s.actions}><button type="button" onClick={() => handleMerchantCancel(order.id)} disabled={cancelingId === order.id} className={s.dangerButton}>{cancelingId === order.id ? "Annulation…" : "Annuler et rembourser"}</button></div>
+          {group.orders.length === 0 ? <div className={s.empty}><p>{t("ui.no_reservations_in_this_category")}</p></div> : <div className={s.cards}>{group.orders.map(order => <article key={order.id} className={s.card + " " + s.reservation}>
+            <div className={s.cardTop}><h3>{order.offer.title}</h3><strong>{money(order.totalPrice)}</strong></div>
+            <span className={s.badge + " " + s.warning}>{t("ui.confirmed_awaiting_pickup")}</span>
+            <p className={s.help}>{order.user.firstName} {order.user.lastName}</p><p className={s.help}>{t("ui.reserved_on")}{" "}{formatDateTime(order.createdAt)} {t("ui._pickup_ends")}{" "}{formatDateTime(order.offer.pickupEnd)}</p>
+            <div className={s.codeRow}><code>{order.pickupCode}</code><button type="button" onClick={() => handleValidate(order.pickupCode)} className={ui.secondary}>{t("ui.validate_pickup")}</button></div>
+            <div className={s.actions}><button type="button" onClick={() => handleMerchantCancel(order.id)} disabled={cancelingId === order.id} className={s.dangerButton}>{cancelingId === order.id ? t("ui.cancelling") : t("ui.cancel_and_refund")}</button></div>
           </article>)}</div>}
         </section>)}
         {[
-          { title: "Déjà récupérées", orders: recovered, label: "Récupérée", tone: s.success },
-          { title: "Annulées", orders: cancelled, label: "Annulée", tone: s.danger },
+          { title: t("ui.already_picked_up_2"), orders: recovered, label: t("ui.picked_up"), tone: s.success },
+          { title: t("ui.cancelled"), orders: cancelled, label: t("ui.cancelled_2"), tone: s.danger },
         ].map(group => <section key={group.title}><h2 className={s.groupTitle}>{group.title} ({group.orders.length})</h2>
-          {group.orders.length === 0 ? <div className={s.empty}><p>Aucune réservation dans cette catégorie.</p></div> : <div className={s.cards}>{group.orders.map(order => <article key={order.id} className={s.card}>
-            <div className={s.cardTop}><h3>{order.offer.title}</h3><span className={s.badge + " " + group.tone}>{group.label}</span></div><p className={s.help}>{order.user.firstName} {order.user.lastName} · {order.totalPrice.toFixed(2)} $</p><p className={s.help}>Réservé le {formatDateTime(order.createdAt)}</p>
-            {order.status === "CANCELLED" && order.cancellationReason && <p className={s.help}>Motif : {order.cancellationReason}</p>}
+          {group.orders.length === 0 ? <div className={s.empty}><p>{t("ui.no_reservations_in_this_category")}</p></div> : <div className={s.cards}>{group.orders.map(order => <article key={order.id} className={s.card}>
+            <div className={s.cardTop}><h3>{order.offer.title}</h3><span className={s.badge + " " + group.tone}>{group.label}</span></div><p className={s.help}>{order.user.firstName} {order.user.lastName} · {money(order.totalPrice)}</p><p className={s.help}>{t("ui.reserved_on")}{" "}{formatDateTime(order.createdAt)}</p>
+            {order.status === "CANCELLED" && order.cancellationReason && <p className={s.help}>{t("ui.reason")}{" "}{order.cancellationReason}</p>}
           </article>)}</div>}
         </section>)}
       </>}
