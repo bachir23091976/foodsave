@@ -119,8 +119,12 @@
 .faq details p { color: var(--muted); margin-top: 12px; }
 .nav { position: sticky; top: 0; z-index: 50; border-bottom: 1px solid var(--line); background: #faf8f2f5; backdrop-filter: blur(12px); }
 .navInner { width: min(1240px, calc(100% - 48px)); margin: auto; min-height: 80px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
-.logo { display: inline-flex; align-items: center; gap: 9px; font-weight: 750; font-size: 23px; letter-spacing: -.055em; text-decoration: none; color: var(--ink); flex-shrink: 0; }
-.logo svg { width: 30px; height: 30px; }
+.logo { display: inline-flex; flex-direction: column; align-items: center; gap: 4px; font-family: var(--font-geist-sans), Arial, sans-serif; font-weight: 800; font-size: 32px; line-height: .96; letter-spacing: -.055em; text-decoration: none; color: #183e32; flex-shrink: 0; white-space: nowrap; }
+.logo svg { width: 24px; height: 24px; color: #72952e; }
+.logoName { display: flex; flex-direction: column; align-items: center; }
+.logoSave { color: #72952e; }
+.logoCompact { font-size: 21px; gap: 2px; padding-block: 5px; }
+.logoCompact svg { width: 16px; height: 16px; }
 .navLinks, .navActions { display: flex; align-items: center; gap: 22px; font-size: 13px; font-weight: 550; }
 .navLinks a, .navActions > a:not(.button), .navActions > button { min-height: 44px; display: inline-flex; align-items: center; background: none; border: 0; color: var(--muted); cursor: pointer; }
 .navLinks a:hover, .navLinks a[aria-current='page'] { color: var(--green); text-decoration: underline; text-underline-offset: 7px; }

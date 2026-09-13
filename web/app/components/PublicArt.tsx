@@ -15,8 +15,8 @@ export default function PublicArt() {
     <path d="m83 214 39 139c2 8 8 12 17 12h199c8 0 15-5 16-13l32-138Z" fill="#eed5a4" stroke="#b89b67" strokeWidth="3" />
     <path d="M174 238v-32c0-39 23-55 58-55s58 16 58 55v32" stroke="#214e38" strokeWidth="13" strokeLinecap="round" />
     <path d="m106 242 24 102m224-103-21 103" stroke="#d8bb85" strokeWidth="3" />
-    <rect x="179" y="267" width="110" height="64" rx="12" fill="#215d43" />
-    <path d="M231 310c-22-2-28-22-18-29 14 0 24 11 23 24 0-22 13-28 23-26 1 18-11 29-28 31Z" fill="#d8ee97" />
+    <g transform="translate(225 251) scale(.75)" stroke="#72952e" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M5 18C2 9 9 4 20 3c1 11-4 18-13 16M4 21 15 10" /></g>
+    <text x="234" y="299" textAnchor="middle" fontFamily="var(--font-geist-sans), Arial, sans-serif" fontSize="30" fontWeight="800" letterSpacing="-1.5"><tspan x="234" fill="#183e32">Food</tspan><tspan x="234" dy="28" fill="#72952e">Save</tspan></text>
     <path d="m354 279 26-17 28 25-18 41-36-9Z" fill="#f8edcf" stroke="#b89b67" strokeWidth="2" />
     <circle cx="374" cy="292" r="3" fill="#b89b67" /><circle cx="391" cy="301" r="4" fill="#b89b67" />
     <path d="m60 70 5 12 13 3-12 6-2 13-6-12-13-2 12-7Z" fill="#719556" />

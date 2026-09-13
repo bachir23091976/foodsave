@@ -70,7 +70,7 @@ setIsMerchant(!!token && (role === "MERCHANT" || role === "ADMIN"));
   return (
     <nav className={s.nav} aria-label="Navigation principale" onKeyDown={(event) => { if (event.key === "Escape") setOpen(false); }}>
       <div className={s.navInner}>
-        <Link href="/" className={s.logo} aria-label="FoodSave — Accueil"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><rect width="32" height="32" rx="10" fill="#215d43" /><path d="M15 25C5 23 6 12 10 10c6 0 9 5 8 10 1-8 7-10 10-9 0 9-6 14-13 14Z" fill="#d8ee97" /></svg>FoodSave</Link>
+        <Link href="/" className={s.logo + " " + s.logoCompact} aria-label="FoodSave — Accueil"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false"><path d="M5 18C2 9 9 4 20 3c1 11-4 18-13 16M4 21 15 10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg><span className={s.logoName}><span>Food</span><span className={s.logoSave}>Save</span></span></Link>
         <div className={s.navLinks}>{NAV_LINKS.map(link => <Link key={link.href} href={link.href} aria-current={pathname === link.href ? "page" : undefined}>{link.label}</Link>)}</div>
         <div className={s.navActions}>
           {!isLoggedIn && <Link href="/login">Se connecter</Link>}
