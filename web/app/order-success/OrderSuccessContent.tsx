@@ -5,16 +5,16 @@ import { useLocale } from "../lib/i18n/LocaleProvider";
 
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Bebas_Neue, Space_Grotesk } from "next/font/google";
+import s from "../components/public.module.css";
 import { API_URL } from "../lib/api";
 
-const display = Bebas_Neue({ subsets: ["latin"], weight: "400" });
-const body = Space_Grotesk({ subsets: ["latin"], weight: ["400", "500", "700"] });
 
-const bg = "#06110C";
-const amber = "#FFB100";
-const jade = "#17C989";
-const dim = "#8FA396";
+
+
+const bg = "#faf8f2";
+const amber = "#d8ee97";
+const jade = "#215d43";
+const dim = "#59685e";
 
 type ConfirmationResponse = {
   ok: boolean;
@@ -101,7 +101,7 @@ export default function OrderSuccessContent() {
   }, [sessionId]);
 
   return (
-    <main className={body.className} style={{ backgroundColor: bg, color: "#F5F1E8", minHeight: "100vh" }}>
+    <main className={s.page + " " + s.accountPage} style={{ backgroundColor: bg, color: "#183e32", minHeight: "100vh" }}>
       <div className="flex justify-end p-4"><LanguageSelector /></div>
       <div className="flex flex-col items-center justify-center min-h-screen px-6 py-16 text-center">
         {qrCode ? (
@@ -118,18 +118,18 @@ export default function OrderSuccessContent() {
             {t("ui.reservation")}</p>
         )}
 
-        <h1 className={display.className} style={{ fontSize: "clamp(1.8rem, 5vw, 3rem)" }}>
+        <h1 className={s.heading} style={{ fontSize: "clamp(1.8rem, 5vw, 3rem)" }}>
           {msg(message).toUpperCase()}
         </h1>
 
         {(qrCode || pickupCode) && (
           <div
             className="mt-10 rounded-2xl p-8 flex flex-col items-center"
-            style={{ backgroundColor: "#0D1912", border: "1px solid rgba(255,255,255,0.1)" }}
+            style={{ backgroundColor: "#ffffff", border: "1px solid #dce2d8" }}
           >
-            {qrCode && <img src={qrCode} alt={t("ui.pickup_qr_code")} className="w-48 h-48 rounded-xl" style={{ backgroundColor: "#F5F1E8" }} />}
+            {qrCode && <img src={qrCode} alt={t("ui.pickup_qr_code")} className="w-48 h-48 rounded-xl" style={{ backgroundColor: "#ffffff" }} />}
             {pickupCode && <p className="text-sm mt-4 break-all" style={{ color: dim }}>
-              {t("ui.code")}{" "}<span className="font-bold" style={{ color: amber }}>{pickupCode}</span>
+              {t("ui.code")}{" "}<span className="font-bold" style={{ color: "#215d43" }}>{pickupCode}</span>
             </p>}
             <p className="text-sm mt-2 text-center max-w-xs" style={{ color: dim }}>
               {t("ui.show_this_code_to_the_merchant_when_you_pick")}</p>

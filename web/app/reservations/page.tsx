@@ -4,6 +4,7 @@ import { useLocale } from "../lib/i18n/LocaleProvider";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Navbar from "../components/Navbar";
+import s from "../components/public.module.css";
 import { API_URL } from "../lib/api";
 
 interface Order {
@@ -141,22 +142,22 @@ export default function ReservationsPage() {
   };
 
   return (
-    <main style={{ backgroundColor: "#06110C", color: "#F5F1E8", minHeight: "100vh" }}>
+    <main className={s.page + " " + s.accountPage} style={{ backgroundColor: "#faf8f2", color: "#183e32", minHeight: "100vh" }}>
       <Navbar />
 
       <section className="px-6 pt-14 pb-6 text-center">
-        <p className="text-xs tracking-[0.4em] uppercase mb-3" style={{ color: "#37D67A" }}>
+        <p className="text-xs tracking-[0.4em] uppercase mb-3" style={{ color: "#215d43" }}>
           {t("ui.my_foodsave_purchases")}</p>
         <h1 className="text-4xl font-bold">{t("ui.my_reservations_2")}</h1>
       </section>
 
       {loading && <p className="text-center">{t("ui.loading")}</p>}
-      {error && <p className="text-center" style={{ color: "#FF6B6B" }}>{msg(error)}</p>}
+      {error && <p className="text-center" style={{ color: "#9d3529" }}>{msg(error)}</p>}
       {error && <button type="button" onClick={() => void loadOrders()} disabled={loading || cancelingId !== null} className="block mx-auto my-4">{t("ui.refresh_reservations")}</button>}
-      {message && <p className="text-center px-6 mb-4" style={{ color: "#FFB100" }}>{msg(message)}</p>}
+      {message && <p className="text-center px-6 mb-4" style={{ color: "#215d43" }}>{msg(message)}</p>}
 
       {!loading && !error && orders.length === 0 && (
-        <p className="text-center" style={{ color: "#8FA396" }}>
+        <p className="text-center" style={{ color: "#59685e" }}>
           {t("ui.you_have_no_reservations_yet")}</p>
       )}
 
@@ -166,22 +167,22 @@ export default function ReservationsPage() {
             key={order.id}
             className="rounded-2xl p-5 grid gap-2"
             style={{
-              backgroundColor: "#0D1912",
-              border: "1px solid rgba(255,255,255,0.1)",
+              backgroundColor: "#ffffff",
+              border: "1px solid #dce2d8",
             }}
           >
             <div className="flex justify-between gap-3">
               <h2 className="font-bold text-lg">{order.offer.title}</h2>
-              <span style={{ color: "#37D67A" }}>{cancelingId === order.id ? t("ui.checking_the_reservation") : tr(statusLabels[order.status])}</span>
+              <span style={{ color: "#215d43" }}>{cancelingId === order.id ? t("ui.checking_the_reservation") : tr(statusLabels[order.status])}</span>
             </div>
 
             <p>{order.offer.merchant.name} - {order.offer.merchant.city}</p>
-            <p style={{ color: "#8FA396" }}>
+            <p style={{ color: "#59685e" }}>
               {t("ui.pickup_2")}{" "}{formatDateTime(order.offer.pickupStart)} - {formatDateTime(order.offer.pickupEnd)}
             </p>
             <p>{t("ui.price")}{" "}<strong>{money(order.totalPrice)}</strong></p>
             {order.status === "CONFIRMED" && cancelingId !== order.id && <p>
-              {t("ui.pickup_code")}{" "}<strong style={{ color: "#FFB100" }}>{order.pickupCode}</strong>
+              {t("ui.pickup_code")}{" "}<strong style={{ color: "#215d43" }}>{order.pickupCode}</strong>
             </p>}
 
             {order.status === "CANCELLED" && order.customerCancellationRefund && (
@@ -189,7 +190,7 @@ export default function ReservationsPage() {
             )}
 
             {order.status === "CANCELLED" && order.cancellationReason && (
-              <p className="text-sm" style={{ color: "#FF6B6B" }}>
+              <p className="text-sm" style={{ color: "#9d3529" }}>
                 {t("ui.reason")}{" "}{order.cancellationReason}
               </p>
             )}
@@ -197,7 +198,7 @@ export default function ReservationsPage() {
             {order.status === "CONFIRMED" && (
               Date.now() < new Date(order.offer.pickupStart).getTime() - 60 * 60 * 1000 ? (
                 <>
-                  <p className="text-sm" style={{ color: "#8FA396" }}>
+                  <p className="text-sm" style={{ color: "#59685e" }}>
                     {t("ui.cancellation_available_until")}{" "}
                     {formatDateTime(
                       new Date(
@@ -212,7 +213,7 @@ export default function ReservationsPage() {
                     className="mt-2 self-start rounded-full px-5 py-2 text-sm font-bold"
                     style={{
                       backgroundColor: "rgba(255,107,107,0.12)",
-                      color: "#FF6B6B",
+                      color: "#9d3529",
                       border: "1px solid rgba(255,107,107,0.35)",
                     }}
                   >
@@ -220,7 +221,7 @@ export default function ReservationsPage() {
                   </button>
                 </>
               ) : (
-                <p className="text-sm" style={{ color: "#FF6B6B" }}>
+                <p className="text-sm" style={{ color: "#9d3529" }}>
                   {t("ui.cancellation_deadline_passed")}</p>
               )
             )}

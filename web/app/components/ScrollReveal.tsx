@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
+import s from "./public.module.css";
 
 export default function ScrollReveal({
   children,
@@ -11,13 +12,18 @@ export default function ScrollReveal({
   index?: number;
   className?: string;
 }) {
-  const [visible, setVisible] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const element = ref.current;
+    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (!element || motion.matches || !("IntersectionObserver" in window)) return;
     const obs = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting) setVisible(true);
+        if (entries[0].isIntersecting) {
+          element.classList.add(s.revealEntered);
+          obs.disconnect();
+        }
       },
       { threshold: 0.15 }
     );
@@ -30,10 +36,7 @@ export default function ScrollReveal({
       ref={ref}
       className={className}
       style={{
-        opacity: visible ? 1 : 0,
-        transform: visible ? "translateY(0)" : "translateY(24px)",
-        transition: "opacity 0.6s ease, transform 0.6s ease",
-        transitionDelay: (index % 6) * 0.08 + "s",
+        animationDelay: (index % 3) * 0.05 + "s",
       }}
     >
       {children}

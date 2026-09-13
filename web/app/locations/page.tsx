@@ -3,24 +3,24 @@ import { useLocale } from "../lib/i18n/LocaleProvider";
 
 
 import { useEffect, useState } from "react";
-import { Bebas_Neue, Space_Grotesk } from "next/font/google";
+import s from "../components/public.module.css";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import ScrollReveal from "../components/ScrollReveal";
 import { API_URL } from "../lib/api";
 
-const display = Bebas_Neue({ subsets: ["latin"], weight: "400" });
-const body = Space_Grotesk({ subsets: ["latin"], weight: ["400", "500", "700"] });
 
-const bg = "#06110C";
-const amber = "#FFB100";
-const jade = "#17C989";
-const dim = "#8FA396";
+
+
+const bg = "#faf8f2";
+const amber = "#d8ee97";
+const jade = "#215d43";
+const dim = "#59685e";
 
 const inputStyle = {
-  backgroundColor: "#0D1912",
-  border: "1px solid rgba(255,255,255,0.15)",
-  color: "#F5F1E8",
+  backgroundColor: "#ffffff",
+  border: "1px solid #bccbbb",
+  color: "#183e32",
 };
 
 interface SavedLocation {
@@ -111,13 +111,13 @@ export default function LocationsPage() {
   };
 
   return (
-    <main className={body.className} style={{ backgroundColor: bg, color: "#F5F1E8", minHeight: "100vh" }}>
+    <main className={s.page + " " + s.accountPage} style={{ backgroundColor: bg, color: "#183e32", minHeight: "100vh" }}>
       <Navbar />
 
       <section className="px-6 pt-14 pb-6 text-center">
         <p className="text-xs tracking-[0.4em] uppercase mb-3" style={{ color: jade }}>
           {t("ui.nearby")}</p>
-        <h1 className={display.className} style={{ fontSize: "clamp(2.2rem, 6vw, 4rem)" }}>
+        <h1 className={s.heading} style={{ fontSize: "clamp(2.2rem, 6vw, 4rem)" }}>
           {t("ui.my_addresses")}</h1>
         <p className="mt-3 max-w-md mx-auto" style={{ color: dim }}>
           {t("ui.save_your_addresses_to_find_them_easily_later")}</p>
@@ -150,7 +150,7 @@ export default function LocationsPage() {
           type="submit"
           disabled={loading}
           className="rounded-full px-6 py-3 font-bold uppercase tracking-wide text-sm"
-          style={{ backgroundColor: amber, color: bg, opacity: loading ? 0.6 : 1 }}
+          style={{ backgroundColor: amber, color: "#183e32", opacity: loading ? 0.6 : 1 }}
         >
           {loading ? t("ui.saving") : t("ui.save_this_address")}
         </button>
@@ -163,7 +163,7 @@ export default function LocationsPage() {
           <ScrollReveal key={loc.id} index={index}>
             <div
               className="flex justify-between items-center rounded-2xl p-4"
-              style={{ backgroundColor: "#0D1912", border: "1px solid rgba(255,255,255,0.1)" }}
+              style={{ backgroundColor: "#ffffff", border: "1px solid #dce2d8" }}
             >
               <div>
                 <p className="font-bold">{loc.label}</p>
@@ -172,7 +172,7 @@ export default function LocationsPage() {
               <button
                 onClick={() => handleDelete(loc.id)}
                 className="text-sm"
-                style={{ color: "#FF6B6B" }}
+                style={{ color: "#9d3529" }}
               >
                 {t("ui.delete")}</button>
             </div>

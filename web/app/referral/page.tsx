@@ -3,19 +3,19 @@ import { useLocale } from "../lib/i18n/LocaleProvider";
 
 
 import { useEffect, useState } from "react";
-import { Bebas_Neue, Space_Grotesk } from "next/font/google";
+import s from "../components/public.module.css";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import ScrollReveal from "../components/ScrollReveal";
 import { API_URL } from "../lib/api";
 
-const display = Bebas_Neue({ subsets: ["latin"], weight: "400" });
-const body = Space_Grotesk({ subsets: ["latin"], weight: ["400", "500", "700"] });
 
-const bg = "#06110C";
-const amber = "#FFB100";
-const jade = "#17C989";
-const dim = "#8FA396";
+
+
+const bg = "#faf8f2";
+const amber = "#d8ee97";
+const jade = "#215d43";
+const dim = "#59685e";
 
 export default function ReferralPage() {
   const { t, text: tr, count } = useLocale();
@@ -45,15 +45,15 @@ export default function ReferralPage() {
   };
 
   return (
-    <main className={body.className} style={{ backgroundColor: bg, color: "#F5F1E8", minHeight: "100vh" }}>
+    <main className={s.page + " " + s.accountPage} style={{ backgroundColor: bg, color: "#183e32", minHeight: "100vh" }}>
       <Navbar />
 
       <section className="px-6 pt-16 pb-6 text-center">
         <p className="text-xs tracking-[0.4em] uppercase mb-3" style={{ color: jade }}>
           {t("ui.referrals")}</p>
-        <h1 className={display.className} style={{ fontSize: "clamp(2.4rem, 6vw, 4.5rem)", lineHeight: 1 }}>
+        <h1 className={s.heading} style={{ fontSize: "clamp(2.4rem, 6vw, 4.5rem)", lineHeight: 1 }}>
           {t("ui.invite_a_friend")}<br />
-          <span style={{ color: amber }}>{t("ui.share_your_code")}</span>
+          <span style={{ color: "#215d43" }}>{t("ui.share_your_code")}</span>
         </h1>
         <p className="mt-4 max-w-md mx-auto" style={{ color: dim }}>
           {t("ui.share_your_referral_code_with_a_friend_when_they")}</p>
@@ -62,16 +62,16 @@ export default function ReferralPage() {
       <ScrollReveal index={0} className="max-w-sm mx-auto px-6">
         <div
           className="rounded-2xl p-8 text-center"
-          style={{ backgroundColor: "#0D1912", border: "1px solid rgba(23,201,137,0.3)" }}
+          style={{ backgroundColor: "#ffffff", border: "1px solid rgba(23,201,137,0.3)" }}
         >
           <p className="text-sm mb-2" style={{ color: dim }}>{t("ui.your_referral_code")}</p>
-          <p className={display.className} style={{ fontSize: "2.4rem", color: jade, letterSpacing: "0.05em" }}>
+          <p className={s.heading} style={{ fontSize: "2.4rem", color: jade, letterSpacing: "0.05em" }}>
             {referralCode || "..."}
           </p>
           <button
             onClick={handleCopy}
             className="mt-5 rounded-full px-8 py-3 font-bold uppercase tracking-wide text-sm"
-            style={{ backgroundColor: amber, color: bg }}
+            style={{ backgroundColor: amber, color: "#183e32" }}
           >
             {copied ? t("ui.copied") : t("ui.copy_code")}
           </button>
@@ -94,7 +94,7 @@ export default function ReferralPage() {
               <div className="text-center">
                 <div
                   className="mx-auto mb-4 w-14 h-14 rounded-full flex items-center justify-center font-bold"
-                  style={{ backgroundColor: "#06110C", border: "1px solid rgba(23,201,137,0.4)", color: jade }}
+                  style={{ backgroundColor: "#faf8f2", border: "1px solid rgba(23,201,137,0.4)", color: jade }}
                 >
                   {n}
                 </div>

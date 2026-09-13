@@ -3,19 +3,19 @@ import { useLocale } from "../lib/i18n/LocaleProvider";
 
 
 import { useEffect, useState } from "react";
-import { Bebas_Neue, Space_Grotesk } from "next/font/google";
+import s from "../components/public.module.css";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import ScrollReveal from "../components/ScrollReveal";
 import { API_URL } from "../lib/api";
 
-const display = Bebas_Neue({ subsets: ["latin"], weight: "400" });
-const body = Space_Grotesk({ subsets: ["latin"], weight: ["400", "500", "700"] });
 
-const bg = "#06110C";
-const amber = "#FFB100";
-const jade = "#17C989";
-const dim = "#8FA396";
+
+
+const bg = "#faf8f2";
+const amber = "#d8ee97";
+const jade = "#215d43";
+const dim = "#59685e";
 
 const OPTIONS = [
   { value: "VEGETARIAN", label: "ui.vegetarian" },
@@ -83,13 +83,13 @@ export default function PreferencesPage() {
   };
 
   return (
-    <main className={body.className} style={{ backgroundColor: bg, color: "#F5F1E8", minHeight: "100vh" }}>
+    <main className={s.page + " " + s.accountPage} style={{ backgroundColor: bg, color: "#183e32", minHeight: "100vh" }}>
       <Navbar />
 
       <section className="px-6 pt-14 pb-6 text-center">
         <p className="text-xs tracking-[0.4em] uppercase mb-3" style={{ color: jade }}>
           {t("ui.personalization")}</p>
-        <h1 className={display.className} style={{ fontSize: "clamp(2.2rem, 6vw, 4rem)" }}>
+        <h1 className={s.heading} style={{ fontSize: "clamp(2.2rem, 6vw, 4rem)" }}>
           {t("ui.my_preferences")}</h1>
         <p className="mt-3 max-w-md mx-auto" style={{ color: dim }}>
           {t("ui.select_your_dietary_preferences_to_refine_the_offers_suggested")}</p>
@@ -103,8 +103,8 @@ export default function PreferencesPage() {
               <label
                 className="flex items-center gap-3 rounded-2xl p-4 cursor-pointer"
                 style={{
-                  backgroundColor: "#0D1912",
-                  border: checked ? `1px solid ${jade}` : "1px solid rgba(255,255,255,0.1)",
+                  backgroundColor: "#ffffff",
+                  border: checked ? `1px solid ${jade}` : "1px solid #dce2d8",
                 }}
               >
                 <input
@@ -125,7 +125,7 @@ export default function PreferencesPage() {
         <button
           onClick={handleSave}
           className="mt-8 rounded-full px-8 py-3 font-bold uppercase tracking-wide text-sm"
-          style={{ backgroundColor: amber, color: bg }}
+          style={{ backgroundColor: amber, color: "#183e32" }}
         >
           {t("ui.save_my_preferences")}</button>
 

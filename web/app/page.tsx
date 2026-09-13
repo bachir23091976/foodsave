@@ -7,7 +7,8 @@ import Link from "next/link";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import FoodSaveImage from "./components/FoodSaveImage";
-import PublicArt from "./components/PublicArt";
+import EditorialVisual from "./components/EditorialVisual";
+import ScrollReveal from "./components/ScrollReveal";
 import s from "./components/public.module.css";
 import { API_URL } from "./lib/api";
 
@@ -36,28 +37,38 @@ export default function Home() {
         <p className={s.eyebrow}>{t("ui.less_waste_more_flavour_ottawa")}</p>
         <h1 className={s.title}>{t("ui.save_good_food_2")}<br /><em>{t("ui.pay_less")}</em></h1>
         <p className={s.lede}>{t("ui.discover_surplus_food_from_businesses_near_you_at_reduced")}</p>
-        <div className={s.actions}><Link href="/offers" className={s.button}>{t("ui.view_offers_near_me")}<span aria-hidden="true">↗</span></Link></div>
+        <div className={s.actions}><Link href="/offers" className={s.button}>{t("ui.view_offers_near_me")}<span aria-hidden="true">↗</span></Link><Link href="/partner" className={s.secondary}>{t("ui.become_a_partner")}</Link></div>
         <p className={s.note}>{t("ui.local_businesses_instore_pickup_a_small_step_that_matters")}</p>
       </div>
-      <div className={s.art}><PublicArt /><p className={s.artCaption}>{t("ui.good_food_is_too_good_to_waste")}</p></div>
+      <EditorialVisual principal />
+    </section>
+
+    <section className={s.container + " " + s.categoryShowcase}>
+      <h2 className={s.heading}>{t("visual.categories")}</h2><p className={s.muted}>{t("visual.categoriesNote")}</p>
+      <div className={s.categoryTiles}>{(["ui.grocery", "ui.prepared_meals", "ui.bakery_pastries", "ui.fruit_and_vegetables"] as const).map((key, index) => <Link href="/offers" key={key}><span aria-hidden="true">{["◒", "◉", "◓", "◐"][index]}</span>{t(key)}<span aria-hidden="true">↗</span></Link>)}</div>
     </section>
 
     <section id="comment-ca-marche" className={s.band} style={{ scrollMarginTop: 90 }}>
       <div className={s.container + " " + s.section}>
         <div className={s.sectionHead}><div><p className={s.eyebrow}>{t("ui.simple_from_browsing_to_pickup")}</p><h2 className={s.heading}>{t("ui.how_it_works")}</h2></div><p className={s.muted}>{t("ui.three_steps_one_good_habit")}</p></div>
-        <div className={s.grid3}>
+        <div className={s.photoJourney}>
+        <EditorialVisual scene="pickup" />
+        <div className={s.pickupSteps}>
           {[
             ["01", t("ui.discover"), t("ui.explore_offers_and_check_whats_included_the_price_and")],
             ["02", t("ui.reserve_2"), t("ui.choose_an_offer_sign_in_and_pay_online_to")],
             ["03", t("ui.pick_up"), t("ui.once_confirmed_show_your_qr_or_code_at_the")],
-          ].map(([n,title,description]) => <article className={s.step} key={n}><span className={s.number}>{n}</span><h3>{tr(title)}</h3><p>{tr(description)}</p></article>)}
-        </div>
+          ].map(([n,title,description], index) => <ScrollReveal key={n} index={index}><article className={s.step}><span className={s.number}>{n}</span><h3>{tr(title)}</h3><p>{tr(description)}</p></article></ScrollReveal>)}
+        </div></div>
       </div>
     </section>
 
     <section className={s.container + " " + s.promise}>
+      <EditorialVisual scene="boxes" />
+      <div>
       <div><p className={s.eyebrow}>{t("ui.the_foodsave_difference")}</p><h2 className={s.heading}>{t("ui.no_unwelcome_surprises_2")}</h2><p className={s.lede}>{t("ui.your_next_meal_deserves_more_than_a_question_mark")}</p></div>
-      <ul className={s.checklist}><li>{t("ui.check_the_offer_details_before_paying")}</li><li>{t("ui.compare_the_original_and_reduced_prices")}</li><li>{t("ui.check_the_business_and_your_pickup_window")}</li></ul>
+      <ul className={s.checklist} style={{ marginTop: 24 }}><li>{t("ui.check_the_offer_details_before_paying")}</li><li>{t("ui.compare_the_original_and_reduced_prices")}</li><li>{t("ui.check_the_business_and_your_pickup_window")}</li></ul>
+      </div>
     </section>
 
     <section className={s.container + " " + s.section}>
@@ -80,6 +91,7 @@ export default function Home() {
     </section>
     <section className={s.container + " " + s.section}><div className={s.merchantCta}><div><h2 className={s.heading}>{t("ui.your_surplus_can_still")}<br />{t("ui.have_value")}</h2><p>{t("ui.introduce_your_business_to_new_customers_in_ottawa")}</p></div><Link href="/partner" className={s.button}>{t("ui.become_a_partner_")}</Link></div></section>
     <div className={s.container + " " + s.trust}><span>{t("ui._ottawa_canada")}</span><span>{t("ui._prices_and_pickup_windows_shown_before_reservation")}</span><span>✉ <a href="mailto:info@foodsave.ca">info@foodsave.ca</a></span></div>
+    <section className={s.container + " " + s.finalCta}><h2 className={s.heading}>{t("visual.finalTitle")}</h2><p className={s.muted}>{t("visual.finalNote")}</p><Link href="/offers" className={s.button}>{t("ui.view_offers_near_me")}</Link></section>
     <Footer />
   </main>;
 }
