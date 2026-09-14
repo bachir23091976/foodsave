@@ -1,5 +1,9 @@
 // UI copy only. Never use these keys as API values or translate user-created content.
 export const fr = {
+  "auth.merchantRequired": "Cette action nécessite un compte commerçant autorisé.",
+  "auth.invalidNames": "Saisissez un prénom et un nom non vides de 100 caractères maximum chacun.",
+  "auth.invalidEmail": "Saisissez une adresse courriel valide, sans espaces, de 254 caractères maximum.",
+  "auth.invalidPasswordLength": "Le mot de passe doit contenir de 8 à 72 octets UTF-8. Certains caractères occupent plusieurs octets.",
   "photo.home": "Scène illustrative : un commerçant prépare des boîtes FoodSave dans une boulangerie avec vue sur Ottawa.",
   "photo.boxes": "Scène illustrative de pains, pâtisseries et repas dans des boîtes FoodSave.",
   "photo.pickup": "Scène illustrative de récupération FoodSave : un commerçant remet une boîte à un client adulte.",
@@ -513,6 +517,10 @@ export const fr = {
 } as const;
 export type MessageKey = keyof typeof fr;
 export const en: Record<MessageKey, string> = {
+  "auth.merchantRequired": "This action requires an authorized merchant account.",
+  "auth.invalidNames": "Enter a nonblank first and last name, each no longer than 100 characters.",
+  "auth.invalidEmail": "Enter a valid email address without spaces, no longer than 254 characters.",
+  "auth.invalidPasswordLength": "Your password must contain 8–72 UTF-8 bytes. Some characters use more than one byte.",
   "photo.home": "Illustrative scene: a merchant prepares FoodSave boxes in a bakery overlooking Ottawa.",
   "photo.boxes": "Illustrative scene of bread, pastries and meals in FoodSave boxes.",
   "photo.pickup": "Illustrative FoodSave pickup scene: a merchant hands a box to an adult customer.",

@@ -22,9 +22,31 @@ const DUMMY_PASSWORD_HASH = bcrypt.hashSync("foodsave-timing-safety-placeholder"
 
 export const register = async (req: Request, res: Response) => {
   try {
-    const { email, password, firstName, lastName, role, referralCode } = req.body;
+    const { email, password, firstName, lastName, role, referralCode } = req.body || {};
 
-    if (!email || !password || !firstName || !lastName) {
+    if ([email, password, firstName, lastName].some(value => typeof value !== "string" || !value)) {
+      return res.status(400).json({ message: "Champs manquants" });
+    }
+
+    if (!firstName.trim() || !lastName.trim() || firstName.length > 100 || lastName.length > 100) {
+      return res.status(400).json({ message: "auth.invalidNames" });
+    }
+    // Validate, but never canonicalize or silently trim stored email identities.
+    const emailParts = email.split("@");
+    const local = emailParts[0];
+    const domain = emailParts[1] || "";
+    const validLocal = local.length <= 64 && /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+$/.test(local)
+      && !local.startsWith(".") && !local.endsWith(".") && !local.includes("..");
+    const validDomain = domain.includes(".") && domain.split(".").every((label: string) =>
+      /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/.test(label));
+    if (email.length > 254 || email !== email.trim() || emailParts.length !== 2 || !validLocal || !validDomain) {
+      return res.status(400).json({ message: "auth.invalidEmail" });
+    }
+    const passwordBytes = Buffer.byteLength(password, "utf8");
+    if (passwordBytes < 8 || passwordBytes > 72) {
+      return res.status(400).json({ message: "auth.invalidPasswordLength" });
+    }
+    if (referralCode !== undefined && typeof referralCode !== "string") {
       return res.status(400).json({ message: "Champs manquants" });
     }
 
@@ -48,8 +70,8 @@ export const register = async (req: Request, res: Response) => {
       data: {
         email,
         password: hashedPassword,
-        firstName,
-        lastName,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
         role: role === "MERCHANT" ? "MERCHANT" : "CLIENT",
         referredById,
       },

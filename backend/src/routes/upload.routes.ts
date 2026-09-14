@@ -1,3 +1,4 @@
+import { requireMerchant } from "../middleware/role.middleware";
 import { Router, Request, Response, NextFunction } from "express";
 import multer from "multer";
 import { uploadImage } from "../controllers/upload.controller";
@@ -34,6 +35,7 @@ function handleUpload(req: Request, res: Response, next: NextFunction) {
 
 const router = Router();
 
-router.post("/image", authenticate, handleUpload, uploadImage);
+
+router.post("/image", authenticate, requireMerchant, handleUpload, uploadImage);
 
 export default router;

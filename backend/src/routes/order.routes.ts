@@ -1,8 +1,10 @@
+import { requireMerchant } from "../middleware/role.middleware";
 import { Router } from "express";
 import { createOrder, confirmOrder, getMyOrders, getMerchantOrders, validatePickup, cancelOrder, cancelOrderByMerchant, stripeWebhook } from "../controllers/order.controller";
 import { authenticate } from "../middleware/auth.middleware";
 
 const router = Router();
+
 
 // No authenticate here: this is called by Stripe's servers, not a logged-in
 // user -- stripeWebhook verifies the request is genuinely from Stripe via
@@ -14,8 +16,8 @@ router.post("/", authenticate, createOrder);
 router.post("/confirm", authenticate, confirmOrder);
 router.get("/mine", authenticate, getMyOrders);
 router.post("/cancel", authenticate, cancelOrder);
-router.get("/merchant", authenticate, getMerchantOrders);
-router.post("/merchant/cancel", authenticate, cancelOrderByMerchant);
-router.post("/validate", authenticate, validatePickup);
+router.get("/merchant", authenticate, requireMerchant, getMerchantOrders);
+router.post("/merchant/cancel", authenticate, requireMerchant, cancelOrderByMerchant);
+router.post("/validate", authenticate, requireMerchant, validatePickup);
 
 export default router;

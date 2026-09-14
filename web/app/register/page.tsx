@@ -13,7 +13,6 @@ export default function RegisterPage() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [referralCode, setReferralCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -27,7 +26,7 @@ export default function RegisterPage() {
       const res = await fetch(`${API_URL}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ firstName, lastName, email, password, role: "CLIENT", referralCode }),
+        body: JSON.stringify({ firstName, lastName, email, password, role: "CLIENT" }),
       });
 
       const data = await res.json();
@@ -57,10 +56,6 @@ export default function RegisterPage() {
         </label>
         <label className={s.field} htmlFor="register-password">{t("ui.password")}<input id="register-password" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         </label>
-        <details><summary>{t("ui.have_a_referral_code")}</summary>
-          <label className={s.field} htmlFor="register-referral" style={{ marginTop: 12 }}>{t("ui.referral_code_optional")}<input id="register-referral" type="text" value={referralCode} onChange={(e) => setReferralCode(e.target.value)} />
-          </label>
-        </details>
         <button type="submit" disabled={loading} className={s.button}>{loading ? t("ui.creating") : t("ui.create_my_account")}</button>
       </form>
       {error && <p role="alert" className={s.alert}>{msg(error)}</p>}
