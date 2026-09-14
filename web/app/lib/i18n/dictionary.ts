@@ -1,5 +1,13 @@
 // UI copy only. Never use these keys as API values or translate user-created content.
 export const fr = {
+  "auth.googleContinue": "Continuer avec Google",
+  "auth.googleLoading": "Connexion avec Google en cours…",
+  "auth.googleUnavailable": "La connexion avec Google est temporairement indisponible. Réessayez plus tard.",
+  "auth.googleInvalid": "Cette tentative de connexion a expiré ou n’est pas valide. Recommencez depuis la page de connexion.",
+  "auth.googleEmail": "Une adresse courriel Google vérifiée est nécessaire.",
+  "auth.googleCollision": "Utilisez votre méthode de connexion existante pour ce compte. Les comptes ne sont pas associés automatiquement.",
+  "auth.googleRole": "La connexion avec Google est réservée aux comptes clients. Utilisez votre méthode de connexion existante.",
+  "auth.googleCancelled": "La connexion avec Google a été annulée.",
   "auth.merchantRequired": "Cette action nécessite un compte commerçant autorisé.",
   "auth.invalidNames": "Saisissez un prénom et un nom non vides de 100 caractères maximum chacun.",
   "auth.invalidEmail": "Saisissez une adresse courriel valide, sans espaces, de 254 caractères maximum.",
@@ -517,6 +525,14 @@ export const fr = {
 } as const;
 export type MessageKey = keyof typeof fr;
 export const en: Record<MessageKey, string> = {
+  "auth.googleContinue": "Continue with Google",
+  "auth.googleLoading": "Signing in with Google…",
+  "auth.googleUnavailable": "Google sign-in is temporarily unavailable. Please try again later.",
+  "auth.googleInvalid": "This sign-in attempt has expired or is invalid. Start again from the sign-in page.",
+  "auth.googleEmail": "A verified Google email address is required.",
+  "auth.googleCollision": "Use your existing sign-in method for this account. Accounts are not linked automatically.",
+  "auth.googleRole": "Google sign-in is for customer accounts only. Use your existing sign-in method.",
+  "auth.googleCancelled": "Google sign-in was cancelled.",
   "auth.merchantRequired": "This action requires an authorized merchant account.",
   "auth.invalidNames": "Enter a nonblank first and last name, each no longer than 100 characters.",
   "auth.invalidEmail": "Enter a valid email address without spaces, no longer than 254 characters.",

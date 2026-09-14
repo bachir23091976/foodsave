@@ -59,7 +59,7 @@ export default function RegisterPage() {
         <button type="submit" disabled={loading} className={s.button}>{loading ? t("ui.creating") : t("ui.create_my_account")}</button>
       </form>
       {error && <p role="alert" className={s.alert}>{msg(error)}</p>}
-      <FutureSocialSignIn />
+      <FutureSocialSignIn customer />
       <p className={s.authFooter}>{t("ui.already_have_an_account")}{" "}<a href="/login">{t("ui.sign_in")}</a></p>
     </AuthShell>
   );

@@ -35,7 +35,9 @@ enum DietaryTag {
 model User {
   id                 String       @id @default(uuid())
   email              String       @unique
-  password           String
+  canonicalEmail     String       @unique @default(dbgenerated("''::text"))
+  password           String?
+  externalIdentities ExternalIdentity[]
   firstName          String
   lastName           String
   role               Role         @default(CLIENT)
@@ -54,6 +56,37 @@ model User {
 
   referredBy User?  @relation("Referrals", fields: [referredById], references: [id])
   referrals  User[] @relation("Referrals")
+}
+
+model ExternalIdentity {
+  id String @id @default(uuid())
+  provider String
+  issuer String
+  subject String
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  @@unique([provider, issuer, subject])
+  @@index([userId])
+}
+
+model GoogleAuthTransaction {
+  id String @id @default(uuid())
+  stateHash String @unique
+  browserHash String
+  nonce String
+  pkceVerifier String
+  frontendChallenge String
+  locale String
+  expiresAt DateTime
+  authorizedAt DateTime?
+  consumedAt DateTime?
+  handoffHash String? @unique
+  completedAt DateTime?
+  userId String?
+  errorCode String?
+  createdAt DateTime @default(now())
+  @@index([expiresAt])
 }
 
 model Merchant {

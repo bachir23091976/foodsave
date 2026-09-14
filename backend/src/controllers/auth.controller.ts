@@ -50,7 +50,7 @@ export const register = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Champs manquants" });
     }
 
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    const existingUser = await prisma.user.findUnique({ where: { canonicalEmail: email.toLowerCase() } });
     if (existingUser) {
       return res.status(400).json({ message: "Cet email est deja utilise" });
     }
@@ -69,6 +69,7 @@ export const register = async (req: Request, res: Response) => {
     const user = await prisma.user.create({
       data: {
         email,
+        canonicalEmail: email.toLowerCase(),
         password: hashedPassword,
         firstName: firstName.trim(),
         lastName: lastName.trim(),
@@ -114,9 +115,9 @@ export const login = async (req: Request, res: Response) => {
     }
 
     const user = await prisma.user.findUnique({ where: { email } });
-    const isPasswordValid = await bcrypt.compare(password, user ? user.password : DUMMY_PASSWORD_HASH);
+    const isPasswordValid = await bcrypt.compare(password, user?.password || DUMMY_PASSWORD_HASH);
 
-    if (!user || !isPasswordValid) {
+    if (!user?.password || !isPasswordValid) {
       return res.status(401).json({ message: "Email ou mot de passe incorrect" });
     }
 

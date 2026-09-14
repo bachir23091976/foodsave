@@ -6,6 +6,7 @@ import Navbar from "./Navbar";
 import Footer from "./Footer";
 import EditorialVisual from "./EditorialVisual";
 import s from "./public.module.css";
+import GoogleSignInButton from './GoogleSignInButton';
 
 export default function AuthShell({ title, subtitle, merchant = false, children }: {
   title: string; subtitle: string; merchant?: boolean; children: ReactNode;
@@ -31,12 +32,12 @@ export default function AuthShell({ title, subtitle, merchant = false, children 
   </main>;
 }
 
-export function FutureSocialSignIn() {
+export function FutureSocialSignIn({ customer = false }: { customer?: boolean }) {
   const { t, text: tr } = useLocale();
   return <div className={s.social}>
     <p className={s.separator}>{t("ui.or")}</p>
-    <button type="button" className={s.secondary} disabled>{t("ui.continue_with_google_coming_soon")}</button>
+    {customer ? <GoogleSignInButton /> : <button type="button" className={s.secondary} disabled>{t("ui.continue_with_google_coming_soon")}</button>}
     <button type="button" className={s.secondary} disabled>{t("ui.continue_with_apple_coming_soon")}</button>
-    <small>{t("ui.these_options_are_not_available_yet_please_use_your")}</small>
+    {!customer && <small>{t("ui.these_options_are_not_available_yet_please_use_your")}</small>}
   </div>;
 }

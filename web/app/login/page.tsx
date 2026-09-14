@@ -49,7 +49,7 @@ export default function LoginPage() {
         <button type="submit" disabled={loading} className={s.button}>{loading ? t("ui.signing_in") : t("ui.sign_in")}</button>
       </form>
       {error && <p role="alert" className={s.alert}>{msg(error)}</p>}
-      <FutureSocialSignIn />
+      <FutureSocialSignIn customer />
       <p className={s.authFooter}>{t("ui.new_here")}{" "}<a href="/register">{t("ui.create_an_account")}</a></p>
     </AuthShell>
   );

@@ -11,10 +11,10 @@ function load(file, dependencies, globals={}) {
 }
 const response=()=>({statusCode:200,status(n){this.statusCode=n;return this;},json(data){this.data=data;return this;}});
 const valid=()=>({firstName:' Jean ',lastName:' Tremblay ',email:'Jean+tag@Example.ca',password:'password8',role:'CLIENT'});
-function auth({exists=false,race=false}={}){
+function auth({exists=false,race=false,googleOnly=false}={}){
   const calls=[];
   const controller=load('controllers/auth.controller.ts',{
-    '../lib/prisma':{prisma:{user:{async findUnique(q){calls.push(['read',q]);return exists?{id:'u',password:'stored',role:'CLIENT'}:null;},async create(q){calls.push(['create',q]);if(race)throw {code:'P2002'};return {id:'u',...q.data};}}}},
+    '../lib/prisma':{prisma:{user:{async findUnique(q){calls.push(['read',q]);return exists?{id:'u',password:googleOnly?null:'stored',role:'CLIENT'}:null;},async create(q){calls.push(['create',q]);if(race)throw {code:'P2002'};return {id:'u',...q.data};}}}},
     bcryptjs:{hashSync(p,c){calls.push(['dummy',c]);return 'dummy-hash';},async hash(p,c){calls.push(['hash',p,c]);return 'hashed';},async compare(p,h){calls.push(['compare',p,h]);return false;}},
     jsonwebtoken:{sign(payload,secret,options){calls.push(['jwt',payload,options]);return 'mock-token';}},
     './loyalty.controller':{},
@@ -24,6 +24,14 @@ test('valid registration trims names only, preserves identity, bcrypt cost and s
   const {controller,calls}=auth(),res=response();await controller.register({body:valid()},res);assert.equal(res.statusCode,201);
   const data=calls.find(c=>c[0]==='create')[1].data;assert.equal(data.firstName,'Jean');assert.equal(data.lastName,'Tremblay');assert.equal(data.email,valid().email);assert.equal(data.role,'CLIENT');
   assert.equal(calls.find(c=>c[0]==='hash')[2],10);assert.equal(calls.find(c=>c[0]==='jwt')[2].expiresIn,'7d');
+  assert.equal(data.canonicalEmail,valid().email.toLowerCase());
+  assert.equal(calls.find(c=>c[0]==='read')[1].where.canonicalEmail,valid().email.toLowerCase());
+});
+test('Google-only password login compares dummy and fails generically',async()=>{
+  const {controller,calls}=auth({exists:true,googleOnly:true}),res=response();
+  await controller.login({body:{email:'a@example.ca',password:'password8'}},res);
+  assert.equal(res.statusCode,401);assert.equal(res.data.message,'Email ou mot de passe incorrect');
+  assert.equal(calls.find(c=>c[0]==='compare')[2],'dummy-hash');
 });
 for(const field of ['firstName','lastName'])for(const value of [null,5,{},[],false,'','   ','x'.repeat(101)])test(`reject ${field} ${JSON.stringify(value)}`,async()=>{
   const {controller,calls}=auth(),res=response();await controller.register({body:{...valid(),[field]:value}},res);assert.equal(res.statusCode,400);assert.ok(!calls.some(c=>c[0]==='read'||c[0]==='hash'));
