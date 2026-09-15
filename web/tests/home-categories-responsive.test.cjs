@@ -36,8 +36,8 @@ test('home category layout, surrounding content and mobile navigation', {skip:!p
   await send('Runtime.enable');await send('Page.enable');await send('Network.enable');await send('Fetch.enable',{patterns:[{urlPattern:'*'}]});
   const evaluate=async expression=>{const r=await send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});assert.ok(!r.exceptionDetails,JSON.stringify(r.exceptionDetails));return r.result.value;};
   const screenshots=fs.mkdtempSync(path.join(os.tmpdir(),'foodsave-category-layouts-'));
-  for(const width of [320,390,768,1024,1440])for(const locale of ['fr','en'])await t.test(`${locale} at ${width}px`,async()=>{
-   await send('Emulation.setDeviceMetricsOverride',{width,height:740,deviceScaleFactor:1,mobile:width<480});
+  for(const width of [320,390,480,768,1024,1440])for(const locale of ['fr','en'])await t.test(`${locale} at ${width}px`,async()=>{
+   await send('Emulation.setDeviceMetricsOverride',{width,height:740,deviceScaleFactor:1,mobile:width<=480});
    await send('Network.setCookie',{name:'foodsave_locale',value:locale,url:url.origin,path:'/'});
    await send('Page.navigate',{url:url.origin+'/'});
    for(let i=0;i<100;i++){if(await evaluate(`document.documentElement?.lang==='${locale}-CA' && document.querySelectorAll('[class*="categoryTiles"] a').length===4`))break;await wait(100);}
@@ -46,16 +46,19 @@ test('home category layout, surrounding content and mobile navigation', {skip:!p
     const box=e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height,right:r.right,bottom:r.bottom}};
     const grid=document.querySelector('[class*="categoryTiles"]');
     const cards=[...grid.querySelectorAll('a')].map(e=>({href:e.getAttribute('href'),box:box(e),display:getComputedStyle(e).display,children:[...e.children].map(c=>({text:c.textContent,box:box(c),scroll:c.scrollWidth,client:c.clientWidth}))}));
-    const clipped=[...document.querySelectorAll('h1,h2,h3,p,footer a')].filter(e=>{const r=e.getBoundingClientRect();return r.width>0&&(r.left< -1||r.right>innerWidth+1||e.scrollWidth>e.clientWidth+1)}).map(e=>e.textContent);
-    return {width:innerWidth,scroll:document.documentElement.scrollWidth,columns:getComputedStyle(grid).gridTemplateColumns.split(' ').length,cards,clipped};
+    const clipped=[...document.querySelectorAll('h1,h2,h3,p,figcaption,footer a')].filter(e=>{const r=e.getBoundingClientRect();return r.width>0&&(r.left< -1||r.right>innerWidth+1||e.scrollWidth>e.clientWidth+1)}).map(e=>e.textContent);
+    const section=grid.closest('section'),hero=section.previousElementSibling,caption=hero.querySelector('figcaption');
+    return {width:innerWidth,scroll:document.documentElement.scrollWidth,columns:getComputedStyle(grid).gridTemplateColumns.split(' ').length,cards,clipped,
+      heroGap:box(section).y-box(hero).bottom,disclosure:caption?.textContent,disclosureBottom:caption&&box(caption).bottom,categoryTop:box(section).y,nextGap:box(section.nextElementSibling).y-box(grid).bottom};
    })()`);
    assert.ok(layout.scroll<=layout.width,'No horizontal overflow');assert.deepEqual(layout.clipped,[],'Surrounding text stays within viewport');
-   assert.equal(layout.columns,width<360?1:width<=1024?2:4);
+   assert.equal(layout.columns,width<=480?1:width<=1024?2:4);
    assert.equal(layout.cards.length,4);
    for(const card of layout.cards){assert.equal(card.href,'/offers');assert.equal(card.children.length,3);assert.ok(card.box.h>=44);}
-   if(width<=390){
-    const heights=layout.cards.map(c=>c.box.h);assert.ok(Math.max(...heights)-Math.min(...heights)<1,'Equal-height cards');assert.ok(Math.max(...heights)<=150,'Compact cards');
-    for(const card of layout.cards){const [icon,label,arrow]=card.children;assert.equal(card.display,'grid');assert.ok(icon.box.bottom<=label.box.y+1);assert.ok(label.box.bottom<=arrow.box.y+1);assert.ok(Math.abs(icon.box.x-card.box.x-13)<1);assert.ok(Math.abs(card.box.right-arrow.box.right-13)<1);assert.ok(label.scroll<=label.client+1);}
+   if(width<=480){
+    const heights=layout.cards.map(c=>c.box.h);assert.ok(Math.max(...heights)-Math.min(...heights)<1,'Equal-height rows');assert.ok(Math.min(...heights)>=72&&Math.max(...heights)<=88,'Compact 72–88px rows');
+    for(const card of layout.cards){const [icon,label,arrow]=card.children;assert.equal(card.display,'grid');assert.ok(icon.box.right<=label.box.x);assert.ok(label.box.right<=arrow.box.x);assert.ok(Math.abs(icon.box.x-card.box.x-13)<1);assert.ok(Math.abs(card.box.right-arrow.box.right-13)<1);assert.ok(label.scroll<=label.client+1);for(const child of card.children)assert.ok(Math.abs(child.box.y+child.box.h/2-card.box.y-card.box.h/2)<1,'Vertically centered content');}
+    assert.ok(layout.disclosure?.trim(),'Hero image disclosure remains visible');assert.ok(layout.disclosureBottom<=layout.categoryTop,'Disclosure does not overlap categories');assert.ok(layout.heroGap>=-1,'Hero does not overlap categories');assert.ok(layout.nextGap>=24&&layout.nextGap<=48,'Compact separation before next section');
     const labels=layout.cards.map(c=>c.children[1].text);
     assert.ok(labels.some(s=>locale==='fr'?s.includes('Pâtisserie'):s.includes('Baker')));assert.ok(labels.some(s=>locale==='fr'?s.includes('Fruits'):s.includes('Fruit')));
     await evaluate(`document.querySelector('[class*="categoryTiles"]').scrollIntoView({block:'center'})`);
