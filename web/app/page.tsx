@@ -45,7 +45,7 @@ export default function Home() {
 
     <section className={s.container + " " + s.categoryShowcase}>
       <h2 className={s.heading}>{t("visual.categories")}</h2><p className={s.muted}>{t("visual.categoriesNote")}</p>
-      <div className={s.categoryTiles}>{(["ui.grocery", "ui.prepared_meals", "ui.bakery_pastries", "ui.fruit_and_vegetables"] as const).map((key, index) => <Link href="/offers" key={key}><span aria-hidden="true">{["◒", "◉", "◓", "◐"][index]}</span>{t(key)}<span aria-hidden="true">↗</span></Link>)}</div>
+      <div className={s.categoryTiles}>{(["ui.grocery", "ui.prepared_meals", "ui.bakery_pastries", "ui.fruit_and_vegetables"] as const).map((key, index) => <Link href="/offers" key={key}><span aria-hidden="true">{["◒", "◉", "◓", "◐"][index]}</span><span>{t(key)}</span><span aria-hidden="true">↗</span></Link>)}</div>
     </section>
 
     <section id="comment-ca-marche" className={s.band} style={{ scrollMarginTop: 90 }}>
