@@ -1,7 +1,7 @@
 "use client";
 import { useLocale } from "../lib/i18n/LocaleProvider";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -65,6 +65,28 @@ export default function OffersPage() {
   const [favoriteMerchantIds, setFavoriteMerchantIds] = useState<string[]>([]);
   const [isMerchant, setIsMerchant] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("TOUT");
+  const categoryRow = useRef<HTMLDivElement>(null);
+  const [moreCategories, setMoreCategories] = useState(false);
+
+  useEffect(() => {
+    const row = categoryRow.current;
+    if (!row) return;
+    const update = () => setMoreCategories(row.scrollWidth - row.clientWidth - row.scrollLeft > 2);
+    const selected = row.querySelector<HTMLElement>('[aria-pressed="true"]');
+    if (selected && row.scrollWidth > row.clientWidth) {
+      selected.scrollIntoView({
+        block: "nearest",
+        inline: "nearest",
+        behavior: "auto",
+      });
+    }
+    update();
+    row.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
+    observer?.observe(row);
+    return () => { row.removeEventListener('scroll', update); window.removeEventListener('resize', update); observer?.disconnect(); };
+  }, [selectedCategory, intlLocale]);
 
   const loadOffers = () => {
     fetch(`${API_URL}/offers`)
@@ -260,7 +282,7 @@ export default function OffersPage() {
           <p className={s.searchNote}>{t("ui.enter_an_address_to_explore_nearby_offers")}</p>
           {searchMessage && <p role="status" className={s.searchNote}>{msg(searchMessage)}</p>}
         </section>
-        <section className={s.filters} aria-label={t("ui.offer_categories")}><div className={s.filterRow}>
+        <section className={s.filters} data-more-categories={moreCategories} aria-label={t("ui.offer_categories")}><div className={s.filterRow} ref={categoryRow}>
           {OFFER_CATEGORIES.map(category => <button key={category.value} type="button" onClick={() => setSelectedCategory(category.value)} aria-pressed={selectedCategory === category.value} className={s.chip}>{tr(category.label)}</button>)}
         </div></section>
         <section className={s.results} aria-label={t("ui.available_offers")} aria-busy={loading || searching || locating}>

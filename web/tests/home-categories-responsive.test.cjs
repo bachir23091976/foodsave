@@ -72,6 +72,39 @@ test('home category layout, surrounding content and mobile navigation', {skip:!p
     assert.ok(await evaluate('document.querySelector("footer").getBoundingClientRect().bottom<=innerHeight+1'));
    }else for(const card of layout.cards)assert.equal(card.display,'flex','Tablet and desktop keep original layout');
   });
+  for(const width of [320,390,480])for(const locale of ['fr','en'])await t.test(`all nine offer filters reachable by touch: ${locale} at ${width}px`,async()=>{
+   await send('Emulation.setDeviceMetricsOverride',{width,height:740,deviceScaleFactor:1,mobile:true});
+   await send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:1});
+   await send('Network.setCookie',{name:'foodsave_locale',value:locale,url:url.origin,path:'/'});
+   await send('Page.navigate',{url:url.origin+'/offers'});
+   for(let i=0;i<100;i++){if(await evaluate(`document.querySelectorAll('[class*="filterRow"] button').length===9`))break;await wait(100);}
+   await evaluate(`document.querySelector('[class*="filterRow"]').scrollIntoView({block:'center'})`);await wait(500);
+   const state=()=>evaluate(`(()=>{const row=document.querySelector('[class*="filterRow"]'),r=row.getBoundingClientRect();return {left:r.left,right:r.right,y:r.y+r.height/2,scroll:row.scrollLeft,max:row.scrollWidth-row.clientWidth,more:row.parentElement.dataset.moreCategories,buttons:[...row.querySelectorAll('button')].map(b=>{const q=b.getBoundingClientRect();return {text:b.textContent,left:q.left,right:q.right,y:q.y+q.height/2,pressed:b.getAttribute('aria-pressed'),height:q.height}})}})()`);
+   async function swipe(left){const r=await state(),start=left?r.right-16:r.left+16,end=left?r.left+16:r.right-16;
+    await send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:start,y:r.y}]});
+    for(let n=1;n<=12;n++){await send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:start+(end-start)*n/12,y:r.y}]});await wait(15);}
+    await send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await wait(250);
+   }
+   const initial=await state();assert.equal(initial.more,'true','Right-edge cue advertises more categories');assert.ok(initial.max>0);
+   const {localeTools}=require('./i18n-fixture.cjs');
+   const keys=['ui.all','ui.grocery','ui.prepared_meals','ui.sandwiches','ui.bakery_pastries','ui.pizza_fast_food','ui.fruit_and_vegetables','ui.drinks','ui.other'];
+   assert.deepEqual(initial.buttons.map(b=>b.text),keys.map(k=>localeTools(locale).t(k)),'All original localized category names preserved');
+   for(let n=0;n<20&&(await state()).scroll<(await state()).max-1;n++)await swipe(true);
+   const end=await state();assert.ok(Math.abs(end.scroll-end.max)<=1,'Touch scrolling reaches the end');assert.ok(end.buttons[8].right<=end.right-24,'Other is fully visible with trailing space');assert.equal(end.more,'false');
+   // Visit backwards using touch gestures, then tap every real button.
+   for(let index=8;index>=0;index--){
+    for(let n=0;n<20;n++){const r=await state(),b=r.buttons[index];if(b.left>=r.left+2&&b.right<=r.right-2)break;await swipe(b.right>r.right);}
+    const r=await state(),b=r.buttons[index];assert.ok(b.left>=r.left&&b.right<=r.right,'Category reachable: '+b.text);assert.ok(b.height>=44);
+    await send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:(b.left+b.right)/2,y:b.y}]});await send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await wait(400);
+    const selected=await state();assert.equal(selected.buttons[index].pressed,'true');assert.equal(selected.buttons.filter(b=>b.pressed==='true').length,1);
+   }
+   // Selection by the existing reset action must also bring All back from offscreen.
+   await evaluate(`document.querySelector('[class*="filterRow"]').lastElementChild.click()`);await wait(500);
+   let r=await state();assert.equal(r.buttons[8].pressed,'true');assert.ok(r.buttons[8].left>=r.left&&r.buttons[8].right<=r.right);
+   await evaluate(`document.querySelector('[class*="empty"] button').click()`);await wait(500);
+   r=await state();assert.equal(r.buttons[0].pressed,'true');assert.ok(r.buttons[0].left>=r.left&&r.buttons[0].right<=r.right);
+   assert.ok(await evaluate('document.documentElement.scrollWidth<=innerWidth'),'Only the chip row scrolls horizontally');
+  });
   assert.deepEqual(errors,[]);t.diagnostic('Screenshots: '+screenshots);
  }finally{if(send&&ws?.readyState===1){try{await send('Browser.close');}catch{}}ws?.close();browser.kill();}
 });
