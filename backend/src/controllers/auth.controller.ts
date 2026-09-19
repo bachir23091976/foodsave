@@ -63,6 +63,7 @@ export const register = async (req: Request, res: Response) => {
 
     const existingUser = await prisma.user.findUnique({ where: { canonicalEmail: email.toLowerCase() } });
     if (existingUser) {
+      console.warn("[AUTH_REGISTER_DIAG] DUPLICATE_PRECHECK");
       return res.status(400).json({ message: "Cet email est deja utilise" });
     }
 
@@ -106,13 +107,20 @@ export const register = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     if (error.code === "P2002") {
+      const target = error.meta?.target;
+      const targetText = Array.isArray(target) ? target.join(",") : target;
+      if (typeof targetText === "string" && /^[A-Za-z0-9_.-]+(?:,[A-Za-z0-9_.-]+)*$/.test(targetText)) {
+        console.warn(`[AUTH_REGISTER_DIAG] PRISMA_P2002 target=${targetText}`);
+      } else {
+        console.warn("[AUTH_REGISTER_DIAG] PRISMA_P2002");
+      }
       // Two concurrent registrations with the same email both passed the
       // findUnique check above before either insert committed; the unique
       // constraint on User.email is the real guard, this just returns the
       // same friendly message instead of a generic 500.
       return res.status(400).json({ message: "Cet email est deja utilise" });
     }
-    console.error(error);
+    console.error("[AUTH_REGISTER] registration failed");
     res.status(500).json({ message: "Erreur serveur" });
   }
 };
