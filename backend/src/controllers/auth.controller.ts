@@ -64,6 +64,19 @@ export const register = async (req: Request, res: Response) => {
     const existingUser = await prisma.user.findUnique({ where: { canonicalEmail: email.toLowerCase() } });
     if (existingUser) {
       console.warn("[AUTH_REGISTER_DIAG] DUPLICATE_PRECHECK");
+      try {
+        const [metadata] = await prisma.$queryRaw<Array<{ database: string; user: string; schema: string }>>`
+          SELECT current_database() AS database, current_user AS user, current_schema() AS schema
+        `;
+        const safe = (value: unknown) => typeof value === "string" && /^[A-Za-z0-9_.-]+$/.test(value);
+        if (metadata && safe(metadata.database) && safe(metadata.user) && safe(metadata.schema)) {
+          console.warn(`[AUTH_REGISTER_DIAG] DB database=${metadata.database} user=${metadata.user} schema=${metadata.schema}`);
+        } else {
+          console.warn("[AUTH_REGISTER_DIAG] DB_METADATA_UNAVAILABLE");
+        }
+      } catch {
+        console.warn("[AUTH_REGISTER_DIAG] DB_METADATA_UNAVAILABLE");
+      }
       return res.status(400).json({ message: "Cet email est deja utilise" });
     }
 
