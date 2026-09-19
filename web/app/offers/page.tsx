@@ -69,6 +69,11 @@ export default function OffersPage() {
   const [moreCategories, setMoreCategories] = useState(false);
 
   useEffect(() => {
+    const category = new URLSearchParams(window.location.search).get("category");
+    if (category && OFFER_CATEGORIES.some((item) => item.value === category)) setSelectedCategory(category);
+  }, []);
+
+  useEffect(() => {
     const row = categoryRow.current;
     if (!row) return;
     const update = () => setMoreCategories(row.scrollWidth - row.clientWidth - row.scrollLeft > 2);
