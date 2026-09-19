@@ -46,6 +46,7 @@ model User {
   referredById       String?
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
+  authVersion        Int          @default(0)
 
   merchant       Merchant?
   orders         Order[]
@@ -53,9 +54,23 @@ model User {
   savedLocations SavedLocation[]
   favorites      Favorite[]
   loyaltyRewards LoyaltyReward[]
+  passwordResetTokens PasswordResetToken[]
 
   referredBy User?  @relation("Referrals", fields: [referredById], references: [id])
   referrals  User[] @relation("Referrals")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
 }
 
 model ExternalIdentity {

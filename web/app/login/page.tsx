@@ -48,6 +48,7 @@ export default function LoginPage() {
         </label>
         <button type="submit" disabled={loading} className={s.button}>{loading ? t("ui.signing_in") : t("ui.sign_in")}</button>
       </form>
+      <p className={s.authFooter}><a href="/forgot-password">{t("auth.forgotPassword")}</a></p>
       {error && <p role="alert" className={s.alert}>{msg(error)}</p>}
       <FutureSocialSignIn customer />
       <p className={s.authFooter}>{t("ui.new_here")}{" "}<a href="/register">{t("ui.create_an_account")}</a></p>

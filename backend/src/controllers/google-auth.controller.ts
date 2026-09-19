@@ -76,7 +76,7 @@ export async function googleComplete(req: Request, res: Response) {
       if (record!.errorCode) return { message: record!.errorCode, locale: record!.locale };
       const user = await tx.user.findUnique({ where: { id: record!.userId || '' } });
       if (!user || user.role !== 'CLIENT') return { message: 'auth.googleRole', locale: record!.locale };
-      return { token: jwt.sign({ userId: user.id, role: user.role },config.jwtSecret,{ expiresIn: '7d' }), locale: record!.locale };
+      return { token: jwt.sign({ userId: user.id, role: user.role, authVersion: user.authVersion },config.jwtSecret,{ expiresIn: '7d' }), locale: record!.locale };
     });
     res.status('token' in result ? 200 : 400).json(result);
   } catch(error) { fail(res,error); }

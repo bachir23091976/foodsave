@@ -13,11 +13,13 @@ const response=()=>({statusCode:200,status(n){this.statusCode=n;return this;},js
 const valid=()=>({firstName:' Jean ',lastName:' Tremblay ',email:'Jean+tag@Example.ca',password:'password8',role:'CLIENT'});
 function auth({exists=false,race=false,googleOnly=false}={}){
   const calls=[];
+  const passwordReset={buildPasswordResetEmail(){return {subject:'fixture',text:'fixture'};},createPasswordResetToken(){return 'A'.repeat(43);},EmailDeliveryUnavailable:class extends Error{},hashPasswordResetToken(){return 'fixture-hash';},isPasswordResetToken(){return false;},PASSWORD_RESET_TTL_MS:2700000,PasswordResetError:class extends Error{},sendPasswordResetEmail:async()=>{},validateResetPassword(){return null;}};
   const controller=load('controllers/auth.controller.ts',{
     '../lib/prisma':{prisma:{user:{async findUnique(q){calls.push(['read',q]);return exists?{id:'u',password:googleOnly?null:'stored',role:'CLIENT'}:null;},async create(q){calls.push(['create',q]);if(race)throw {code:'P2002'};return {id:'u',...q.data};}}}},
     bcryptjs:{hashSync(p,c){calls.push(['dummy',c]);return 'dummy-hash';},async hash(p,c){calls.push(['hash',p,c]);return 'hashed';},async compare(p,h){calls.push(['compare',p,h]);return false;}},
     jsonwebtoken:{sign(payload,secret,options){calls.push(['jwt',payload,options]);return 'mock-token';}},
     './loyalty.controller':{},
+    '../lib/password-reset':passwordReset,
   });return {controller,calls};
 }
 test('valid registration trims names only, preserves identity, bcrypt cost and seven-day JWT',async()=>{
@@ -66,7 +68,7 @@ test('all merchant-only routes execute authenticate then guard before their exis
   const expected={'merchant':['post /','get /me','post /connect-stripe','get /stripe-status','get /sales'],'offer':['post /','get /mine','patch /:id/deactivate'],'order':['get /merchant','post /merchant/cancel','post /validate'],'upload':['post /image']};
   for(const [file,protectedRoutes]of Object.entries(expected)){
     let currentRole='CLIENT',reached=0;
-    const {authenticate}=load('middleware/auth.middleware.ts',{jsonwebtoken:{verify(){return {userId:'u',role:'MERCHANT'};}}});
+    const {authenticate}=load('middleware/auth.middleware.ts',{jsonwebtoken:{verify(){return {userId:'u',role:'MERCHANT'};}},'../lib/prisma':{prisma:{user:{async findUnique(){return {authVersion:0};}}}}});
     const {requireMerchant:guard}=load('middleware/role.middleware.ts',{'../lib/prisma':{prisma:{user:{async findUnique(){return {role:currentRole};}}}}});
     const routes=[],router={};for(const method of ['get','post','patch'])router[method]=(p,...handlers)=>routes.push({key:method+' '+p,handlers});
     const fakeMulter=()=>({single:()=>((_req,_res,next)=>next())});fakeMulter.memoryStorage=()=>({});

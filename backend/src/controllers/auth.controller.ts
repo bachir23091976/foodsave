@@ -3,6 +3,17 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { prisma } from "../lib/prisma";
 import { checkAndCreateReward } from "./loyalty.controller";
+import {
+  buildPasswordResetEmail,
+  createPasswordResetToken,
+  EmailDeliveryUnavailable,
+  hashPasswordResetToken,
+  isPasswordResetToken,
+  PASSWORD_RESET_TTL_MS,
+  PasswordResetError,
+  sendPasswordResetEmail,
+  validateResetPassword,
+} from "../lib/password-reset";
 
 const JWT_SECRET = process.env.JWT_SECRET || "changez-moi-en-production";
 
@@ -78,7 +89,7 @@ export const register = async (req: Request, res: Response) => {
       },
     });
 
-    const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, {
+    const token = jwt.sign({ userId: user.id, role: user.role, authVersion: user.authVersion }, JWT_SECRET, {
       expiresIn: "7d",
     });
 
@@ -121,7 +132,7 @@ export const login = async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Email ou mot de passe incorrect" });
     }
 
-    const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, {
+    const token = jwt.sign({ userId: user.id, role: user.role, authVersion: user.authVersion }, JWT_SECRET, {
       expiresIn: "7d",
     });
 
@@ -139,5 +150,72 @@ export const login = async (req: Request, res: Response) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Erreur serveur" });
+  }
+};
+
+const neutralResetResponse = (res: Response) => res.json({ message: "auth.resetRequestAccepted" });
+
+export const forgotPassword = async (req: Request, res: Response) => {
+  const { email, locale } = req.body || {};
+  if (typeof email !== "string" || !email || email.length > 254) return neutralResetResponse(res);
+
+  try {
+    const user = await prisma.user.findUnique({ where: { canonicalEmail: email.toLowerCase() } });
+    if (!user?.password) return neutralResetResponse(res);
+
+    const rawToken = createPasswordResetToken();
+    const expiresAt = new Date(Date.now() + PASSWORD_RESET_TTL_MS);
+    const record = await prisma.passwordResetToken.create({
+      data: { tokenHash: hashPasswordResetToken(rawToken), userId: user.id, expiresAt },
+    });
+    try {
+      const baseUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+      const resetUrl = new URL("/reset-password", baseUrl);
+      resetUrl.searchParams.set("token", rawToken);
+      await sendPasswordResetEmail(user.email, buildPasswordResetEmail({
+        resetUrl: resetUrl.toString(),
+        locale: locale === "en" ? "en" : "fr",
+        expiresMinutes: Math.round(PASSWORD_RESET_TTL_MS / 60000),
+      }));
+    } catch (error) {
+      await prisma.passwordResetToken.delete({ where: { id: record.id } });
+      if (!(error instanceof EmailDeliveryUnavailable)) console.error("Password reset email delivery failed");
+    }
+  } catch (error) {
+    console.error("Password reset request failed", error instanceof Error ? error.message : "unknown error");
+  }
+  return neutralResetResponse(res);
+};
+
+export const resetPassword = async (req: Request, res: Response) => {
+  const { token, password, confirmPassword } = req.body || {};
+  if (!isPasswordResetToken(token)) return res.status(400).json({ message: "auth.resetInvalid" });
+  if (password !== confirmPassword) return res.status(400).json({ message: "auth.resetPasswordMismatch" });
+  const passwordError = validateResetPassword(password);
+  if (passwordError) return res.status(400).json({ message: passwordError });
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const record = await tx.passwordResetToken.findUnique({ where: { tokenHash: hashPasswordResetToken(token) } });
+      if (!record) throw new PasswordResetError("auth.resetInvalid");
+      if (record.usedAt) throw new PasswordResetError("auth.resetUsed");
+      if (record.expiresAt <= new Date()) throw new PasswordResetError("auth.resetExpired");
+
+      const claimed = await tx.passwordResetToken.updateMany({
+        where: { id: record.id, usedAt: null, expiresAt: { gt: new Date() } },
+        data: { usedAt: new Date() },
+      });
+      if (claimed.count !== 1) throw new PasswordResetError("auth.resetUsed");
+
+      await tx.user.update({
+        where: { id: record.userId },
+        data: { password: await bcrypt.hash(password, 10), authVersion: { increment: 1 } },
+      });
+    });
+    return res.json({ message: "auth.resetSuccess" });
+  } catch (error) {
+    if (error instanceof PasswordResetError) return res.status(400).json({ message: error.code });
+    console.error("Password reset failed", error instanceof Error ? error.message : "unknown error");
+    return res.status(500).json({ message: "ui.unable_to_contact_the_server" });
   }
 };
