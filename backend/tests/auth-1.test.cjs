@@ -15,7 +15,7 @@ function auth({exists=false,race=false,googleOnly=false}={}){
   const calls=[];
   const passwordReset={buildPasswordResetEmail(){return {subject:'fixture',text:'fixture'};},createPasswordResetToken(){return 'A'.repeat(43);},EmailDeliveryUnavailable:class extends Error{},hashPasswordResetToken(){return 'fixture-hash';},isPasswordResetToken(){return false;},PASSWORD_RESET_TTL_MS:2700000,PasswordResetError:class extends Error{},sendPasswordResetEmail:async()=>{},validateResetPassword(){return null;}};
   const controller=load('controllers/auth.controller.ts',{
-    '../lib/prisma':{prisma:{user:{async findUnique(q){calls.push(['read',q]);return exists?{id:'u',password:googleOnly?null:'stored',role:'CLIENT'}:null;},async create(q){calls.push(['create',q]);if(race)throw {code:'P2002'};return {id:'u',...q.data};}},async $queryRaw(){return [{database:'fixture',user:'fixture',schema:'public'}];}}},
+    '../lib/prisma':{prisma:{user:{async findUnique(q){calls.push(['read',q]);return exists?{id:'u',password:googleOnly?null:'stored',role:'CLIENT'}:null;},async create(q){calls.push(['create',q]);if(race)throw {code:'P2002'};return {id:'u',...q.data};}},async $queryRaw(){return [{database:'fixture',user:'fixture',schema:'public',oid:16396}];}}},
     bcryptjs:{hashSync(p,c){calls.push(['dummy',c]);return 'dummy-hash';},async hash(p,c){calls.push(['hash',p,c]);return 'hashed';},async compare(p,h){calls.push(['compare',p,h]);return false;}},
     jsonwebtoken:{sign(payload,secret,options){calls.push(['jwt',payload,options]);return 'mock-token';}},
     './loyalty.controller':{},

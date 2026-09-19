@@ -65,12 +65,14 @@ export const register = async (req: Request, res: Response) => {
     if (existingUser) {
       console.warn("[AUTH_REGISTER_DIAG] DUPLICATE_PRECHECK");
       try {
-        const [metadata] = await prisma.$queryRaw<Array<{ database: string; user: string; schema: string }>>`
-          SELECT current_database() AS database, current_user AS user, current_schema() AS schema
+        const [metadata] = await prisma.$queryRaw<Array<{ database: string; user: string; schema: string; oid: number }>>`
+          SELECT current_database() AS database, current_user AS user, current_schema() AS schema, pg_database.oid AS oid
+          FROM pg_database
+          WHERE pg_database.datname = current_database()
         `;
         const safe = (value: unknown) => typeof value === "string" && /^[A-Za-z0-9_.-]+$/.test(value);
-        if (metadata && safe(metadata.database) && safe(metadata.user) && safe(metadata.schema)) {
-          console.warn(`[AUTH_REGISTER_DIAG] DB database=${metadata.database} user=${metadata.user} schema=${metadata.schema}`);
+        if (metadata && safe(metadata.database) && safe(metadata.user) && safe(metadata.schema) && Number.isInteger(metadata.oid) && metadata.oid >= 0) {
+          console.warn(`[AUTH_REGISTER_DIAG] DB database=${metadata.database} user=${metadata.user} schema=${metadata.schema} oid=${metadata.oid}`);
         } else {
           console.warn("[AUTH_REGISTER_DIAG] DB_METADATA_UNAVAILABLE");
         }
