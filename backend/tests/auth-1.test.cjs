@@ -15,7 +15,7 @@ function auth({exists=false,race=false,googleOnly=false}={}){
   const calls=[];
   const passwordReset={buildPasswordResetEmail(){return {subject:'fixture',text:'fixture'};},createPasswordResetToken(){return 'A'.repeat(43);},EmailDeliveryUnavailable:class extends Error{},hashPasswordResetToken(){return 'fixture-hash';},isPasswordResetToken(){return false;},PASSWORD_RESET_TTL_MS:2700000,PasswordResetError:class extends Error{},sendPasswordResetEmail:async()=>{},validateResetPassword(){return null;}};
   const controller=load('controllers/auth.controller.ts',{
-    '../lib/prisma':{prisma:{user:{async findUnique(q){calls.push(['read',q]);return exists?{id:'u',password:googleOnly?null:'stored',role:'CLIENT'}:null;},async create(q){calls.push(['create',q]);if(race)throw {code:'P2002'};return {id:'u',...q.data};}},async $queryRaw(){return [{database:'fixture',user:'fixture',schema:'public',oid:16396}];}}},
+    '../lib/prisma':{prisma:{user:{async findUnique(q){calls.push(['read',q]);return exists?{id:'u',password:googleOnly?null:'stored',role:'CLIENT'}:null;},async create(q){calls.push(['create',q]);if(race)throw {code:'P2002'};return {id:'u',...q.data};}}}},
     bcryptjs:{hashSync(p,c){calls.push(['dummy',c]);return 'dummy-hash';},async hash(p,c){calls.push(['hash',p,c]);return 'hashed';},async compare(p,h){calls.push(['compare',p,h]);return false;}},
     jsonwebtoken:{sign(payload,secret,options){calls.push(['jwt',payload,options]);return 'mock-token';}},
     './loyalty.controller':{},
@@ -28,6 +28,26 @@ test('valid registration trims names only, preserves identity, bcrypt cost and s
   assert.equal(calls.find(c=>c[0]==='hash')[2],10);assert.equal(calls.find(c=>c[0]==='jwt')[2].expiresIn,'7d');
   assert.equal(data.canonicalEmail,valid().email.toLowerCase());
   assert.equal(calls.find(c=>c[0]==='read')[1].where.canonicalEmail,valid().email.toLowerCase());
+});
+for(const email of ['person@example.ca','PERSON@EXAMPLE.CA'])test('existing account rejects exact and case-insensitive duplicate '+email,async()=>{
+  const {controller,calls}=auth({exists:true}),res=response();
+  await controller.register({body:{...valid(),email}},res);
+  assert.equal(res.statusCode,400);assert.equal(res.data.message,'Cet email est deja utilise');
+  assert.equal(calls.find(c=>c[0]==='read')[1].where.canonicalEmail,email.toLowerCase());
+  assert.equal(calls.some(c=>c[0]==='create'),false);
+});
+test('Google-only existing account rejects local registration',async()=>{
+  const {controller,calls}=auth({exists:true,googleOnly:true}),res=response();
+  await controller.register({body:{...valid(),email:'google@example.ca'}},res);
+  assert.equal(res.statusCode,400);assert.equal(res.data.message,'Cet email est deja utilise');
+  assert.equal(calls.some(c=>c[0]==='create'),false);
+});
+test('two different new addresses do not collide',async()=>{
+  for(const email of ['first@example.ca','second@example.ca']){
+    const {controller,calls}=auth(),res=response();
+    await controller.register({body:{...valid(),email}},res);
+    assert.equal(res.statusCode,201);assert.equal(calls.find(c=>c[0]==='create')[1].data.canonicalEmail,email);
+  }
 });
 test('Google-only password login compares dummy and fails generically',async()=>{
   const {controller,calls}=auth({exists:true,googleOnly:true}),res=response();

@@ -61,24 +61,9 @@ export const register = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Champs manquants" });
     }
 
-    const existingUser = await prisma.user.findUnique({ where: { canonicalEmail: email.toLowerCase() } });
+    const canonicalEmail = email.toLowerCase();
+    const existingUser = await prisma.user.findUnique({ where: { canonicalEmail } });
     if (existingUser) {
-      console.warn("[AUTH_REGISTER_DIAG] DUPLICATE_PRECHECK");
-      try {
-        const [metadata] = await prisma.$queryRaw<Array<{ database: string; user: string; schema: string; oid: number }>>`
-          SELECT current_database() AS database, current_user AS user, current_schema() AS schema, pg_database.oid AS oid
-          FROM pg_database
-          WHERE pg_database.datname = current_database()
-        `;
-        const safe = (value: unknown) => typeof value === "string" && /^[A-Za-z0-9_.-]+$/.test(value);
-        if (metadata && safe(metadata.database) && safe(metadata.user) && safe(metadata.schema) && Number.isInteger(metadata.oid) && metadata.oid >= 0) {
-          console.warn(`[AUTH_REGISTER_DIAG] DB database=${metadata.database} user=${metadata.user} schema=${metadata.schema} oid=${metadata.oid}`);
-        } else {
-          console.warn("[AUTH_REGISTER_DIAG] DB_METADATA_UNAVAILABLE");
-        }
-      } catch {
-        console.warn("[AUTH_REGISTER_DIAG] DB_METADATA_UNAVAILABLE");
-      }
       return res.status(400).json({ message: "Cet email est deja utilise" });
     }
 
@@ -96,7 +81,7 @@ export const register = async (req: Request, res: Response) => {
     const user = await prisma.user.create({
       data: {
         email,
-        canonicalEmail: email.toLowerCase(),
+        canonicalEmail,
         password: hashedPassword,
         firstName: firstName.trim(),
         lastName: lastName.trim(),
@@ -122,20 +107,13 @@ export const register = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     if (error.code === "P2002") {
-      const target = error.meta?.target;
-      const targetText = Array.isArray(target) ? target.join(",") : target;
-      if (typeof targetText === "string" && /^[A-Za-z0-9_.-]+(?:,[A-Za-z0-9_.-]+)*$/.test(targetText)) {
-        console.warn(`[AUTH_REGISTER_DIAG] PRISMA_P2002 target=${targetText}`);
-      } else {
-        console.warn("[AUTH_REGISTER_DIAG] PRISMA_P2002");
-      }
       // Two concurrent registrations with the same email both passed the
       // findUnique check above before either insert committed; the unique
       // constraint on User.email is the real guard, this just returns the
       // same friendly message instead of a generic 500.
       return res.status(400).json({ message: "Cet email est deja utilise" });
     }
-    console.error("[AUTH_REGISTER] registration failed");
+    console.error(error);
     res.status(500).json({ message: "Erreur serveur" });
   }
 };
