@@ -18,9 +18,17 @@ function load(file, dependencies, globals = {}) {
 
 const response = () => ({ statusCode: 200, status(n) { this.statusCode = n; return this; }, json(data) { this.data = data; return this; } });
 const token = 'A'.repeat(43);
-const resetLib = load('lib/password-reset.ts', { crypto: require('node:crypto') });
+let resendResult = { data: { id: 'email-fixture' }, error: null };
+const resendCalls = [];
+class MockResend {
+  constructor(apiKey) { resendCalls.push(['constructor', apiKey]); }
+  emails = { send: async payload => { resendCalls.push(['send', payload]); return resendResult; } };
+}
+const resetLib = load('lib/password-reset.ts', { crypto: require('node:crypto'), resend: { Resend: MockResend } }, {
+  process: { env: { RESEND_API_KEY: 'configured', PASSWORD_RESET_FROM: 'FoodSave <no-reply@myfoodsave.ca>' } },
+});
 
-function controllerFixture({ user = null, resetRecord = null, now = new Date('2026-01-01T00:00:00Z') } = {}) {
+function controllerFixture({ user = null, resetRecord = null, now = new Date('2026-01-01T00:00:00Z'), sendError = false } = {}) {
   const calls = [];
   const state = { resetRecord };
   const tx = {
@@ -44,7 +52,7 @@ function controllerFixture({ user = null, resetRecord = null, now = new Date('20
   const injectedReset = { ...resetLib,
     createPasswordResetToken: () => token,
     hashPasswordResetToken: value => { calls.push(['tokenHash', value]); return 'secure-hash'; },
-    sendPasswordResetEmail: async (to, email) => { sent.push({ to, email }); },
+    sendPasswordResetEmail: async (to, email) => { if (sendError) throw new Error('provider rejected with sensitive provider detail'); sent.push({ to, email }); },
   };
   const controller = load('controllers/auth.controller.ts', {
     '../lib/prisma': { prisma }, bcryptjs: bcrypt, jsonwebtoken: { sign() { return 'jwt'; } }, './loyalty.controller': {}, '../lib/password-reset': injectedReset,
@@ -126,4 +134,44 @@ test('reset token helpers use URL-safe cryptographic tokens and SHA-256 hashes',
   assert.equal(resetLib.hashPasswordResetToken('fixture').length, 64);
   assert.equal(resetLib.isPasswordResetToken(generated), true);
   assert.equal(resetLib.isPasswordResetToken('fixture'), false);
+});
+
+test('Resend adapter sends the configured sender, recipient, FR/EN content, and reset URL', async () => {
+  resendCalls.length = 0;
+  resendResult = { data: { id: 'email-fixture' }, error: null };
+  await resetLib.sendPasswordResetEmail('person@example.ca', resetLib.buildPasswordResetEmail({ resetUrl: 'https://myfoodsave.ca/reset-password?token=fixture', locale: 'fr', expiresMinutes: 45 }));
+  await resetLib.sendPasswordResetEmail('person@example.ca', resetLib.buildPasswordResetEmail({ resetUrl: 'https://myfoodsave.ca/reset-password?token=fixture', locale: 'en', expiresMinutes: 45 }));
+  assert.deepEqual(resendCalls[0], ['constructor', 'configured']);
+  const sends = resendCalls.filter(call => call[0] === 'send').map(call => call[1]);
+  assert.equal(sends[0].from, 'FoodSave <no-reply@myfoodsave.ca>');
+  assert.equal(sends[0].to, 'person@example.ca');
+  assert.equal(sends[0].subject, 'Réinitialisez votre mot de passe FoodSave');
+  assert.ok(sends[0].text.includes('https://myfoodsave.ca/reset-password?token=fixture'));
+  assert.ok(sends[0].text.includes('45 minutes'));
+  assert.ok(sends[0].text.includes('ignorez ce message'));
+  assert.equal(sends[1].subject, 'Reset your FoodSave password');
+  assert.ok(sends[1].text.includes('https://myfoodsave.ca/reset-password?token=fixture'));
+  assert.ok(sends[1].text.includes('45 minutes'));
+  assert.ok(sends[1].text.includes('ignore this message'));
+});
+
+test('Resend adapter fails safely when unavailable or rejected without exposing the API key', async () => {
+  resendResult = { data: null, error: { message: 'provider failure containing sensitive provider detail' } };
+  await assert.rejects(() => resetLib.sendPasswordResetEmail('person@example.ca', { subject: 'subject', text: 'body' }), error => {
+    assert.equal(error.message, 'Password reset email delivery is not configured');
+    assert.equal(error.message.includes('sensitive provider detail'), false);
+    return true;
+  });
+  const missing = load('lib/password-reset.ts', { crypto: require('node:crypto'), resend: { Resend: MockResend } }, { process: { env: {} } });
+  await assert.rejects(() => missing.sendPasswordResetEmail('person@example.ca', { subject: 'subject', text: 'body' }), /not configured/);
+});
+
+test('provider failure preserves neutral response and cleans up the pending token', async () => {
+  const fixture = controllerFixture({ user: { id: 'u', email: 'person@example.ca', password: 'hash' }, sendError: true });
+  const result = response();
+  await fixture.controller.forgotPassword({ body: { email: 'person@example.ca', locale: 'en' } }, result);
+  assert.equal(result.statusCode, 200);
+  assert.equal(result.data.message, 'auth.resetRequestAccepted');
+  assert.ok(fixture.calls.some(call => call[0] === 'delete'));
+  assert.equal(JSON.stringify(result.data).includes('sensitive provider detail'), false);
 });

@@ -25,6 +25,7 @@
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.2.0",
     "qrcode": "^1.5.4",
+    "resend": "^6.28.1",
     "stripe": "22.4.0"
   },
   "devDependencies": {
