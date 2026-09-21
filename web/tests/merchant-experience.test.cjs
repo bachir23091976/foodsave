@@ -9,7 +9,7 @@ const { renderToStaticMarkup } = require("react-dom/server");
 
 // Real page JSX with controlled hooks, browser APIs, and HTTP responses. No
 // Next server, provider SDK, database, or external request is loaded by tests.
-function mount(route, fetcher, { token = "merchant-fixture" } = {}) {
+function mount(route, fetcher, { token = "merchant-fixture", replayEffects = false } = {}) {
   const state = [], refs = [], dependencies = [];
   let cursor = 0, tree, queued = [], dirty = true;
   const hooks = {
@@ -47,7 +47,7 @@ function mount(route, fetcher, { token = "merchant-fixture" } = {}) {
   function render() {
     cursor = 0; dirty = false; tree = module.exports.default();
     const html = renderToStaticMarkup(tree), effects = queued; queued = [];
-    effects.forEach(fn => fn());
+    effects.forEach(fn => { const cleanup = fn(); if (replayEffects) { cleanup?.(); fn(); } });
     return html;
   }
   function find(predicate) {
@@ -74,6 +74,34 @@ function mount(route, fetcher, { token = "merchant-fixture" } = {}) {
 }
 const response = (data, status = 200) => ({ ok: status >= 200 && status < 300, status, json: async () => data });
 const merchant = { id: "merchant", name: "Commerce existant", type: "BAKERY", address: "Fixture", city: "Ottawa", province: "Ontario", postalCode: "K1A 0B1", phone: "555-0100" };
+
+test("Stripe refresh reuses one authenticated onboarding request during effect replay", async () => {
+  const destination = "https://connect.stripe.com/setup/s/test-fixture";
+  const page = mount("stripe-refresh", () => response({ url: destination }), { replayEffects: true });
+  await page.settle();
+  assert.equal(page.calls.length, 1);
+  assert.equal(page.calls[0].url, "https://fixture.invalid/merchants/connect-stripe");
+  assert.equal(page.calls[0].method, "POST");
+  assert.equal(page.calls[0].headers.Authorization, "Bearer merchant-fixture");
+  assert.equal(page.calls[0].headers["Content-Type"], "application/json");
+  assert.equal(page.calls[0].body, "{}");
+  assert.equal(page.location.href, destination);
+});
+
+for (const failure of ["unauthenticated", "401", "403", "500", "network", "missing-url", "unsafe-url", "invalid-json"]) {
+  test(`Stripe refresh ${failure} stays local without automatic retry`, async () => {
+    const page = mount("stripe-refresh", () => {
+      if (failure === "network") throw Error("Offline");
+      if (failure === "invalid-json") return { ok: true, json: async () => { throw Error("Invalid JSON"); } };
+      return response(failure === "unsafe-url" ? { url: "https://connect.stripe.com.evil.invalid/setup" } : {}, Number(failure) || 200);
+    }, { token: failure === "unauthenticated" ? null : "merchant-fixture", replayEffects: true });
+    const html = await page.settle();
+    assert.ok(html.includes('role="alert"'));
+    assert.ok(html.includes('href="/merchant/profile#paiements"'));
+    assert.equal(page.location.href, "");
+    assert.equal(page.calls.length, failure === "unauthenticated" ? 0 : 1);
+  });
+}
 
 test("profile remains loading until read completes; creation requires known absence", async () => {
   let release;
