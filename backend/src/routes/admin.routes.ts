@@ -1,6 +1,7 @@
 import { Router, Response, NextFunction } from "express";
 import { getDashboardStats, getPendingMerchants, approveMerchant } from "../controllers/admin.controller";
 import { authenticate, AuthRequest } from "../middleware/auth.middleware";
+import { diagnosticConfiguration, stripeTestDiagnostic } from "../controllers/stripe-diagnostic.controller";
 
 const router = Router();
 
@@ -12,6 +13,7 @@ const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction) => {
 };
 
 router.get("/stats", authenticate, requireAdmin, getDashboardStats);
+router.get("/diagnostics/stripe-test", diagnosticConfiguration, authenticate, requireAdmin, stripeTestDiagnostic);
 router.get("/merchants/pending", authenticate, requireAdmin, getPendingMerchants);
 router.post("/merchants/approve", authenticate, requireAdmin, approveMerchant);
 
