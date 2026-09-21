@@ -2,64 +2,22 @@ import { Response } from "express";
 import Stripe from "stripe";
 import { prisma } from "../lib/prisma";
 import { stripe } from "../lib/stripe";
+import { stripeAccountReadiness } from "../lib/stripe-account-readiness";
 import { AuthRequest } from "../middleware/auth.middleware";
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 
-// Error codes Stripe returns when a stored Connect account id is no longer
-// usable under the platform's *current* STRIPE_SECRET_KEY:
-//   - "resource_missing": the id doesn't exist at all under this key.
-//   - "account_invalid": the id exists, but this key has no access to it.
-// Both happen the same way -- STRIPE_SECRET_KEY gets rotated to a different
-// Stripe account, or to the other mode (test vs live), while a merchant's
-// stripeAccountId (scoped to whichever account/mode created it) stays in the
-// database unchanged. Treating only "resource_missing" as recoverable (as
-// this used to) left "account_invalid" to bubble up as an uncaught 500 from
-// connectStripe, which is why re-onboarding silently failed after the key
-// was rotated on Render: the stale id was never cleared, so every attempt
-// tried to reuse an account this key can never reach.
-const STALE_STRIPE_ACCOUNT_ERROR_CODES = new Set(["resource_missing", "account_invalid"]);
-
 type ResolvedStripeAccount = { accountId: string; account: Stripe.Account };
 
-// Verifies a merchant's stored stripeAccountId is actually usable under the
-// current key, in one place shared by connectStripe and getStripeStatus so
-// both react to a stale id the same safe way instead of each guessing at its
-// own error-handling. Returns null both when the merchant never connected
-// Stripe (stripeAccountId is already null) and when the stored id turned out
-// stale (in which case it's cleared from the database first) -- callers
-// don't need to distinguish the two, since both mean "needs onboarding".
-// Any other error (network issue, rate limit, etc.) is rethrown untouched so
-// it still surfaces as a real 500 instead of being silently treated as "not
-// connected".
+// Access errors do not prove deletion: another platform/environment may own
+// this account. Only an absent stored ID permits new-account onboarding.
+// Propagate every retrieval failure without writing or attempting replacement.
 async function resolveStripeAccountId(
-  merchantId: string,
   stripeAccountId: string | null
 ): Promise<ResolvedStripeAccount | null> {
   if (!stripeAccountId) return null;
-
-  try {
-    const account = await stripe.accounts.retrieve(stripeAccountId);
-    return { accountId: stripeAccountId, account };
-  } catch (error: any) {
-    if (!STALE_STRIPE_ACCOUNT_ERROR_CODES.has(error.code)) {
-      throw error;
-    }
-
-    console.error(
-      `[stripe] Compte Connect ${stripeAccountId} inutilisable sous la cle actuelle (${error.code}) -- reinitialisation pour le commerce ${merchantId}`
-    );
-
-    // Conditional write: only clear the id if it still matches what we just
-    // found stale. If it changed concurrently (another request already
-    // reset or replaced it), leave that newer value alone.
-    await prisma.merchant.updateMany({
-      where: { id: merchantId, stripeAccountId },
-      data: { stripeAccountId: null },
-    });
-
-    return null;
-  }
+  const account = await stripe.accounts.retrieve(stripeAccountId);
+  return { accountId: stripeAccountId, account };
 }
 
 async function geocodeAddress(address: string, city: string, province: string, postalCode: string): Promise<{ lat: number; lng: number } | null> { 
@@ -158,7 +116,7 @@ export const connectStripe = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: "Aucun commerce trouve" });
     }
 
-    const resolved = await resolveStripeAccountId(merchant.id, merchant.stripeAccountId);
+    const resolved = await resolveStripeAccountId(merchant.stripeAccountId);
     let stripeAccountId = resolved?.accountId ?? null;
 
     if (!stripeAccountId) {
@@ -170,7 +128,7 @@ export const connectStripe = async (req: AuthRequest, res: Response) => {
           card_payments: { requested: true },
           transfers: { requested: true },
         },
-      });
+      }, { idempotencyKey: `foodsave_connect_${merchant.id}` });
 
       // Conditional write: only persist this new Stripe account if the
       // merchant still has no stripeAccountId. If a second concurrent
@@ -186,7 +144,8 @@ export const connectStripe = async (req: AuthRequest, res: Response) => {
         stripeAccountId = account.id;
       } else {
         const refreshed = await prisma.merchant.findUnique({ where: { id: merchant.id } });
-        stripeAccountId = refreshed?.stripeAccountId || account.id;
+        if (!refreshed?.stripeAccountId) throw new Error("Account association unavailable");
+        stripeAccountId = refreshed.stripeAccountId;
       }
     }
 
@@ -198,9 +157,8 @@ export const connectStripe = async (req: AuthRequest, res: Response) => {
     });
 
     res.json({ url: accountLink.url });
-  } catch (error: any) {
-    console.error(error);
-    res.status(500).json({ message: "Erreur lors de la connexion a Stripe", detail: error.message });
+  } catch {
+    res.status(500).json({ message: "Erreur lors de la connexion a Stripe" });
   }
 };
 
@@ -213,7 +171,7 @@ export const getStripeStatus = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: "Aucun commerce trouve" });
     }
 
-    const resolved = await resolveStripeAccountId(merchant.id, merchant.stripeAccountId);
+    const resolved = await resolveStripeAccountId(merchant.stripeAccountId);
 
     if (!resolved) {
       return res.json({
@@ -227,23 +185,9 @@ export const getStripeStatus = async (req: AuthRequest, res: Response) => {
 
     const { account } = resolved;
 
-    const transfersActive = account.capabilities?.transfers === "active";
-    const chargesEnabled = !!account.charges_enabled;
-    const payoutsEnabled = !!account.payouts_enabled;
-    const currentlyDue = account.requirements?.currently_due || [];
-
-    const ready = transfersActive && chargesEnabled && payoutsEnabled && currentlyDue.length === 0;
-
-    res.json({
-      status: ready ? "READY" : "ONBOARDING_INCOMPLETE",
-      transfersActive,
-      chargesEnabled,
-      payoutsEnabled,
-      currentlyDue,
-    });
-  } catch (error: any) {
-    console.error(error);
-    res.status(500).json({ message: "Erreur lors de la verification du statut Stripe", detail: error.message });
+    res.json(stripeAccountReadiness(account));
+  } catch {
+    res.status(500).json({ message: "Erreur lors de la verification du statut Stripe" });
   }
 };
 

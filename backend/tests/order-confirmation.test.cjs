@@ -33,6 +33,7 @@ function paidSession(id) {
 
 function loadController(prisma, stripe) {
   const dependencies = {
+    "../lib/stripe-account-readiness": require("./stripe-readiness-fixture.cjs"),
     qrcode: QRCode,
     "@prisma/client": { Prisma: { TransactionIsolationLevel: { ReadCommitted: "ReadCommitted" } } },
     "../lib/prisma": { prisma }, "../lib/stripe": { stripe },

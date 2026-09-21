@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import QRCode from "qrcode";
 import { prisma } from "../lib/prisma";
 import { stripe } from "../lib/stripe";
+import { stripeAccountReadiness } from "../lib/stripe-account-readiness";
 import { lockCheckout, recoveryToken, acquireRecovery, assertRecoveryOwner, releaseRecovery } from "../lib/sold-out-recovery-coordination";
 import { cancellationRefundService } from "../lib/customer-cancellation-refund";
 import { AuthRequest } from "../middleware/auth.middleware";
@@ -67,6 +68,11 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
     const amountInCents = Math.round(offer.discountedPrice * 100);
     const commissionInCents = Math.round((amountInCents * COMMISSION_PERCENT) / 100);
 
+    const account = await stripe.accounts.retrieve(offer.merchant.stripeAccountId);
+    if (stripeAccountReadiness(account).status !== "READY") {
+      return res.status(409).json({ message: "Ce commerce n'a pas encore configure ses paiements" });
+    }
+
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       mode: "payment",
@@ -95,9 +101,8 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
     });
 
     res.json({ checkoutUrl: session.url });
-  } catch (error: any) {
-    console.error(error);
-    res.status(500).json({ message: "Erreur lors de la creation du paiement", detail: error.message });
+  } catch {
+    res.status(500).json({ message: "Erreur lors de la creation du paiement" });
   }
 };
 
@@ -338,9 +343,8 @@ export const confirmOrder = async (req: AuthRequest, res: Response) => {
     const result = await confirmPaidSession(session, req.userId);
 
     res.status(result.status).json(result.body);
-  } catch (error: any) {
-    console.error(error);
-    res.status(500).json({ message: "Erreur serveur", detail: error.message });
+  } catch {
+    res.status(500).json({ message: "Erreur serveur" });
   }
 };
 
@@ -372,8 +376,8 @@ export const stripeWebhook = async (req: Request, res: Response) => {
   let event: Stripe.Event;
   try {
     event = stripe.webhooks.constructEvent(req.body, signature, webhookSecret);
-  } catch (error: any) {
-    console.error(`[stripe-webhook] Signature invalide: ${error.message}`);
+  } catch {
+    console.error("[stripe-webhook] Signature invalide");
     return res.status(400).json({ message: "Signature invalide" });
   }
 
@@ -385,8 +389,8 @@ export const stripeWebhook = async (req: Request, res: Response) => {
       if (result.status >= 400) {
         console.error("[stripe-webhook] checkout.session.completed non traite:", result.body);
       }
-    } catch (error) {
-      console.error("[stripe-webhook] Erreur traitement checkout.session.completed:", error);
+    } catch {
+      console.error("[stripe-webhook] Erreur traitement checkout.session.completed");
       // A non-2xx response tells Stripe to retry this delivery later.
       return res.status(500).json({ message: "Erreur serveur" });
     }
@@ -593,7 +597,7 @@ export const cancelOrderByMerchant = async (req: AuthRequest, res: Response) => 
       });
     } catch (error) {
       // An accepted cancellation never becomes fulfillable after provider uncertainty.
-      console.error("Erreur annulation par commercant:", error);
+      console.error("Erreur annulation par commercant");
       return res.status(500).json({
         message: refundSucceeded
           ? "Le remboursement a reussi, mais le stock doit etre verifie par FoodSave."
