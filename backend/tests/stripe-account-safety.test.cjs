@@ -55,6 +55,7 @@ function setup({ storedId = existingId, error, failAt = 'retrieve', account = {}
     process: { env: { FRONTEND_URL: 'https://frontend.invalid' } },
     console: { error() { assert.fail('Raw provider errors must not be logged'); } },
     require(name) {
+      if (name === '../lib/checkout-pricing') return require('./checkout-pricing.test.cjs').pricing;
       if (name === '../lib/prisma') return { prisma };
       if (name === '../lib/stripe') return { stripe };
       if (name === '../lib/stripe-account-readiness') return require('./stripe-readiness-fixture.cjs');

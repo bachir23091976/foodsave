@@ -11,7 +11,18 @@ import { AuthRequest } from "../middleware/auth.middleware";
 import { createNotification } from "./notification.controller";
 import { checkAndCreateReward } from "./loyalty.controller";
 
-const COMMISSION_PERCENT = 15;
+import { checkoutPricing, offerPriceMinor, pricingSelect } from "../lib/checkout-pricing";
+import { prepareCheckoutPricing, bindCheckoutPricing, PreparedPricing } from "../lib/checkout-pricing-snapshot";
+
+export const getCheckoutQuote = async (req: AuthRequest, res: Response) => {
+  try {
+    const offer = typeof req.query.offerId === "string"
+      ? await prisma.offer.findUnique({ where: { id: req.query.offerId } }) : null;
+    if (!offer || offer.quantity < 1 || offer.pickupEnd.getTime() < Date.now())
+      return res.status(400).json({ message: "Offre indisponible" });
+    return res.json({ pricing: checkoutPricing(offerPriceMinor(offer.discountedPrice)) });
+  } catch { return res.status(400).json({ message: "Prix indisponible" }); }
+};
 const REFERRAL_DISCOUNT_PERCENT = 15;
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 
@@ -65,14 +76,20 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: "Ce commerce n'a pas encore configure ses paiements" });
     }
 
-    const amountInCents = Math.round(offer.discountedPrice * 100);
-    const commissionInCents = Math.round((amountInCents * COMMISSION_PERCENT) / 100);
+    const pricing = checkoutPricing(offerPriceMinor(offer.discountedPrice));
+    if (req.body.reviewedSubtotalMinor !== pricing.merchandiseSubtotalMinor || req.body.pricingVersion !== 1) {
+      return res.status(409).json({ code: "PRICE_REVIEW_REQUIRED", pricing });
+    }
 
     const account = await stripe.accounts.retrieve(offer.merchant.stripeAccountId);
     if (stripeAccountReadiness(account).status !== "READY") {
       return res.status(409).json({ message: "Ce commerce n'a pas encore configure ses paiements" });
     }
 
+    const snapshot = await prisma.checkoutPricingSnapshot.create({ data: {
+      ...pricing, userId: userId!, offerId: offer.id,
+      stripeDestinationAccountId: offer.merchant.stripeAccountId,
+    } });
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       mode: "payment",
@@ -81,13 +98,15 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
           price_data: {
             currency: "cad",
             product_data: { name: offer.title },
-            unit_amount: amountInCents,
+            unit_amount: pricing.merchandiseSubtotalMinor,
           },
           quantity: 1,
         },
+        { price_data: { currency: "cad", product_data: { name: req.body.locale === "en"
+          ? "FoodSave service fee" : "Frais de service FoodSave" }, unit_amount: pricing.serviceFeeMinor }, quantity: 1 },
       ],
       payment_intent_data: {
-        application_fee_amount: commissionInCents,
+        application_fee_amount: pricing.merchantCommissionMinor + pricing.serviceFeeMinor,
         transfer_data: {
           destination: offer.merchant.stripeAccountId,
         },
@@ -95,10 +114,18 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
       metadata: {
         offerId: offer.id,
         userId: userId as string,
+        pricingSnapshotId: snapshot.id,
+        pricingVersion: "1",
       },
       success_url: `${FRONTEND_URL}/order-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${FRONTEND_URL}/offers`,
+    }, { idempotencyKey: `foodsave_checkout_${snapshot.id}` });
+    if (!session.id || !session.url) throw Error("Checkout result incomplete");
+    const bound = await prisma.checkoutPricingSnapshot.updateMany({
+      where: { id: snapshot.id, OR: [{ stripeSessionId: null }, { stripeSessionId: session.id }] },
+      data: { stripeSessionId: session.id },
     });
+    if (bound.count !== 1) throw Error("Checkout association not confirmed");
 
     res.json({ checkoutUrl: session.url });
   } catch {
@@ -295,14 +322,17 @@ async function confirmPaidSession(
   }
   const paymentIntentId = typeof session.payment_intent === "string"
     ? session.payment_intent : session.payment_intent?.id ?? null;
-  const decision = await prisma.$transaction(async (tx) => {
+  let pricing: PreparedPricing | undefined;
+  const decide = () => prisma.$transaction(async (tx) => {
     await lockCheckout(tx, session.id);
     // Issue #1: a legitimate same-session order always wins, before refund lookup.
-    const existing = await tx.order.findUnique({ where: { stripeSessionId: session.id } });
+    const existing = await tx.order.findUnique({ where: { stripeSessionId: session.id }, include: { pricingSnapshot: { select: pricingSelect } } });
     if (existing) return { kind: "EXISTING" as const, order: existing };
     if (await readResolution(tx, session.id)) return { kind: "REFUND" as const };
     const offer = await tx.offer.findUnique({ where: { id: offerId }, include: { merchant: true } });
     if (!offer) return { kind: "MISSING" as const };
+    if (!pricing) return { kind: "PRICING" as const };
+    const snapshot = await bindCheckoutPricing(tx, pricing);
     const decremented = await tx.offer.updateMany({
       where: { id: offerId, quantity: { gt: 0 } },
       data: { quantity: { decrement: 1 } },
@@ -315,11 +345,18 @@ async function confirmPaidSession(
       return { kind: "REFUND" as const }; // Commit, never roll back this decision.
     }
     const order = await tx.order.create({ data: {
-      userId, offerId, totalPrice: offer.discountedPrice,
+      userId, offerId, totalPrice: snapshot.merchandiseSubtotalMinor / 100,
+      pricingSnapshotId: snapshot.id,
       status: "CONFIRMED", stripeSessionId: session.id,
-    } });
+    }, include: { pricingSnapshot: { select: pricingSelect } } });
     return { kind: "CREATED" as const, order, offer };
   }, decisionOptions);
+  let decision = await decide();
+  if (decision.kind === "PRICING") {
+    pricing = await prepareCheckoutPricing(prisma, stripe, session.id, userId, offerId);
+    decision = await decide();
+  }
+  if (decision.kind === "PRICING") throw Error("Pricing not resolved");
   // A rejected/uncertain commit cannot authorize any Stripe call.
   if (decision.kind === "EXISTING") return existingOrderResult(decision.order);
   if (decision.kind === "REFUND") return recoverSoldOutRefund(session.id);
@@ -406,6 +443,7 @@ export const getMyOrders = async (req: AuthRequest, res: Response) => {
     const orders = await prisma.order.findMany({
       where: { userId },
       include: {
+        pricingSnapshot: { select: pricingSelect },
         offer: { include: { merchant: true } },
         customerCancellationRefund: { select: { refundStatus: true, updatedAt: true } },
       },

@@ -9,7 +9,7 @@ const { renderToStaticMarkup } = require("react-dom/server");
 
 // Execute real page components with controlled hooks and HTTP fixtures. No browser,
 // server, Next font download, backend client or financial provider is started.
-function mount(file, fetcher, { token = "customer-token", session = "cs_fixture" } = {}) {
+function mount(file, fetcher, { token = "customer-token", session = "cs_fixture", locale = "fr" } = {}) {
   const slots = [], effects = [], cleanups = [];
   let cursor = 0, tree;
   const hooks = {
@@ -34,7 +34,7 @@ function mount(file, fetcher, { token = "customer-token", session = "cs_fixture"
     window: { confirm: () => true, prompt: () => "reason" },
     navigator: {}, setInterval: () => 1, clearInterval() {},
     require(name) {
-      if (name.endsWith("/i18n/LocaleProvider")) return { useLocale: () => require("./i18n-fixture.cjs").localeTools("fr") };
+      if (name.endsWith("/i18n/LocaleProvider")) return { useLocale: () => require("./i18n-fixture.cjs").localeTools(locale) };
       if (name.endsWith("/i18n/LanguageSelector")) return () => null;
       if (name.endsWith(".module.css")) return { __esModule: true, default: new Proxy({}, { get: (_, key) => String(key) }) };
       if (name === "react") return hooks;
@@ -222,4 +222,16 @@ test("confirmation network failure is not automatically retried", async () => {
   assert.ok(html.includes("IMPOSSIBLE DE CONTACTER LE SERVEUR"));
   page.replayEffects(); html = await page.settle();
   assert.ok(!html.includes("PICKUP-SECRET")); assert.equal(page.calls.length, 1);
+});
+
+for (const locale of ["fr", "en"]) test(locale + " paid breakdown uses customer total and preserves legacy fallback", async () => {
+  const tools = require("./i18n-fixture.cjs").localeTools(locale);
+  const paid = { ...order(), pricingSnapshot: { merchandiseSubtotalMinor: 200, serviceFeeMinor: 49, customerTotalMinor: 249 } };
+  const page = mount("order-success/OrderSuccessContent.tsx", () => response({order:paid}), {locale});
+  const html = await page.settle();
+  assert.ok(html.includes(tools.t("pricing.paid")));assert.ok(html.includes(tools.money(2.49)));
+  const reservations = mount("reservations/page.tsx", () => response({orders:[paid]}), {locale});
+  const listing = await reservations.settle();assert.ok(listing.includes(tools.t("pricing.fee")));assert.ok(listing.includes(tools.money(.49)));
+  const legacy = mount("order-success/OrderSuccessContent.tsx", () => response({order:order()}), {locale});
+  assert.ok(!(await legacy.settle()).includes(tools.t("pricing.fee")));
 });

@@ -289,7 +289,7 @@ export default function MerchantReservationsPage() {
         ].map(group => <section key={group.title}>
           <h2 className={s.groupTitle}>{group.title} ({group.orders.length})</h2>
           {group.orders.length === 0 ? <div className={s.empty}><p>{t("ui.no_reservations_in_this_category")}</p></div> : <div className={s.cards}>{group.orders.map(order => <article key={order.id} className={s.card + " " + s.reservation}>
-            <div className={s.cardTop}><h3>{order.offer.title}</h3><strong>{money(order.totalPrice)}</strong></div>
+            <div className={s.cardTop}><h3>{order.offer.title}</h3><strong>{t("pricing.merchandise")}: {money(order.totalPrice)}</strong></div>
             <span className={s.badge + " " + s.warning}>{t("ui.confirmed_awaiting_pickup")}</span>
             <p className={s.help}>{order.user.firstName} {order.user.lastName}</p><p className={s.help}>{t("ui.reserved_on")}{" "}{formatDateTime(order.createdAt)} {t("ui._pickup_ends")}{" "}{formatDateTime(order.offer.pickupEnd)}</p>
             <div className={s.codeRow}><code>{order.pickupCode}</code><button type="button" onClick={() => handleValidate(order.pickupCode)} className={ui.secondary}>{t("ui.validate_pickup")}</button></div>
@@ -301,7 +301,7 @@ export default function MerchantReservationsPage() {
           { title: t("ui.cancelled"), orders: cancelled, label: t("ui.cancelled_2"), tone: s.danger },
         ].map(group => <section key={group.title}><h2 className={s.groupTitle}>{group.title} ({group.orders.length})</h2>
           {group.orders.length === 0 ? <div className={s.empty}><p>{t("ui.no_reservations_in_this_category")}</p></div> : <div className={s.cards}>{group.orders.map(order => <article key={order.id} className={s.card}>
-            <div className={s.cardTop}><h3>{order.offer.title}</h3><span className={s.badge + " " + group.tone}>{group.label}</span></div><p className={s.help}>{order.user.firstName} {order.user.lastName} · {money(order.totalPrice)}</p><p className={s.help}>{t("ui.reserved_on")}{" "}{formatDateTime(order.createdAt)}</p>
+            <div className={s.cardTop}><h3>{order.offer.title}</h3><span className={s.badge + " " + group.tone}>{group.label}</span></div><p className={s.help}>{order.user.firstName} {order.user.lastName} · {t("pricing.merchandise")}: {money(order.totalPrice)}</p><p className={s.help}>{t("ui.reserved_on")}{" "}{formatDateTime(order.createdAt)}</p>
             {order.status === "CANCELLED" && order.cancellationReason && <p className={s.help}>{t("ui.reason")}{" "}{order.cancellationReason}</p>}
           </article>)}</div>}
         </section>)}

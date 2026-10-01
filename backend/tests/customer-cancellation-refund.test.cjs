@@ -14,7 +14,7 @@ function loadService() {
   return module.exports;
 }
 function harness(status = 'succeeded') {
-  const state = { order: { id: 'o', userId: 'u', offerId: 'f', stripeSessionId: 'cs', status: 'CONFIRMED' }, quantity: 1, row: null, calls: 0, failCreate: false };
+  const state = { order: { id: 'o', userId: 'u', offerId: 'f', stripeSessionId: 'cs', status: 'CONFIRMED', pricingSnapshot: {stripeSessionId:'cs',userId:'u',offerId:'f',customerTotalMinor:549,currency:'cad'} }, quantity: 1, row: null, calls: 0, failCreate: false };
   const offer = { pickupStart: new Date(Date.now()+86400000) };
   const db = {
     order: { findUnique: async () => ({...state.order, offer}), updateMany: async ({where,data}) => {
@@ -31,11 +31,11 @@ function harness(status = 'succeeded') {
   let tail=Promise.resolve();
   db.$transaction=async fn=>{let done;const before=tail;tail=new Promise(r=>done=r);await before;
     const saved=structuredClone(state);try{return await fn(db);}catch(e){Object.assign(state,saved);throw e;}finally{done();}};
-  const refund = () => ({id:'re',payment_intent:'pi',amount:500,currency:'cad',status});
-  const provider={checkout:{sessions:{retrieve:async()=>({id:'cs',payment_status:'paid',metadata:{userId:'u',offerId:'f'},payment_intent:'pi',amount_total:500,currency:'cad'})}},
-    paymentIntents:{retrieve:async()=>({id:'pi',status:'succeeded',amount_received:500,currency:'cad'})},
+  const refund = () => ({id:'re',payment_intent:'pi',amount:549,currency:'cad',status});
+  const provider={checkout:{sessions:{retrieve:async()=>({id:'cs',payment_status:'paid',metadata:{userId:'u',offerId:'f'},payment_intent:'pi',amount_total:549,currency:'cad'})}},
+    paymentIntents:{retrieve:async()=>({id:'pi',status:'succeeded',amount_received:549,currency:'cad'})},
     refunds:{list:async function*(){if(state.providerRefund)yield state.providerRefund;},create:async(data,options)=>{
-      state.calls++;assert.equal(data.reverse_transfer,true);assert.equal(data.refund_application_fee,true);
+      state.calls++;assert.equal(data.amount,undefined);assert.equal(data.reverse_transfer,true);assert.equal(data.refund_application_fee,true);
       assert.equal(options.idempotencyKey,'customer_cancel_o');state.providerRefund=refund();
       if(state.timeout)throw Error('response lost');return refund();
     }}};

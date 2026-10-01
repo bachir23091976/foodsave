@@ -46,18 +46,19 @@ function harness(outcome) {
     checkout: { sessions: { retrieve: async () => {
       state.lookups++;
       if (outcome === "lookup-error") throw Error("lookup network failure");
-      return { id: "cs_test", payment_status: "paid", metadata: {userId:"customer",offerId:"offer"}, amount_total:500, currency:"cad", payment_intent: outcome === "missing-payment" ? null : "pi_test" };
+      return { id: "cs_test", payment_status: "paid", metadata: {userId:"customer",offerId:"offer"}, amount_total:549, currency:"cad", payment_intent: outcome === "missing-payment" ? null : "pi_test" };
     } } },
-    paymentIntents: { retrieve: async () => ({ id:"pi_test",status:"succeeded",amount_received:500,currency:"cad" }) },
+    paymentIntents: { retrieve: async () => ({ id:"pi_test",status:"succeeded",amount_received:549,currency:"cad" }) },
     refunds: { list: async function* () {}, create: async (data, options) => {
       state.refunds++;
       assert.equal(state.status, "CANCELLED");
       assert.equal(data.payment_intent, "pi_test");
+      assert.equal(data.amount, undefined, "refund entire fee-inclusive payment");
       assert.equal(data.reverse_transfer, true);
       assert.equal(data.refund_application_fee, true);
       assert.ok(["customer_cancel_order", "merchant_cancel_order"].includes(options.idempotencyKey));
       if (outcome === "timeout") throw Error("response lost after provider accepted refund");
-      return { id: "re_test", payment_intent:"pi_test",amount:500,currency:"cad", status: outcome === "stock-error" ? "succeeded" : outcome };
+      return { id: "re_test", payment_intent:"pi_test",amount:549,currency:"cad", status: outcome === "stock-error" ? "succeeded" : outcome };
     } },
   };
   const controller = loadController(prisma, stripe);

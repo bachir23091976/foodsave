@@ -24,7 +24,7 @@ export function cancellationRefundService(db: PrismaClient) {
     });
   }
   async function snapshot(tx: Prisma.TransactionClient, orderId: string) {
-    const row = await tx.customerCancellationRefund.findUnique({ where: { orderId }, include: { order: true } });
+    const row = await tx.customerCancellationRefund.findUnique({ where: { orderId }, include: { order: { include: { pricingSnapshot: true } } } });
     check(row && row.order.status === "CANCELLED", "Cancelled order and durable record required");
     check(row.stripeSessionId === row.order.stripeSessionId, "Order/session mismatch");
     return row;
@@ -41,6 +41,10 @@ export function cancellationRefundService(db: PrismaClient) {
       Number.isSafeInteger(payment.amount_received) && payment.amount_received > 0 &&
       session.amount_total === payment.amount_received && session.currency === payment.currency,
     "Payment amount/currency evidence mismatch");
+    const pricing = row.order.pricingSnapshot;
+    if (pricing) check(pricing.stripeSessionId === session.id && pricing.userId === row.order.userId &&
+      pricing.offerId === row.order.offerId && pricing.customerTotalMinor === payment.amount_received &&
+      pricing.currency === payment.currency, "Snapshot/payment mismatch");
     const found: Stripe.Refund[] = [];
     for await (const refund of provider.refunds.list({ payment_intent: paymentIntentId, limit: 100 })) {
       check(id(refund.payment_intent) === paymentIntentId && refund.amount === payment.amount_received &&

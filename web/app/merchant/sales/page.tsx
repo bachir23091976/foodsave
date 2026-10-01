@@ -77,7 +77,7 @@ export default function MerchantSalesPage() {
         <p className={s.help} style={{ marginBottom: 24 }}>{t("ui.these_amounts_describe_your_sales_they_do_not_confirm")}</p>
         {sales.length === 0 ? <div className={s.empty}><h2>{t("ui.no_completed_sales_yet")}</h2><p>{t("ui.your_sales_will_appear_here_once_they_are_recorded")}</p></div> : <section aria-label={t("ui.sales_history")} className={s.cards}>{sales.map((sale) => <article key={sale.id} className={s.card + " " + s.sale}>
           <div><h3>{sale.title}</h3><p className={s.help}>{formatDate(sale.date)}</p></div>
-          <dl className={s.saleNumbers}><div><dt>{t("ui.total")}</dt><dd>{money(sale.totalPrice)}</dd></div><div><dt>{t("ui.commission")}</dt><dd>−{money(sale.commission)}</dd></div><div><dt>{t("ui.net")}</dt><dd><strong>{money(sale.net)}</strong></dd></div></dl>
+          <dl className={s.saleNumbers}><div><dt>{t("pricing.merchandise")}</dt><dd>{money(sale.totalPrice)}</dd></div><div><dt>{t("ui.commission")}</dt><dd>−{money(sale.commission)}</dd></div><div><dt>{t("ui.net")}</dt><dd><strong>{money(sale.net)}</strong></dd></div></dl>
         </article>)}</section>}
       </>}
     </MerchantShell>

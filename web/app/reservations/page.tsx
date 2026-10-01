@@ -11,6 +11,7 @@ interface Order {
   id: string;
   status: "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED";
   totalPrice: number;
+  pricingSnapshot?: { merchandiseSubtotalMinor: number; serviceFeeMinor: number; customerTotalMinor: number } | null;
   pickupCode: string;
   cancellationReason?: string | null;
   customerCancellationRefund?: { refundStatus: string; updatedAt: string } | null;
@@ -180,7 +181,11 @@ export default function ReservationsPage() {
             <p style={{ color: "#59685e" }}>
               {t("ui.pickup_2")}{" "}{formatDateTime(order.offer.pickupStart)} - {formatDateTime(order.offer.pickupEnd)}
             </p>
-            <p>{t("ui.price")}{" "}<strong>{money(order.totalPrice)}</strong></p>
+            {order.pricingSnapshot ? <div>
+              <p>{t("pricing.subtotal")}: {money(order.pricingSnapshot.merchandiseSubtotalMinor / 100)}</p>
+              <p>{t("pricing.fee")}: {money(order.pricingSnapshot.serviceFeeMinor / 100)}</p>
+              <p><strong>{t("pricing.paid")}: {money(order.pricingSnapshot.customerTotalMinor / 100)}</strong></p>
+            </div> : <p>{t("ui.price")}{" "}<strong>{money(order.totalPrice)}</strong></p>}
             {order.status === "CONFIRMED" && cancelingId !== order.id && <p>
               {t("ui.pickup_code")}{" "}<strong style={{ color: "#215d43" }}>{order.pickupCode}</strong>
             </p>}

@@ -315,6 +315,15 @@ if (require.main === module) {
     assert.equal(h.state.reads, 0); assert.equal(h.state.manual, null);
   });
   test("list is read only", async () => { const h = harness(); await h.recovery.list(); assert.equal(h.state.reads, 0); assert.equal(h.state.writes, 0); });
+  test("fee-inclusive full refund reconciles; merchandise-only refund is rejected", async () => {
+    const h = harness(); h.state.payment.amount_received = 1050;
+    h.state.refunds = [{ id: "re_sold", payment_intent: "pi_sold", status: "succeeded", amount: 1000, currency: "cad" }];
+    await assert.rejects(h.recovery.reconcile("sold"), /Partial/);
+    const complete = harness(); complete.state.payment.amount_received = 1050;
+    complete.state.refunds = [{ id: "re_sold", payment_intent: "pi_sold", status: "succeeded", amount: 1050, currency: "cad" }];
+    await complete.recovery.reconcile("sold");
+    assert.equal(complete.state.row.refundStatus, "SUCCEEDED");
+  });
   test("CLI rejects malformed commands and DATABASE_URL fallback", async () => {
     await assert.rejects(api.runCli(["reset", "sold"], {}), /Usage/);
     await assert.rejects(api.runCli(["list", "extra"], {}), /Usage/);

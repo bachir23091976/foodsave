@@ -150,6 +150,8 @@ model Offer {
 }
 
 model Order {
+  pricingSnapshotId String? @unique
+  pricingSnapshot CheckoutPricingSnapshot? @relation(fields: [pricingSnapshotId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   customerCancellationRefund CustomerCancellationRefund?
   id              String      @id @default(uuid())
   status          OrderStatus @default(PENDING)
@@ -165,6 +167,23 @@ model Order {
 
   offer   Offer  @relation(fields: [offerId], references: [id])
   offerId String
+}
+
+model CheckoutPricingSnapshot {
+  id String @id @default(uuid())
+  stripeSessionId String? @unique
+  userId String
+  offerId String
+  stripeDestinationAccountId String
+  merchandiseSubtotalMinor Int
+  serviceFeeMinor Int
+  customerTotalMinor Int
+  merchantCommissionMinor Int
+  merchantNetMinor Int
+  currency String @db.VarChar(3)
+  pricingVersion Int
+  createdAt DateTime @default(now())
+  order Order?
 }
 
 model Notification {

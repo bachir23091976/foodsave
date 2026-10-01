@@ -1,6 +1,6 @@
 import { requireMerchant } from "../middleware/role.middleware";
 import { Router } from "express";
-import { createOrder, confirmOrder, getMyOrders, getMerchantOrders, validatePickup, cancelOrder, cancelOrderByMerchant, stripeWebhook } from "../controllers/order.controller";
+import { getCheckoutQuote, createOrder, confirmOrder, getMyOrders, getMerchantOrders, validatePickup, cancelOrder, cancelOrderByMerchant, stripeWebhook } from "../controllers/order.controller";
 import { authenticate } from "../middleware/auth.middleware";
 
 const router = Router();
@@ -12,6 +12,7 @@ const router = Router();
 // is registered in index.ts, ahead of the global express.json().
 router.post("/webhook", stripeWebhook);
 
+router.get("/quote", authenticate, getCheckoutQuote);
 router.post("/", authenticate, createOrder);
 router.post("/confirm", authenticate, confirmOrder);
 router.get("/mine", authenticate, getMyOrders);

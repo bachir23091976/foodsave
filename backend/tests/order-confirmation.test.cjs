@@ -31,8 +31,15 @@ function paidSession(id) {
   };
 }
 
-function loadController(prisma, stripe) {
+function loadController(prisma, stripe, overrides = {}) {
   const dependencies = {
+    "../lib/checkout-pricing": require("./checkout-pricing.test.cjs").pricing,
+    // These pre-existing decision/race tests isolate provider pricing reads; the
+    // real resolver is exercised by checkout-pricing tests and its SQL suite.
+    "../lib/checkout-pricing-snapshot": {
+      prepareCheckoutPricing: async()=>({data:require("./checkout-pricing.test.cjs").pricing.checkoutPricing(1000,0)}),
+      bindCheckoutPricing: async()=>({id:undefined,merchandiseSubtotalMinor:1000}),
+    },
     "../lib/stripe-account-readiness": require("./stripe-readiness-fixture.cjs"),
     qrcode: QRCode,
     "@prisma/client": { Prisma: { TransactionIsolationLevel: { ReadCommitted: "ReadCommitted" } } },
@@ -42,6 +49,7 @@ function loadController(prisma, stripe) {
     "./notification.controller": { createNotification: async () => {} },
     "./loyalty.controller": { checkAndCreateReward: async () => {} },
   };
+  Object.assign(dependencies, overrides);
   const module = { exports: {} };
   vm.runInNewContext(compiled, {
     exports: module.exports, module,
@@ -142,7 +150,7 @@ function harness({ recoveryError, quantity = 1 } = {}) {
             },
           },
           offer: {
-            async findUnique() { return { id: "offer", title: "Surplus", discountedPrice: 10, merchant: { ownerId: "merchant" } }; },
+            async findUnique() { return { id: "offer", title: "Surplus", discountedPrice: 10, quantity: state.quantity, merchant: { ownerId: "merchant" } }; },
             async updateMany(args) {
               assert.deepEqual(JSON.parse(JSON.stringify(args)), {
                 where: { id: "offer", quantity: { gt: 0 } }, data: { quantity: { decrement: 1 } },
@@ -171,7 +179,7 @@ function harness({ recoveryError, quantity = 1 } = {}) {
   const stripe = {
     checkout: { sessions: { retrieve: async id => paidSession(id) } },
     webhooks: { constructEvent: body => ({ type: "checkout.session.completed", data: { object: body } }) },
-    paymentIntents: { retrieve: async () => ({ amount_received: 1000 }) },
+    paymentIntents: { retrieve: async () => ({ amount_received: 1050 }) },
     refunds: {
       async create(params, options) {
         const row = [...state.resolutions.values()].find(r => r.paymentIntentId === params.payment_intent);
@@ -181,12 +189,12 @@ function harness({ recoveryError, quantity = 1 } = {}) {
         state.refunds.push(JSON.parse(JSON.stringify({ params, options })));
         if (state.stripeError) throw state.stripeError;
         return { id: `re_${row.stripeSessionId}`, payment_intent: params.payment_intent,
-          status: state.refundOutcome, amount: 1000 };
+          status: state.refundOutcome, amount: 1050 };
       },
       async retrieve(id) {
         state.retrieveCalls++;
         const row = [...state.resolutions.values()].find(r => r.refundId === id);
-        return { id, payment_intent: row.paymentIntentId, status: state.refundOutcome, amount: 1000 };
+        return { id, payment_intent: row.paymentIntentId, status: state.refundOutcome, amount: 1050 };
       },
       async *list() { yield* state.listed; },
     },
@@ -369,7 +377,7 @@ test("Stripe acceptance followed by failed persistence retains ownership without
   await assert.rejects(h.testConfirmPaidSession(paidSession("sold")), /state write/);
   assert.equal(h.state.resolutions.get("sold").refundStatus, "UNKNOWN");
   h.state.failStateWrite = false;
-  h.state.listed = [{ id: "re_sold", payment_intent: "pi_sold", status: "succeeded", amount: 1000 }];
+  h.state.listed = [{ id: "re_sold", payment_intent: "pi_sold", status: "succeeded", amount: 1050 }];
   h.state.quantity = 1;
   await h.testConfirmPaidSession(paidSession("sold"));
   assert.equal(h.state.refunds.length, 1);

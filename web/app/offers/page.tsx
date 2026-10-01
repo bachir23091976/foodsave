@@ -12,6 +12,8 @@ import { API_URL } from "../lib/api";
 
 import s from "../components/public.module.css";
 
+type Quote = { merchandiseSubtotalMinor: number; serviceFeeMinor: number; customerTotalMinor: number; pricingVersion: number };
+
 interface Offer {
   id: string;
   title: string;
@@ -56,6 +58,9 @@ export default function OffersPage() {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [quotes, setQuotes] = useState<Record<string, Quote>>({});
+  const attempted = useRef(new Set<string>());
+  const busy = useRef(false);
   const [reserving, setReserving] = useState<string | null>(null);
   const [confirmations, setConfirmations] = useState<Record<string, string>>({});
   const [addressInput, setAddressInput] = useState("");
@@ -218,22 +223,37 @@ export default function OffersPage() {
       setConfirmations((prev) => ({ ...prev, [offerId]: "ui.sign_in_to_reserve" }));
       return;
     }
+    if (busy.current || attempted.current.has(offerId)) return;
+    busy.current = true;
     setReserving(offerId);
     try {
-      const res = await fetch(`${API_URL}/orders`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
-        body: JSON.stringify({ offerId }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.checkoutUrl) {
-        setConfirmations((prev) => ({ ...prev, [offerId]: data.message || "ui.unable_to_make_the_reservation" }));
-        setReserving(null);
+      if (!quotes[offerId]) {
+        const response = await fetch(API_URL + '/orders/quote?offerId=' + encodeURIComponent(offerId), { headers: { Authorization: 'Bearer ' + token } });
+        if (!response.ok) throw Error('Quote unavailable');
+        const data = await response.json();
+        setQuotes(previous => ({ ...previous, [offerId]: data.pricing }));
+        setConfirmations(previous => ({ ...previous, [offerId]: '' }));
         return;
       }
+      attempted.current.add(offerId);
+      const res = await fetch(API_URL + '/orders', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({ offerId, reviewedSubtotalMinor: quotes[offerId].merchandiseSubtotalMinor,
+          pricingVersion: quotes[offerId].pricingVersion, locale: intlLocale.startsWith('en') ? 'en' : 'fr' }),
+      });
+      const data = await res.json();
+      if (res.status === 409 && data.code === 'PRICE_REVIEW_REQUIRED') {
+        attempted.current.delete(offerId);
+        setQuotes(previous => ({ ...previous, [offerId]: data.pricing }));
+        setConfirmations(previous => ({ ...previous, [offerId]: 'pricing.changed' }));
+        return;
+      }
+      if (!res.ok || !data.checkoutUrl) throw Error('Checkout unconfirmed');
       window.location.href = data.checkoutUrl;
     } catch {
-      setConfirmations((prev) => ({ ...prev, [offerId]: "ui.unable_to_contact_the_server" }));
+      setConfirmations(previous => ({ ...previous, [offerId]: attempted.current.has(offerId) ? 'pricing.uncertain' : 'pricing.unavailable' }));
+    } finally {
+      busy.current = false;
       setReserving(null);
     }
   };
@@ -311,7 +331,13 @@ export default function OffersPage() {
                 <div className={s.cardTop}><p className={s.price}><strong>{money(offer.discountedPrice)}</strong><del>{money(offer.originalPrice)}</del></p><button type="button" className={s.favorite} onClick={() => toggleFavorite(offer.merchant.id)} aria-pressed={isFavorite} aria-label={isFavorite ? t("ui.remove_from_favourites") : t("ui.add_to_favourites")}>{isFavorite ? "★" : "☆"}</button></div>
                 <p className={s.pickup}>{t("ui.pickup")}{" "}{formatTime(offer.pickupStart)} – {formatTime(offer.pickupEnd)}<br />{count("offers.available", "offers.availablePlural", offer.quantity)}</p>
                 <p className={s.muted} style={{ fontSize: 12 }}>{t("ui.free_cancellation_up_to_60_minutes_before_pickup")}</p>
-                <button type="button" onClick={() => handleReserve(offer.id)} disabled={reserving === offer.id || offer.quantity < 1} className={s.button}>{reserving === offer.id ? t("ui.redirecting") : t("ui.reserve")}</button>
+                {quotes[offer.id] && <div aria-live="polite" className="my-3 text-sm">
+                  <p>{t("pricing.subtotal")}: {money(quotes[offer.id].merchandiseSubtotalMinor / 100)}</p>
+                  <p>{t("pricing.fee")}: {money(quotes[offer.id].serviceFeeMinor / 100)}</p>
+                  <p><strong>{t("pricing.total")}: {money(quotes[offer.id].customerTotalMinor / 100)}</strong></p>
+                  <p>{t("pricing.refund")}</p>
+                </div>}
+                <button type="button" onClick={() => handleReserve(offer.id)} disabled={reserving !== null || attempted.current.has(offer.id) || offer.quantity < 1} className={s.button}>{reserving === offer.id ? t("ui.redirecting") : t(quotes[offer.id] ? "pricing.proceed" : "pricing.review")}</button>
                 <a href={"https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(offer.merchant.address + ", " + offer.merchant.city)} target="_blank" rel="noopener noreferrer" className={s.quiet}>{t("ui.directions_")}</a>
                 {confirmations[offer.id] && <p role="alert" className={s.alert}>{msg(confirmations[offer.id])}</p>}
               </div>

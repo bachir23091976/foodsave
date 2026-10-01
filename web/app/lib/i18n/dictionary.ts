@@ -1,5 +1,16 @@
 // UI copy only. Never use these keys as API values or translate user-created content.
 export const fr = {
+  "pricing.subtotal": "Sous-total des articles",
+  "pricing.fee": "Frais de service FoodSave",
+  "pricing.total": "Total",
+  "pricing.paid": "Total payé",
+  "pricing.review": "Vérifier le total",
+  "pricing.proceed": "Continuer vers le paiement",
+  "pricing.changed": "Le prix a changé. Veuillez vérifier le nouveau total.",
+  "pricing.refund": "Pour une annulation admissible, le paiement complet, frais de service inclus, est remboursé.",
+  "pricing.uncertain": "La création du paiement est incertaine. Ne recommencez pas automatiquement. Contactez FoodSave.",
+  "pricing.unavailable": "Prix indisponible. Réessayez.",
+  "pricing.merchandise": "Montant des articles",
   "auth.googleContinue": "Continuer avec Google",
   "auth.googleLoading": "Connexion avec Google en cours…",
   "auth.googleUnavailable": "La connexion avec Google est temporairement indisponible. Réessayez plus tard.",
@@ -538,6 +549,17 @@ export const fr = {
 } as const;
 export type MessageKey = keyof typeof fr;
 export const en: Record<MessageKey, string> = {
+  "pricing.subtotal": "Merchandise subtotal",
+  "pricing.fee": "FoodSave service fee",
+  "pricing.total": "Total",
+  "pricing.paid": "Total paid",
+  "pricing.review": "Review total",
+  "pricing.proceed": "Continue to payment",
+  "pricing.changed": "The price has changed. Please review the updated total.",
+  "pricing.refund": "For eligible cancellations, the entire payment, including the service fee, is refunded.",
+  "pricing.uncertain": "Payment creation is uncertain. Do not automatically start again. Contact FoodSave.",
+  "pricing.unavailable": "Pricing unavailable. Please try again.",
+  "pricing.merchandise": "Merchandise amount",
   "auth.googleContinue": "Continue with Google",
   "auth.googleLoading": "Signing in with Google…",
   "auth.googleUnavailable": "Google sign-in is temporarily unavailable. Please try again later.",

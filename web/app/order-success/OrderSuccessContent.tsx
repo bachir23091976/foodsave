@@ -19,17 +19,18 @@ const dim = "#59685e";
 type ConfirmationResponse = {
   ok: boolean;
   data: {
-    order?: { status: string; pickupCode?: string };
+    order?: { status: string; pickupCode?: string; pricingSnapshot?: { merchandiseSubtotalMinor: number; serviceFeeMinor: number; customerTotalMinor: number } | null };
     qrCodeImage?: string;
     message?: string;
   };
 };
 
 export default function OrderSuccessContent() {
-  const { t, message: msg } = useLocale();
+  const { t, message: msg, money } = useLocale();
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("session_id");
   const [message, setMessage] = useState("ui.confirming_your_reservation");
+  const [pricing, setPricing] = useState<NonNullable<ConfirmationResponse["data"]["order"]>["pricingSnapshot"]>(null);
   const [qrCode, setQrCode] = useState("");
   const [pickupCode, setPickupCode] = useState("");
   const confirmation = useRef<{
@@ -40,6 +41,7 @@ export default function OrderSuccessContent() {
 
   useEffect(() => {
     let active = true;
+    setPricing(null);
     setQrCode("");
     setPickupCode("");
     setMessage("ui.confirming_your_reservation");
@@ -71,9 +73,11 @@ export default function OrderSuccessContent() {
     confirmation.current.response
       .then(({ ok, data }) => {
         if (!active) return;
+        setPricing(null);
         setQrCode("");
         setPickupCode("");
         if (ok && data.order) {
+          setPricing(data.order.pricingSnapshot ?? null);
           switch (data.order.status) {
             case "CONFIRMED":
               setMessage("ui.reservation_confirmed");
@@ -122,6 +126,11 @@ export default function OrderSuccessContent() {
           {msg(message).toUpperCase()}
         </h1>
 
+        {pricing && <div className="mt-4">
+          <p>{t("pricing.subtotal")}: {money(pricing.merchandiseSubtotalMinor / 100)}</p>
+          <p>{t("pricing.fee")}: {money(pricing.serviceFeeMinor / 100)}</p>
+          <p><strong>{t("pricing.paid")}: {money(pricing.customerTotalMinor / 100)}</strong></p>
+        </div>}
         {(qrCode || pickupCode) && (
           <div
             className="mt-10 rounded-2xl p-8 flex flex-col items-center"

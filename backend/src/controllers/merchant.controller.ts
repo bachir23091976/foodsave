@@ -205,38 +205,49 @@ export const getMySales = async (req: AuthRequest, res: Response) => {
         offer: { merchantId: merchant.id },
         status: "COMPLETED",
       },
-      include: { offer: true },
+      include: { offer: true, pricingSnapshot: true },
       orderBy: { createdAt: "desc" },
     });
-
-    const COMMISSION_PERCENT = 15;
     let totalRevenue = 0;
     let totalCommission = 0;
+    let legacyRevenue = 0;
+    let legacyCommission = 0;
 
     const sales = orders.map((order) => {
-      const commission = Math.round(order.totalPrice * (COMMISSION_PERCENT / 100) * 100) / 100;
-      const net = Math.round((order.totalPrice - commission) * 100) / 100;
-      totalRevenue += order.totalPrice;
-      totalCommission += commission;
+      const pricing = order.pricingSnapshot;
+      if (!pricing) {
+        // Preserve historical Float reporting; new-checkout validation must not
+        // reject or normalize existing orders. No historical data is written.
+        const commission = Math.round(order.totalPrice * (15 / 100) * 100) / 100;
+        const net = Math.round((order.totalPrice - commission) * 100) / 100;
+        legacyRevenue += order.totalPrice;
+        legacyCommission += commission;
+        return { id: order.id, title: order.offer.title, totalPrice: order.totalPrice,
+          commission, net, date: order.createdAt };
+      }
+      const commission = pricing.merchantCommissionMinor / 100;
+      const net = pricing.merchantNetMinor / 100;
+      totalRevenue += pricing.merchandiseSubtotalMinor;
+      totalCommission += pricing.merchantCommissionMinor;
 
       return {
         id: order.id,
         title: order.offer.title,
-        totalPrice: order.totalPrice,
+        totalPrice: pricing.merchandiseSubtotalMinor / 100,
         commission,
         net,
         date: order.createdAt,
       };
     });
 
-    const totalNet = Math.round((totalRevenue - totalCommission) * 100) / 100;
+    const totalNet = Math.round(((totalRevenue - totalCommission) / 100 + legacyRevenue - legacyCommission) * 100) / 100;
 
     res.json({
       sales,
       summary: {
         totalSales: orders.length,
-        totalRevenue: Math.round(totalRevenue * 100) / 100,
-        totalCommission: Math.round(totalCommission * 100) / 100,
+        totalRevenue: Math.round((totalRevenue / 100 + legacyRevenue) * 100) / 100,
+        totalCommission: Math.round((totalCommission / 100 + legacyCommission) * 100) / 100,
         totalNet,
       },
     });
