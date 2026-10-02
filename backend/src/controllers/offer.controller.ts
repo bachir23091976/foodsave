@@ -1,4 +1,5 @@
 import { Response } from "express";
+import { parsePickupInstant } from "../lib/pickup-time";
 import { prisma } from "../lib/prisma";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { createNotification } from "./notification.controller";
@@ -106,8 +107,8 @@ export const createOffer = async (req: AuthRequest, res: Response) => {
     const originalPriceNum = Number(originalPrice);
     const discountedPriceNum = Number(discountedPrice);
     const quantityNum = Number(quantity);
-    const pickupStartDate = new Date(pickupStart);
-    const pickupEndDate = new Date(pickupEnd);
+    const pickupStartDate = parsePickupInstant(pickupStart);
+    const pickupEndDate = parsePickupInstant(pickupEnd);
 
     if (
       !Number.isFinite(originalPriceNum) || originalPriceNum <= 0 ||
@@ -121,7 +122,7 @@ export const createOffer = async (req: AuthRequest, res: Response) => {
      return res.status(400).json({ message: "La quantite doit etre comprise entre 1 et 1000" });
     }
 
-    if (isNaN(pickupStartDate.getTime()) || isNaN(pickupEndDate.getTime()) || pickupEndDate <= pickupStartDate) {
+    if (isNaN(pickupStartDate.getTime()) || isNaN(pickupEndDate.getTime()) || pickupEndDate <= pickupStartDate || pickupStartDate.getTime() <= Date.now()) {
       return res.status(400).json({ message: "Fenetre de recuperation invalide" });
     }
 

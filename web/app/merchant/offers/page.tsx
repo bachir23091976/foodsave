@@ -94,6 +94,7 @@ export default function MerchantOffersPage() {
   const formatDateTime = (iso: string) => {
     const date = new Date(iso);
     return date.toLocaleString(intlLocale, {
+      timeZone: "America/Toronto",
       day: "2-digit",
       month: "2-digit",
       hour: "2-digit",

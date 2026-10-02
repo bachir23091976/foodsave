@@ -147,7 +147,7 @@ export default function OffersPage() {
 
   const formatTime = (iso: string) => {
     const date = new Date(iso);
-    return date.toLocaleTimeString(intlLocale, { hour: "2-digit", minute: "2-digit" });
+    return date.toLocaleTimeString(intlLocale, { timeZone: "America/Toronto", hour: "2-digit", minute: "2-digit" });
   };
 
   const handleSearchNearby = async () => {

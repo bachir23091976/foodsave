@@ -34,6 +34,7 @@ function mount(route, fetcher, { token = "merchant-fixture", replayEffects = fal
     require(name) {
       if (name.endsWith("/i18n/LocaleProvider")) return { useLocale: () => require("./i18n-fixture.cjs").localeTools("fr") };
       if (name.endsWith("/i18n/LanguageSelector")) return () => null;
+      if (name.endsWith("/lib/pickup-time")) { const module={exports:{}}; vm.runInNewContext(transformSync(fs.readFileSync(path.join(__dirname,"../app/lib/pickup-time.ts"),"utf8"),{loader:"ts",format:"cjs"}).code,{module,exports:module.exports,Date,Intl}); return module.exports; }
       if (name === "react") return hooks;
       if (name === "react/jsx-runtime") return require(name);
       if (name.endsWith(".module.css")) return { __esModule: true, default: new Proxy({}, { get: (_, key) => String(key) }) };
@@ -145,9 +146,30 @@ test("payment setup keeps existing POST and redirect, only on click", async () =
 test("new offer retains quantities, categories, dates and numeric request fields", async () => {
   const page = mount("new-offer", () => response({ message: "Offre créée" }));
   const html = page.render(); assert.ok(html.includes('min="1"')); assert.ok(html.includes('max="1000"')); assert.ok(html.includes('value="BOULANGERIE_PATISSERIE"'));
-  for (const [id,value] of [["title","Pain"],["original-price","10.00"],["discounted-price","5.00"],["quantity","2"],["pickup-start","2026-09-15T16:00"],["pickup-end","2026-09-15T18:00"]]) page.change("offer-" + id, value);
+  for (const [id,value] of [["title","Pain"],["original-price","10.00"],["discounted-price","5.00"],["quantity","2"],["pickup-start","2099-09-15T16:00"],["pickup-end","2099-09-15T18:00"]]) page.change("offer-" + id, value);
   await page.submit(); assert.equal(page.calls.length, 1);
-  assert.deepEqual(JSON.parse(page.calls[0].body), { title: "Pain", description: "", category: "PLATS_PREPARES", imageUrl: "", originalPrice: 10, discountedPrice: 5, quantity: 2, pickupStart: "2026-09-15T16:00", pickupEnd: "2026-09-15T18:00" });
+  assert.deepEqual(JSON.parse(page.calls[0].body), { title: "Pain", description: "", category: "PLATS_PREPARES", imageUrl: "", originalPrice: 10, discountedPrice: 5, quantity: 2, pickupStart: "2099-09-15T20:00:00.000Z", pickupEnd: "2099-09-15T22:00:00.000Z" });
+});
+test("invalid pickup window is rejected before any upload or API submission", async () => {
+  const page = mount("new-offer", () => { throw Error("No request expected"); });
+  page.render();
+  page.change("offer-pickup-start", "2099-09-15T18:00");
+  page.change("offer-pickup-end", "2099-09-15T16:00");
+  await page.submit();
+  assert.equal(page.calls.length, 0);
+  assert.ok(page.render().includes("Choisissez des heures futures"));
+});
+test("merchant offer displays Ottawa pickup time even on a Tokyo device", async () => {
+  const previous = process.env.TZ;
+  try {
+    process.env.TZ = "Asia/Tokyo";
+    const page = mount("offers", () => response({ offers: [{ id: "o", title: "Bread", quantity: 1,
+      originalPrice: 5, discountedPrice: 2, pickupStart: "2026-10-02T17:35:00.000Z",
+      pickupEnd: "2026-10-02T19:39:00.000Z", createdAt: "2026-10-02T16:36:00.000Z" }] }));
+    const html = await page.settle();
+    assert.match(html, /13[^\d]+35/);
+    assert.doesNotMatch(html, /09[^\d]+35/);
+  } finally { if (previous === undefined) delete process.env.TZ; else process.env.TZ = previous; }
 });
 for (const route of ["offers", "sales"]) {
   test(`${route} separates HTTP failure from empty state`, async () => {

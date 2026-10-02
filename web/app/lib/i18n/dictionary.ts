@@ -1,5 +1,7 @@
 // UI copy only. Never use these keys as API values or translate user-created content.
 export const fr = {
+  "pickup.zone": "Heures de ramassage : Ottawa (America/Toronto).",
+  "pickup.invalid": "Choisissez des heures futures valides à Ottawa, avec une fin après le début. Évitez les heures inexistantes ou répétées lors du changement d’heure.",
   "pricing.subtotal": "Sous-total des articles",
   "pricing.fee": "Frais de service FoodSave",
   "pricing.total": "Total",
@@ -549,6 +551,8 @@ export const fr = {
 } as const;
 export type MessageKey = keyof typeof fr;
 export const en: Record<MessageKey, string> = {
+  "pickup.zone": "Pickup times: Ottawa (America/Toronto).",
+  "pickup.invalid": "Choose valid future Ottawa times, with the end after the start. Avoid nonexistent or repeated times during daylight saving changes.",
   "pricing.subtotal": "Merchandise subtotal",
   "pricing.fee": "FoodSave service fee",
   "pricing.total": "Total",

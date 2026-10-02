@@ -7,6 +7,7 @@ import MerchantShell from "../../components/merchant/MerchantShell";
 import s from "../../components/merchant/merchant.module.css";
 import ui from "../../components/public.module.css";
 import { API_URL } from "../../lib/api";
+import { pickupWindow } from "../../lib/pickup-time";
 
 export default function NewOfferPage() {
   const { t, message: msg, number } = useLocale();
@@ -44,6 +45,9 @@ export default function NewOfferPage() {
     }
 
     try {
+      let window;
+      try { window = pickupWindow(pickupStart, pickupEnd); }
+      catch { setMessage("pickup.invalid"); return; }
       let imageUrl = "";
 
       if (imageFile) {
@@ -81,8 +85,7 @@ export default function NewOfferPage() {
           originalPrice: parseFloat(originalPrice),
           discountedPrice: parseFloat(discountedPrice),
           quantity: parseInt(quantity),
-          pickupStart,
-          pickupEnd,
+          ...window,
         }),
       });
 
@@ -129,7 +132,7 @@ export default function NewOfferPage() {
             <label className={s.field} htmlFor="offer-quantity">{t("ui.available_quantity")}<input id="offer-quantity" type="number" min="1" max="1000" value={quantity} onChange={(e) => setQuantity(e.target.value)} required /></label>
           </div></fieldset></section>
           <section className={s.panel}><fieldset className={s.formSection}><legend>{t("ui.03_instore_pickup")}</legend><div className={s.form}>
-            <label className={s.field} htmlFor="offer-pickup-start">{t("ui.pickup_starts")}<input id="offer-pickup-start" type="datetime-local" value={pickupStart} onChange={(e) => setPickupStart(e.target.value)} required /></label>
+            <p className={s.help}>{t("pickup.zone")}</p><label className={s.field} htmlFor="offer-pickup-start">{t("ui.pickup_starts")}<input id="offer-pickup-start" type="datetime-local" value={pickupStart} onChange={(e) => setPickupStart(e.target.value)} required /></label>
             <label className={s.field} htmlFor="offer-pickup-end">{t("ui.pickup_ends")}<input id="offer-pickup-end" type="datetime-local" value={pickupEnd} onChange={(e) => setPickupEnd(e.target.value)} required /></label>
           </div></fieldset></section>
           <button type="submit" disabled={loading} className={ui.button}>{loading ? t("ui.publishing") : t("ui.publish_offer")}</button>
