@@ -7,7 +7,7 @@ const url=process.env.FOODSAVE_TEST_DATABASE_URL;
 if(!url)throw Error('Explicit isolated test database configuration required');
 const target=new URL(url);
 assert.equal(target.hostname,'127.0.0.1');assert.equal(target.port,'55432');
-assert.ok(['/foodsave_test_phase_a','/foodsave_test_service_fee_20260926'].includes(target.pathname));assert.equal(target.username,'foodsave_phase_a_runner');
+assert.ok(['/foodsave_test_phase_a','/foodsave_test_service_fee_20260926','/foodsave_test_no_show_20261003'].includes(target.pathname));assert.equal(target.username,'foodsave_phase_a_runner');
 const {PrismaClient}=require('@prisma/client');
 test('PostgreSQL snapshot constraints, atomic rollback and independent client binding',async t=>{
   const db=new PrismaClient({datasources:{db:{url}}}),other=new PrismaClient({datasources:{db:{url}}});

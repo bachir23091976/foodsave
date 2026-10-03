@@ -1,5 +1,11 @@
 // UI copy only. Never use these keys as API values or translate user-created content.
 export const fr = {
+  "reservation.noShow": "Non récupéré",
+  "reservation.active": "Réservations actives",
+  "reservation.history": "Historique",
+  "reservation.review": "Fenêtre de ramassage terminée — vérification nécessaire",
+  "reservation.grace": "Ramassage tardif possible jusqu’à",
+  "reservation.refresh": "Actualiser les réservations",
   "pickup.zone": "Heures de ramassage : Ottawa (America/Toronto).",
   "pickup.invalid": "Choisissez des heures futures valides à Ottawa, avec une fin après le début. Évitez les heures inexistantes ou répétées lors du changement d’heure.",
   "pricing.subtotal": "Sous-total des articles",
@@ -551,6 +557,12 @@ export const fr = {
 } as const;
 export type MessageKey = keyof typeof fr;
 export const en: Record<MessageKey, string> = {
+  "reservation.noShow": "Not collected",
+  "reservation.active": "Active reservations",
+  "reservation.history": "History",
+  "reservation.review": "Pickup window ended — review required",
+  "reservation.grace": "Late pickup available until",
+  "reservation.refresh": "Refresh reservations",
   "pickup.zone": "Pickup times: Ottawa (America/Toronto).",
   "pickup.invalid": "Choose valid future Ottawa times, with the end after the start. Avoid nonexistent or repeated times during daylight saving changes.",
   "pricing.subtotal": "Merchandise subtotal",

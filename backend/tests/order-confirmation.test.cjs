@@ -33,6 +33,7 @@ function paidSession(id) {
 
 function loadController(prisma, stripe, overrides = {}) {
   const dependencies = {
+    "../lib/order-expiration": require("./no-show-fixture.cjs"),
     "../lib/checkout-pricing": require("./checkout-pricing.test.cjs").pricing,
     // These pre-existing decision/race tests isolate provider pricing reads; the
     // real resolver is exercised by checkout-pricing tests and its SQL suite.

@@ -6,10 +6,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Navbar from "../components/Navbar";
 import s from "../components/public.module.css";
 import { API_URL } from "../lib/api";
+import { reservationPhase } from "../lib/reservation-lifecycle";
 
 interface Order {
   id: string;
-  status: "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED";
+  status: "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
+  noShowEligibleAt?: string | null;
   totalPrice: number;
   pricingSnapshot?: { merchandiseSubtotalMinor: number; serviceFeeMinor: number; customerTotalMinor: number } | null;
   pickupCode: string;
@@ -29,6 +31,7 @@ interface Order {
 }
 
 const statusLabels: Record<Order["status"], string> = {
+  NO_SHOW: "reservation.noShow",
   PENDING: "ui.pending",
   CONFIRMED: "ui.awaiting_pickup",
   COMPLETED: "ui.already_picked_up",
@@ -162,8 +165,12 @@ export default function ReservationsPage() {
           {t("ui.you_have_no_reservations_yet")}</p>
       )}
 
+      <button type="button" onClick={() => void loadOrders()} disabled={loading || cancelingId !== null} className="block mx-auto my-4">{t("reservation.refresh")}</button>
       <div className="grid gap-4 max-w-2xl mx-auto px-6 pb-20">
-        {!loading && !error && orders.map((order) => (
+        {!loading && !error && [
+          { title: t("reservation.active"), rows: orders.filter(o => o.status === "PENDING" || ["active", "grace"].includes(reservationPhase(o))) },
+          { title: t("reservation.history"), rows: orders.filter(o => o.status !== "PENDING" && ["history", "review"].includes(reservationPhase(o))) },
+        ].map(group => <section key={group.title}><h2>{group.title}</h2>{group.rows.map((order) => (
           <article
             key={order.id}
             className="rounded-2xl p-5 grid gap-2"
@@ -178,6 +185,8 @@ export default function ReservationsPage() {
             </div>
 
             <p>{order.offer.merchant.name} - {order.offer.merchant.city}</p>
+            {reservationPhase(order) === "review" && <p>{t("reservation.review")}</p>}
+            {reservationPhase(order) === "grace" && <p>{t("reservation.grace")} {formatDateTime(order.noShowEligibleAt!)}</p>}
             <p style={{ color: "#59685e" }}>
               {t("ui.pickup_2")}{" "}{formatDateTime(order.offer.pickupStart)} - {formatDateTime(order.offer.pickupEnd)}
             </p>
@@ -186,7 +195,7 @@ export default function ReservationsPage() {
               <p>{t("pricing.fee")}: {money(order.pricingSnapshot.serviceFeeMinor / 100)}</p>
               <p><strong>{t("pricing.paid")}: {money(order.pricingSnapshot.customerTotalMinor / 100)}</strong></p>
             </div> : <p>{t("ui.price")}{" "}<strong>{money(order.totalPrice)}</strong></p>}
-            {order.status === "CONFIRMED" && cancelingId !== order.id && <p>
+            {order.status === "CONFIRMED" && reservationPhase(order) !== "review" && cancelingId !== order.id && <p>
               {t("ui.pickup_code")}{" "}<strong style={{ color: "#215d43" }}>{order.pickupCode}</strong>
             </p>}
 
@@ -231,7 +240,7 @@ export default function ReservationsPage() {
               )
             )}
           </article>
-        ))}
+        ))}</section>)}
       </div>
     </main>
   );

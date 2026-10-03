@@ -27,6 +27,9 @@ for (const refund of [null, { refundStatus: "SUCCEEDED", updatedAt: "2026-09-12T
     vm.runInNewContext(compiled, {
       module, exports: module.exports, process: { env: {} }, console,
       require(name) {
+        if (name === "../lib/order-expiration") return { reconcileNoShows: async (db,scope) => {
+          assert.equal(db,prisma); assert.equal(scope.userId,"authenticated-customer");
+        } };
         if (name === "../lib/prisma") return { prisma };
         if (name === "@prisma/client") return { Prisma: { TransactionIsolationLevel: { ReadCommitted: "ReadCommitted" } } };
         // No callable provider/recovery dependencies are supplied.

@@ -32,6 +32,7 @@ function mount(route, fetcher, { token = "merchant-fixture", replayEffects = fal
     navigator: { mediaDevices: { getUserMedia: async () => { throw Error("Camera denied"); } } },
     cancelAnimationFrame() {}, requestAnimationFrame() { throw Error("No camera frames expected"); },
     require(name) {
+      if (name.endsWith('/lib/reservation-lifecycle')) return require('./reservation-lifecycle-fixture.cjs');
       if (name.endsWith("/i18n/LocaleProvider")) return { useLocale: () => require("./i18n-fixture.cjs").localeTools("fr") };
       if (name.endsWith("/i18n/LanguageSelector")) return () => null;
       if (name.endsWith("/lib/pickup-time")) { const module={exports:{}}; vm.runInNewContext(transformSync(fs.readFileSync(path.join(__dirname,"../app/lib/pickup-time.ts"),"utf8"),{loader:"ts",format:"cjs"}).code,{module,exports:module.exports,Date,Intl}); return module.exports; }

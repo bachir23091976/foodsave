@@ -10,6 +10,7 @@ import { cancellationRefundService } from "../lib/customer-cancellation-refund";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { createNotification } from "./notification.controller";
 import { checkAndCreateReward } from "./loyalty.controller";
+import { PICKUP_GRACE_MS, reconcileNoShows, transitionOrder } from "../lib/order-expiration";
 
 import { checkoutPricing, offerPriceMinor, pricingSelect } from "../lib/checkout-pricing";
 import { prepareCheckoutPricing, bindCheckoutPricing, PreparedPricing } from "../lib/checkout-pricing-snapshot";
@@ -347,6 +348,10 @@ async function confirmPaidSession(
     const order = await tx.order.create({ data: {
       userId, offerId, totalPrice: snapshot.merchandiseSubtotalMinor / 100,
       pricingSnapshotId: snapshot.id,
+      // Phase 1 covers timely new reservations only. Late confirmation policy
+      // is deferred; never classify such a reservation as a customer no-show.
+      noShowEligibleAt: offer.pickupEnd && offer.pickupEnd.getTime() > Date.now()
+        ? new Date(offer.pickupEnd.getTime() + PICKUP_GRACE_MS) : null,
       status: "CONFIRMED", stripeSessionId: session.id,
     }, include: { pricingSnapshot: { select: pricingSelect } } });
     return { kind: "CREATED" as const, order, offer };
@@ -439,6 +444,9 @@ export const stripeWebhook = async (req: Request, res: Response) => {
 export const getMyOrders = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId;
+
+    if (!userId) return res.status(401).json({ message: "Authentification requise" });
+    await reconcileNoShows(prisma, { userId });
 
     const orders = await prisma.order.findMany({
       where: { userId },
@@ -574,12 +582,9 @@ export const cancelOrderByMerchant = async (req: AuthRequest, res: Response) => 
       return res.status(400).json({ message: "Paiement Stripe introuvable" });
     }
 
-    const claim = await prisma.order.updateMany({
-      where: { id: order.id, status: "CONFIRMED" },
-      data: { status: "CANCELLED", cancellationReason },
-    });
+    const claimed = await transitionOrder(prisma, order.id, userId!, "CANCEL", cancellationReason);
 
-    if (claim.count === 0) {
+    if (!claimed) {
       return res.status(409).json({ message: "Cette commande a deja ete traitee" });
     }
 
@@ -657,6 +662,7 @@ export const getMerchantOrders = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: "Aucun commerce trouve" });
     }
 
+    await reconcileNoShows(prisma, { merchantId: merchant.id });
     const orders = await prisma.order.findMany({
       where: { offer: { merchantId: merchant.id } },
       include: {
@@ -706,13 +712,10 @@ export const validatePickup = async (req: AuthRequest, res: Response) => {
     // can move this order out of COMPLETED-not-yet-set. This closes a race
     // where two near-simultaneous scans of the same code would otherwise both
     // pass the check above and both trigger the loyalty/referral reward logic.
-    const updateResult = await prisma.order.updateMany({
-      where: { id: order.id, status: "CONFIRMED" },
-      data: { status: "COMPLETED" },
-    });
+    const completed = await transitionOrder(prisma, order.id, req.userId!, "PICKUP");
 
-    if (updateResult.count === 0) {
-      return res.status(400).json({ message: "Cette commande a deja ete recuperee" });
+    if (!completed) {
+      return res.status(400).json({ message: "Cette reservation ne peut pas etre validee dans cette fenetre de recuperation" });
     }
 
     const updatedOrder = (await prisma.order.findUnique({ where: { id: order.id } }))!;

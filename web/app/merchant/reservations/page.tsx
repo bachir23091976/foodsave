@@ -7,10 +7,12 @@ import MerchantShell from "../../components/merchant/MerchantShell";
 import s from "../../components/merchant/merchant.module.css";
 import ui from "../../components/public.module.css";
 import { API_URL } from "../../lib/api";
+import { reservationPhase, canValidatePickup } from "../../lib/reservation-lifecycle";
 
 interface MerchantOrder {
   id: string;
-  status: "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED";
+  status: "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
+  noShowEligibleAt?: string | null;
   totalPrice: number;
   pickupCode: string;
   cancellationReason?: string | null;
@@ -19,6 +21,7 @@ interface MerchantOrder {
     id: string;
     title: string;
     pickupEnd: string;
+    pickupStart: string;
   };
   user: {
     firstName: string;
@@ -259,10 +262,10 @@ export default function MerchantReservationsPage() {
   const toRecover = orders.filter(
     (o) =>
       o.status === "CONFIRMED" &&
-      new Date(o.offer.pickupEnd).getTime() >= now
+      ["active", "grace"].includes(reservationPhase(o, now))
   );
   const expired = orders.filter(
-    (o) => o.status === "CONFIRMED" && new Date(o.offer.pickupEnd).getTime() < now
+    (o) => o.status === "CONFIRMED" && reservationPhase(o, now) === "review"
   );
   const recovered = orders.filter((o) => o.status === "COMPLETED");
   const cancelled = orders.filter((o) => o.status === "CANCELLED");
@@ -280,23 +283,26 @@ export default function MerchantReservationsPage() {
         </div>
       </section>
       {validateMessage && <p role="status" className={s.notice + (validateMessage.type === "error" ? " " + s.error : "")}>{msg(validateMessage.text)}</p>}
+      <button type="button" onClick={loadOrders} disabled={loadingOrders} className={ui.secondary}>{t("reservation.refresh")}</button>
       {loadingOrders && <p role="status" className={s.notice}>{t("ui.loading_reservations")}</p>}
       {listError && <p role="alert" className={s.notice + " " + s.error}>{msg(listError)}</p>}
       {!loadingOrders && !listError && <>
         {[
-          { title: t("ui.awaiting_pickup"), orders: toRecover },
-          { title: t("ui.pickup_window_ended"), orders: expired },
+          { title: t("reservation.active"), orders: toRecover },
+          { title: t("reservation.review"), orders: expired },
         ].map(group => <section key={group.title}>
           <h2 className={s.groupTitle}>{group.title} ({group.orders.length})</h2>
           {group.orders.length === 0 ? <div className={s.empty}><p>{t("ui.no_reservations_in_this_category")}</p></div> : <div className={s.cards}>{group.orders.map(order => <article key={order.id} className={s.card + " " + s.reservation}>
             <div className={s.cardTop}><h3>{order.offer.title}</h3><strong>{t("pricing.merchandise")}: {money(order.totalPrice)}</strong></div>
             <span className={s.badge + " " + s.warning}>{t("ui.confirmed_awaiting_pickup")}</span>
             <p className={s.help}>{order.user.firstName} {order.user.lastName}</p><p className={s.help}>{t("ui.reserved_on")}{" "}{formatDateTime(order.createdAt)} {t("ui._pickup_ends")}{" "}{formatDateTime(order.offer.pickupEnd)}</p>
-            <div className={s.codeRow}><code>{order.pickupCode}</code><button type="button" onClick={() => handleValidate(order.pickupCode)} className={ui.secondary}>{t("ui.validate_pickup")}</button></div>
-            <div className={s.actions}><button type="button" onClick={() => handleMerchantCancel(order.id)} disabled={cancelingId === order.id} className={s.dangerButton}>{cancelingId === order.id ? t("ui.cancelling") : t("ui.cancel_and_refund")}</button></div>
+            {reservationPhase(order, now) === "grace" && <p>{t("reservation.grace")} {formatDateTime(order.noShowEligibleAt!)}</p>}
+            {canValidatePickup(order, now) && <div className={s.codeRow}><code>{order.pickupCode}</code><button type="button" onClick={() => handleValidate(order.pickupCode)} className={ui.secondary}>{t("ui.validate_pickup")}</button></div>}
+            {reservationPhase(order, now) !== "review" && <div className={s.actions}><button type="button" onClick={() => handleMerchantCancel(order.id)} disabled={cancelingId === order.id} className={s.dangerButton}>{cancelingId === order.id ? t("ui.cancelling") : t("ui.cancel_and_refund")}</button></div>}
           </article>)}</div>}
         </section>)}
         {[
+          { title: t("reservation.noShow"), orders: orders.filter(o => o.status === "NO_SHOW"), label: t("reservation.noShow"), tone: s.warning },
           { title: t("ui.already_picked_up_2"), orders: recovered, label: t("ui.picked_up"), tone: s.success },
           { title: t("ui.cancelled"), orders: cancelled, label: t("ui.cancelled_2"), tone: s.danger },
         ].map(group => <section key={group.title}><h2 className={s.groupTitle}>{group.title} ({group.orders.length})</h2>

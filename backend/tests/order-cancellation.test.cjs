@@ -26,7 +26,7 @@ function harness(outcome) {
       state.stock++;
     } },
   };
-  prisma.$queryRaw = async () => [];
+  prisma.$queryRaw = async strings => strings.join('').includes('clock_timestamp') ? [{nowMs:Date.now()}] : [];
   const context = new (require("node:async_hooks").AsyncLocalStorage)();
   let tail = Promise.resolve();
   prisma.$transaction = async fn => {

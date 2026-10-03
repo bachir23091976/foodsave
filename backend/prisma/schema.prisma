@@ -150,6 +150,8 @@ model Offer {
 }
 
 model Order {
+  noShowEligibleAt DateTime?
+  @@index([status, noShowEligibleAt])
   pricingSnapshotId String? @unique
   pricingSnapshot CheckoutPricingSnapshot? @relation(fields: [pricingSnapshotId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   customerCancellationRefund CustomerCancellationRefund?
@@ -233,6 +235,7 @@ model LoyaltyReward {
 }
 
 enum OrderStatus {
+  NO_SHOW
   PENDING
   CONFIRMED
   COMPLETED

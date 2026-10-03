@@ -34,6 +34,7 @@ function mount(file, fetcher, { token = "customer-token", session = "cs_fixture"
     window: { confirm: () => true, prompt: () => "reason" },
     navigator: {}, setInterval: () => 1, clearInterval() {},
     require(name) {
+      if (name.endsWith('/lib/reservation-lifecycle')) return require('./reservation-lifecycle-fixture.cjs');
       if (name.endsWith("/i18n/LocaleProvider")) return { useLocale: () => require("./i18n-fixture.cjs").localeTools(locale) };
       if (name.endsWith("/i18n/LanguageSelector")) return () => null;
       if (name.endsWith(".module.css")) return { __esModule: true, default: new Proxy({}, { get: (_, key) => String(key) }) };
@@ -168,9 +169,28 @@ test("expired confirmed reservation remains visible without mutation", async () 
   const expired = order(); expired.offer.pickupEnd = "2020-01-01T00:00:00Z";
   const page = mount("merchant/reservations/page.tsx", () => response({ orders: [expired] }));
   const html = await page.settle();
-  assert.ok(html.includes("Fenêtre de récupération terminée (1)"));
-  assert.ok(html.includes("Fixture offer")); assert.ok(html.includes("PICKUP-SECRET"));
+  assert.ok(html.includes("Fenêtre de ramassage terminée — vérification nécessaire (1)"));
+  assert.ok(html.includes("Fixture offer")); assert.ok(!html.includes("PICKUP-SECRET"));
   assert.ok(page.calls.every(c => !c.options.method || c.options.method === "GET"));
+});
+for (const locale of ["fr", "en"]) for (const route of ["reservations/page.tsx", "merchant/reservations/page.tsx"]) {
+  test(`${locale}: ${route} puts authoritative NO_SHOW in history without fulfillment actions`, async () => {
+    const row = { ...order("NO_SHOW"), user: { firstName: "Fixture", lastName: "Only" }, noShowEligibleAt: "2020-01-01T00:15:00Z" };
+    const page = mount(route, () => response({ orders: [row] }), { locale });
+    const html = await page.settle();
+    const tools = require("./i18n-fixture.cjs").localeTools(locale);
+    assert.ok(html.includes(tools.t("reservation.noShow")));
+    assert.ok(!html.includes("PICKUP-SECRET"));
+    assert.ok(!html.includes(tools.t("ui.cancel_and_refund")));
+    assert.ok(page.calls.every(c => !c.options.method || c.options.method === "GET"));
+  });
+}
+test("grace remains actionable and displays the persisted deadline", async () => {
+  const row = { ...order(), noShowEligibleAt: new Date(Date.now()+600000).toISOString() };
+  row.offer.pickupStart = new Date(Date.now()-3600000).toISOString();
+  row.offer.pickupEnd = new Date(Date.now()-300000).toISOString();
+  const page=mount("reservations/page.tsx",()=>response({orders:[row]}));
+  const html=await page.settle();assert.ok(html.includes("Ramassage tardif possible"));assert.ok(html.includes("PICKUP-SECRET"));
 });
 for (const status of ["READY", "NOT_CONNECTED", "ONBOARDING_INCOMPLETE", "UNRECOGNIZED", "error"]) {
   test(`Stripe return readiness ${status}`, async () => {

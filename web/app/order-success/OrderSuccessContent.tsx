@@ -87,6 +87,9 @@ export default function OrderSuccessContent() {
             case "CANCELLED":
               setMessage("ui.reservation_cancelled");
               break;
+            case "NO_SHOW":
+              setMessage("reservation.noShow");
+              break;
             case "COMPLETED":
               setMessage("ui.reservation_already_picked_up");
               break;

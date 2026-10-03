@@ -106,6 +106,7 @@ test('all merchant-only routes execute authenticate then guard before their exis
 });
 test('merchant authorization does not bypass existing offer ownership',async()=>{
   let writes=0;const {deactivateOffer}=load('controllers/offer.controller.ts',{
+    '../lib/pickup-time':load('lib/pickup-time.ts',{}),
     '../lib/prisma':{prisma:{merchant:{async findUnique(q){assert.equal(q.where.ownerId,'owner');return {id:'mine'};}},offer:{async findUnique(){return {id:'o',merchantId:'other'};},async update(){writes++;}}}},
     './notification.controller':{},
   });const res=response();await deactivateOffer({userId:'owner',params:{id:'o'}},res);assert.equal(res.statusCode,403);assert.equal(writes,0);
