@@ -34,6 +34,21 @@ test('NO_SHOW real PostgreSQL transitions',async t=>{
       try { await new Promise(r=>setTimeout(r,800)); } finally {unlock();}
       await holder;assert.equal(await pickup,false);assert.equal((await db.order.findUnique({where:{id:row.id}})).status,'NO_SHOW');
     });
+    await t.test('authenticated HTTP batches are bounded, concurrent, repeatable and protect historical NULL',async()=>{
+      const {makeApp,serve,secret}=require('./no-show-cron.test.cjs');
+      const historical=await make(null);
+      for(let i=0;i<101;i++)await make(new Date(Date.now()-1000));
+      const request=async url=>{const res=await fetch(url,{method:'POST',headers:{Authorization:'Bearer '+secret}});assert.equal(res.status,200);return(await res.json()).changed;};
+      await serve(makeApp(db,api.reconcileNoShows),async url=>{
+        assert.equal(await request(url),100);
+        await serve(makeApp(other,api.reconcileNoShows),async second=>{
+          const counts=await Promise.all([request(url),request(second)]);
+          assert.equal(counts.reduce((a,b)=>a+b,0),1);
+        });
+        assert.equal(await request(url),0);
+      });
+      assert.equal((await db.order.findUnique({where:{id:historical.id}})).status,'CONFIRMED');
+    });
     await t.test('NO_SHOW never changes stock or rewards and completed reporting excludes it',async()=>{
       assert.equal((await db.offer.findUnique({where:{id:offer.id}})).quantity,3);
       assert.equal(await db.loyaltyReward.count({where:{userId:user.id}}),0);
