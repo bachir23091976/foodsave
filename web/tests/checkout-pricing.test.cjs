@@ -15,7 +15,7 @@ function mount(locale, fail=false, stale=false) {
   vm.runInNewContext(transformSync(fs.readFileSync(path.join(__dirname,'../app/offers/page.tsx'),'utf8'),{loader:'tsx',format:'cjs',jsx:'automatic'}).code,{
     module,exports:module.exports,Date,URLSearchParams,localStorage:{getItem:()=> 'fixture'},window:{location,atob:()=>'{"role":"CLIENT"}',addEventListener(){},removeEventListener(){}},
     fetch:async(url,options={})=>{calls.push({url,...options});let data={};let status=200;
-      if(url.endsWith('/offers'))data={offers:[{id:'o',title:'Soup',category:'AUTRE',originalPrice:5,discountedPrice:2,quantity:1,pickupStart:new Date().toISOString(),pickupEnd:new Date().toISOString(),merchant:{id:'m',name:'Merchant',city:'Ottawa'}}]};
+      if(url.endsWith('/offers'))data={offers:[{id:'o',title:'Soup',category:'AUTRE',originalPrice:5,discountedPrice:2,dynamicPricingEnabled:true,quantity:1,pickupStart:new Date().toISOString(),pickupEnd:new Date().toISOString(),merchant:{id:'m',name:'Merchant',city:'Ottawa'}}]};
       if(url.includes('/orders/quote'))data={pricing:quote};
       if(url.endsWith('/orders')){if(fail)throw Error('lost response');const body=JSON.parse(options.body);assert.equal(body.reviewedSubtotalMinor,quote.merchandiseSubtotalMinor);if(stale){stale=false;Object.assign(quote,{merchandiseSubtotalMinor:300,customerTotalMinor:349});status=409;data={code:'PRICE_REVIEW_REQUIRED',pricing:{...quote}};}else data={checkoutUrl:'https://checkout.stripe.com/mock'};}
       return {ok:status===200,status,json:async()=>data};
@@ -28,7 +28,7 @@ function mount(locale, fail=false, stale=false) {
 }
 for(const locale of ['fr','en']) {
   test(`${locale}: authoritative price review before POST; full fee disclosure`,async()=>{
-    const page=mount(locale);await page.settle();const html=await page.click();
+    const page=mount(locale);const initial=await page.settle();assert.ok(initial.includes(localeTools(locale).t("dynamic.customer")));assert.ok(!initial.includes(localeTools(locale).t("dynamic.minimum")));const html=await page.click();
     assert.equal(page.calls.filter(c=>c.method==='POST').length,0);
     assert.ok(html.includes(localeTools(locale).t('pricing.fee')));assert.ok(html.includes(localeTools(locale).t('pricing.refund')));
     assert.ok(html.includes(localeTools(locale).money(2.49)));await page.click();

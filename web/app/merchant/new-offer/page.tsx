@@ -16,6 +16,8 @@ export default function NewOfferPage() {
   const [category, setCategory] = useState("PLATS_PREPARES");
   const [originalPrice, setOriginalPrice] = useState("");
   const [discountedPrice, setDiscountedPrice] = useState("");
+  const [dynamicEnabled, setDynamicEnabled] = useState(false);
+  const [minimum, setMinimum] = useState("");
   const [quantity, setQuantity] = useState("");
   const [pickupStart, setPickupStart] = useState("");
   const [pickupEnd, setPickupEnd] = useState("");
@@ -48,6 +50,11 @@ export default function NewOfferPage() {
       let window;
       try { window = pickupWindow(pickupStart, pickupEnd); }
       catch { setMessage("pickup.invalid"); return; }
+      let minimumPriceMinor;
+      if (dynamicEnabled) {
+        if (!/^\d+(?:\.\d{1,2})?$/.test(minimum) || Number(minimum) <= 0 || Number(minimum) > Number(discountedPrice)) { setMessage("dynamic.invalid"); return; }
+        minimumPriceMinor = Math.round(Number(minimum) * 100);
+      }
       let imageUrl = "";
 
       if (imageFile) {
@@ -84,6 +91,7 @@ export default function NewOfferPage() {
           imageUrl,
           originalPrice: parseFloat(originalPrice),
           discountedPrice: parseFloat(discountedPrice),
+          ...(dynamicEnabled ? { dynamicPricingEnabled: true, minimumPriceMinor } : {}),
           quantity: parseInt(quantity),
           ...window,
         }),
@@ -103,6 +111,7 @@ export default function NewOfferPage() {
       setCategory("PLATS_PREPARES");
       setOriginalPrice("");
       setDiscountedPrice("");
+      setDynamicEnabled(false); setMinimum("");
       setQuantity("");
       setPickupStart("");
       setPickupEnd("");
@@ -129,6 +138,8 @@ export default function NewOfferPage() {
           </section>
           <section className={s.panel}><fieldset className={s.formSection}><legend>{t("ui.02_price_and_quantity")}</legend><div className={s.form}>
             <div className={s.fieldRow}><label className={s.field} htmlFor="offer-original-price">{t("ui.original_price_cad")}<input id="offer-original-price" type="number" step="0.01" value={originalPrice} onChange={(e) => setOriginalPrice(e.target.value)} required /></label><label className={s.field} htmlFor="offer-discounted-price">{t("ui.reduced_price_cad")}<input id="offer-discounted-price" type="number" step="0.01" value={discountedPrice} onChange={(e) => setDiscountedPrice(e.target.value)} required /></label></div>
+            <label><input id="offer-dynamic" type="checkbox" checked={dynamicEnabled} onChange={e => setDynamicEnabled(e.target.checked)} /> {t("dynamic.title")}</label>
+            {dynamicEnabled && <><label className={s.field}>{t("dynamic.minimum")}<input id="offer-minimum" type="number" min="0.01" step="0.01" max={discountedPrice} required value={minimum} onChange={e => setMinimum(e.target.value)} /></label><p>{t("dynamic.private")}</p></>}
             <label className={s.field} htmlFor="offer-quantity">{t("ui.available_quantity")}<input id="offer-quantity" type="number" min="1" max="1000" value={quantity} onChange={(e) => setQuantity(e.target.value)} required /></label>
           </div></fieldset></section>
           <section className={s.panel}><fieldset className={s.formSection}><legend>{t("ui.03_instore_pickup")}</legend><div className={s.form}>

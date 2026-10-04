@@ -9,7 +9,7 @@ const { renderToStaticMarkup } = require("react-dom/server");
 
 // Real page JSX with controlled hooks, browser APIs, and HTTP responses. No
 // Next server, provider SDK, database, or external request is loaded by tests.
-function mount(route, fetcher, { token = "merchant-fixture", replayEffects = false } = {}) {
+function mount(route, fetcher, { token = "merchant-fixture", replayEffects = false, locale = "fr" } = {}) {
   const state = [], refs = [], dependencies = [];
   let cursor = 0, tree, queued = [], dirty = true;
   const hooks = {
@@ -33,7 +33,7 @@ function mount(route, fetcher, { token = "merchant-fixture", replayEffects = fal
     cancelAnimationFrame() {}, requestAnimationFrame() { throw Error("No camera frames expected"); },
     require(name) {
       if (name.endsWith('/lib/reservation-lifecycle')) return require('./reservation-lifecycle-fixture.cjs');
-      if (name.endsWith("/i18n/LocaleProvider")) return { useLocale: () => require("./i18n-fixture.cjs").localeTools("fr") };
+      if (name.endsWith("/i18n/LocaleProvider")) return { useLocale: () => require("./i18n-fixture.cjs").localeTools(locale) };
       if (name.endsWith("/i18n/LanguageSelector")) return () => null;
       if (name.endsWith("/lib/pickup-time")) { const module={exports:{}}; vm.runInNewContext(transformSync(fs.readFileSync(path.join(__dirname,"../app/lib/pickup-time.ts"),"utf8"),{loader:"ts",format:"cjs"}).code,{module,exports:module.exports,Date,Intl}); return module.exports; }
       if (name === "react") return hooks;
@@ -68,7 +68,7 @@ function mount(route, fetcher, { token = "merchant-fixture", replayEffects = fal
       for (let i = 0; i < 12; i++) { await new Promise(r => setImmediate(r)); if (dirty) render(); }
       return render();
     },
-    change(id, value) { render(); find(n => n.props?.id === id).props.onChange({ target: { value } }); render(); },
+    change(id, value) { render(); find(n => n.props?.id === id).props.onChange({ target: { value, checked: value } }); render(); },
     async submit() { render(); await find(n => n.type === "form").props.onSubmit({ preventDefault() {} }); return page.settle(); },
     async click(text) { render(); const button = find(n => n.type === "button" && renderToStaticMarkup(n).includes(text)); assert.ok(!button.props.disabled); await button.props.onClick(); return page.settle(); },
   };
@@ -191,4 +191,13 @@ test("manual pickup preserves exact validation request; camera denial offers fal
   await page.settle(); let html = await page.click("Scanner le QR code"); assert.ok(html.includes("caméra"));
   page.change("manual-pickup-code", "  fixture-code  "); await page.click("Valider");
   const post = page.calls.find(c => c.method === "POST"); assert.ok(post.url.endsWith("/orders/validate")); assert.deepEqual(JSON.parse(post.body), { pickupCode: "fixture-code" });
+});
+
+for (const locale of ['fr','en']) test(locale+' dynamic creation keeps configuration owner-only',async()=>{
+  const page=mount('new-offer',()=>response({}),{locale});
+  page.change('offer-title','Fixture');page.change('offer-original-price','10');page.change('offer-discounted-price','8');page.change('offer-quantity','2');
+  page.change('offer-pickup-start','2099-09-15T16:00');page.change('offer-pickup-end','2099-09-15T18:00');
+  page.change('offer-dynamic',true);page.change('offer-minimum','5.01');
+  const html=page.render();assert.ok(html.includes(require('./i18n-fixture.cjs').localeTools(locale).t('dynamic.private')));
+  await page.submit();const call=page.calls.find(c=>c.method==='POST');assert.equal(JSON.parse(call.body).minimumPriceMinor,501);assert.equal(JSON.parse(call.body).dynamicPricingEnabled,true);
 });

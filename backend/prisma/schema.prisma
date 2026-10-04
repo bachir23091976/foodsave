@@ -129,6 +129,7 @@ model Merchant {
 }
 
 model Offer {
+  dynamicPricing OfferDynamicPricing?
   id              String       @id @default(uuid())
   title           String
   description     String?
@@ -169,6 +170,17 @@ model Order {
 
   offer   Offer  @relation(fields: [offerId], references: [id])
   offerId String
+}
+
+model OfferDynamicPricing {
+  offerId String @id
+  offer Offer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  enabled Boolean @default(true)
+  startingPriceMinor Int
+  minimumPriceMinor Int
+  formulaVersion Int @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model CheckoutPricingSnapshot {

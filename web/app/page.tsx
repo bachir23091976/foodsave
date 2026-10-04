@@ -13,7 +13,7 @@ import s from "./components/public.module.css";
 import { API_URL } from "./lib/api";
 
 interface Offer {
-  id: string; title: string; imageUrl: string | null; originalPrice: number; discountedPrice: number;
+  id: string; title: string; imageUrl: string | null; originalPrice: number; discountedPrice: number; dynamicPricingEnabled?: boolean;
   merchant: { name: string; city: string; type?: string };
 }
 
@@ -89,7 +89,7 @@ export default function Home() {
       {!loading && !error && offers.length === 0 && <div className={s.empty}><h3>{t("ui.theres_always_something_new_to_discover")}</h3><p>{t("ui.no_offers_right_now_new_offers_may_appear_throughout")}</p></div>}
       <div className={s.offerGrid}>{offers.map((offer) => <article key={offer.id} className={s.card}>
         <FoodSaveImage url={offer.imageUrl} alt={offer.title} variant="offer" merchantType={offer.merchant.type} />
-        <div className={s.cardBody}><h3>{offer.title}</h3><p className={s.merchant}>{offer.merchant.name} · {offer.merchant.city}</p><p className={s.price}><strong>{money(offer.discountedPrice)}</strong><del>{money(offer.originalPrice)}</del></p><Link href="/offers" className={s.secondary}>{t("ui.explore_offers_")}</Link></div>
+        <div className={s.cardBody}>{offer.dynamicPricingEnabled && <p>{t("dynamic.customer")}</p>}<h3>{offer.title}</h3><p className={s.merchant}>{offer.merchant.name} · {offer.merchant.city}</p><p className={s.price}><strong>{money(offer.discountedPrice)}</strong><del>{money(offer.originalPrice)}</del></p><Link href="/offers" className={s.secondary}>{t("ui.explore_offers_")}</Link></div>
       </article>)}</div>
     </section>
 

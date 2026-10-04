@@ -25,7 +25,8 @@ function harness({ account = ready, fail, missingId = false } = {}) {
     checkout: { sessions: { async create(p) { calls.push('checkout'); if (fail === 'checkout') throw Error('PRIVATE Stripe details'); payload = JSON.parse(JSON.stringify(p)); return { id: "cs_fixture", url: 'https://checkout.stripe.com/fixture' }; } } },
   };
   const prisma = { checkoutPricingSnapshot: { create: async ({data}) => ({id:"snapshot",...data}), updateMany: async()=>({count:1}) }, offer: { async findUnique() { calls.push('offer'); return { id: 'offer', title: 'Pain', quantity: 1, pickupEnd: new Date(Date.now() + 3600000), discountedPrice: 5, merchant: { stripeAccountId: storedId } }; } } };
-  const deps = { '../lib/checkout-pricing': pricing, '../lib/prisma': { prisma }, '../lib/stripe': { stripe }, '../lib/stripe-account-readiness': { stripeAccountReadiness }, '@prisma/client': { Prisma: { TransactionIsolationLevel: { ReadCommitted: 'ReadCommitted' } } } };
+  prisma.$transaction=fn=>fn(prisma); prisma.$queryRaw=async()=>[{nowMs:Date.now()}];
+  const deps = { '../lib/dynamic-pricing':require('./dynamic-pricing-fixture.cjs').dynamic, '../lib/offer-presentation':require('./dynamic-pricing-fixture.cjs').presentation, '../lib/checkout-pricing': pricing, '../lib/prisma': { prisma }, '../lib/stripe': { stripe }, '../lib/stripe-account-readiness': { stripeAccountReadiness }, '@prisma/client': { Prisma: { TransactionIsolationLevel: { ReadCommitted: 'ReadCommitted' } } } };
   const module = { exports: {} };
   vm.runInNewContext(compiled, { module, exports: module.exports, Date, process: { env: { FRONTEND_URL: 'https://frontend.invalid' } }, console: { error() { assert.fail('Raw error logging'); } }, require(name) { return deps[name] || {}; } });
   const res = { statusCode: 200, status(n) { this.statusCode = n; return this; }, json(body) { this.body = JSON.parse(JSON.stringify(body)); return this; } };
@@ -36,13 +37,13 @@ for (const [name, overrides, expected] of variants) {
   test('Checkout applies shared policy: ' + name, async () => {
     const h = harness({ account: { ...ready, ...overrides } }); await h.run();
     assert.equal(h.res.statusCode, expected ? 200 : 409);
-    assert.deepEqual(h.calls, expected ? ['offer', 'account', 'checkout'] : ['offer', 'account']);
+    assert.deepEqual(h.calls, expected ? ['offer', 'account', 'offer', 'checkout'] : ['offer', 'account']);
   });
 }
 for (const fail of ['account_invalid', 'resource_missing', 'permission_denied', 'authentication_error', 'ETIMEDOUT', 'network_error', 'provider_error', 'checkout']) test('Checkout fails closed and sanitized: ' + fail, async () => {
   const h = harness({ fail }); await h.run(); assert.equal(h.res.statusCode, 500);
   assert.deepEqual(Object.keys(h.res.body), ['message']); assert.ok(!JSON.stringify(h.res.body).includes('PRIVATE'));
-  assert.deepEqual(h.calls, fail === 'checkout' ? ['offer','account','checkout'] : ['offer','account']);
+  assert.deepEqual(h.calls, fail === 'checkout' ? ['offer','account','offer','checkout'] : ['offer','account']);
 });
 test('Checkout without connected account performs no provider operation', async () => { const h = harness({ missingId: true }); await h.run(); assert.equal(h.res.statusCode, 400); assert.deepEqual(h.calls, ['offer']); });
 test('READY Checkout preserves complete payment payload and economics', async () => {

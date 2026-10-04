@@ -85,7 +85,7 @@ test('missing authentication is 401 without a DB read; DB failure is closed',asy
 });
 
 test('all merchant-only routes execute authenticate then guard before their existing handlers',async()=>{
-  const expected={'merchant':['post /','get /me','post /connect-stripe','get /stripe-status','get /sales'],'offer':['post /','get /mine','patch /:id/deactivate'],'order':['get /merchant','post /merchant/cancel','post /validate'],'upload':['post /image']};
+  const expected={'merchant':['post /','get /me','post /connect-stripe','get /stripe-status','get /sales'],'offer':['post /','get /mine','patch /:id/deactivate','patch /:id/dynamic-pricing'],'order':['get /merchant','post /merchant/cancel','post /validate'],'upload':['post /image']};
   for(const [file,protectedRoutes]of Object.entries(expected)){
     let currentRole='CLIENT',reached=0;
     const {authenticate}=load('middleware/auth.middleware.ts',{jsonwebtoken:{verify(){return {userId:'u',role:'MERCHANT'};}},'../lib/prisma':{prisma:{user:{async findUnique(){return {authVersion:0};}}}}});
@@ -106,6 +106,9 @@ test('all merchant-only routes execute authenticate then guard before their exis
 });
 test('merchant authorization does not bypass existing offer ownership',async()=>{
   let writes=0;const {deactivateOffer}=load('controllers/offer.controller.ts',{
+    '../lib/checkout-pricing':require('./dynamic-pricing-fixture.cjs').pricing,
+    '../lib/dynamic-pricing':require('./dynamic-pricing-fixture.cjs').dynamic,
+    '../lib/offer-presentation':require('./dynamic-pricing-fixture.cjs').presentation,
     '../lib/pickup-time':load('lib/pickup-time.ts',{}),
     '../lib/prisma':{prisma:{merchant:{async findUnique(q){assert.equal(q.where.ownerId,'owner');return {id:'mine'};}},offer:{async findUnique(){return {id:'o',merchantId:'other'};},async update(){writes++;}}}},
     './notification.controller':{},

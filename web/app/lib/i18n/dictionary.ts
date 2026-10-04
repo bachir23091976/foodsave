@@ -1,5 +1,16 @@
 // UI copy only. Never use these keys as API values or translate user-created content.
 export const fr = {
+  "dynamic.title": "Tarification dynamique",
+  "dynamic.minimum": "Prix minimum",
+  "dynamic.private": "Ce minimum est privé et invisible aux clients. Le prix baisse en quatre paliers pendant le ramassage.",
+  "dynamic.customer": "Le prix peut évoluer avant votre réservation. Le montant est confirmé avant le paiement.",
+  "dynamic.invalid": "Vérifiez les prix : le minimum doit être positif et ne pas dépasser le prix de départ.",
+  "dynamic.locked": "La tarification ne peut plus être modifiée après le début du ramassage.",
+  "dynamic.unavailable": "Offre indisponible.",
+  "dynamic.saved": "Tarification enregistrée.",
+  "dynamic.save": "Enregistrer la tarification",
+  "dynamic.start": "Prix de départ",
+  "dynamic.edit": "Modifier la tarification",
   "reservation.noShow": "Non récupéré",
   "reservation.active": "Réservations actives",
   "reservation.history": "Historique",
@@ -557,6 +568,17 @@ export const fr = {
 } as const;
 export type MessageKey = keyof typeof fr;
 export const en: Record<MessageKey, string> = {
+  "dynamic.title": "Dynamic pricing",
+  "dynamic.minimum": "Minimum price",
+  "dynamic.private": "This minimum is private and hidden from customers. The price decreases in four stages during pickup.",
+  "dynamic.customer": "The price may change before you reserve. Your total is confirmed before payment.",
+  "dynamic.invalid": "Check the prices: the minimum must be positive and no higher than the starting price.",
+  "dynamic.locked": "Pricing cannot be changed after pickup starts.",
+  "dynamic.unavailable": "Offer unavailable.",
+  "dynamic.saved": "Pricing saved.",
+  "dynamic.save": "Save pricing",
+  "dynamic.start": "Starting price",
+  "dynamic.edit": "Edit pricing",
   "reservation.noShow": "Not collected",
   "reservation.active": "Active reservations",
   "reservation.history": "History",

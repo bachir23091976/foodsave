@@ -21,7 +21,7 @@ interface Offer {
   category: string;
   imageUrl: string | null;
   originalPrice: number;
-  discountedPrice: number;
+  discountedPrice: number; dynamicPricingEnabled?: boolean;
   quantity: number;
   pickupStart: string;
   pickupEnd: string;
@@ -328,6 +328,7 @@ export default function OffersPage() {
               <div className={s.cardBody}>
                 <div className={s.cardTop}><div><h2>{offer.title}</h2><p className={s.merchant}>{offer.merchant.name} · {offer.merchant.city}{offer.distanceKm !== undefined && <span>· {number(offer.distanceKm, 1)} km</span>}</p></div><span className={s.badge}>−{percent} %</span></div>
                 {offer.description && <p className={s.muted} style={{ fontSize: 14, overflowWrap: "anywhere" }}>{offer.description}</p>}
+                {offer.dynamicPricingEnabled && <p>{t("dynamic.customer")}</p>}
                 <div className={s.cardTop}><p className={s.price}><strong>{money(offer.discountedPrice)}</strong><del>{money(offer.originalPrice)}</del></p><button type="button" className={s.favorite} onClick={() => toggleFavorite(offer.merchant.id)} aria-pressed={isFavorite} aria-label={isFavorite ? t("ui.remove_from_favourites") : t("ui.add_to_favourites")}>{isFavorite ? "★" : "☆"}</button></div>
                 <p className={s.pickup}>{t("ui.pickup")}{" "}{formatTime(offer.pickupStart)} – {formatTime(offer.pickupEnd)}<br />{count("offers.available", "offers.availablePlural", offer.quantity)}</p>
                 <p className={s.muted} style={{ fontSize: 12 }}>{t("ui.free_cancellation_up_to_60_minutes_before_pickup")}</p>

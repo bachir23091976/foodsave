@@ -4,6 +4,10 @@ import { prisma } from "../lib/prisma";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { createNotification } from "./notification.controller";
 
+import { offerPriceMinor } from "../lib/checkout-pricing";
+import { validateDynamicConfiguration, pricingDecisionTime, currentPriceMinor } from "../lib/dynamic-pricing";
+import { publicOffer } from "../lib/offer-presentation";
+
 const NEARBY_RADIUS_KM = 5;
 
 const FORBIDDEN_KEYWORDS = [
@@ -131,8 +135,20 @@ export const createOffer = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: "Aucun commerce trouve pour ce compte" });
     }
 
+    let dynamicPricing;
+    if (req.body.dynamicPricingEnabled !== undefined && typeof req.body.dynamicPricingEnabled !== "boolean")
+      return res.status(400).json({ message: "dynamic.invalid" });
+    if (req.body.dynamicPricingEnabled) {
+      try {
+        const startingPriceMinor = offerPriceMinor(discountedPriceNum);
+        const minimumPriceMinor = req.body.minimumPriceMinor;
+        validateDynamicConfiguration(startingPriceMinor, minimumPriceMinor);
+        dynamicPricing = { create: { enabled: true, startingPriceMinor, minimumPriceMinor, formulaVersion: 1 } };
+      } catch { return res.status(400).json({ message: "dynamic.invalid" }); }
+    }
     const offer = await prisma.offer.create({
       data: {
+        dynamicPricing,
         title,
         description,
         category: categoryValue,
@@ -152,7 +168,7 @@ export const createOffer = async (req: AuthRequest, res: Response) => {
 
     res.status(201).json({ message: "Offre creee avec succes", offer });
   } catch (error) {
-    console.error(error);
+    console.error("Offer operation failed");
     res.status(500).json({ message: "Erreur serveur" });
   }
 };
@@ -168,27 +184,30 @@ export const getMyOffers = async (req: AuthRequest, res: Response) => {
 
     const offers = await prisma.offer.findMany({
       where: { merchantId: merchant.id },
+      include: { dynamicPricing: true },
       orderBy: { createdAt: "desc" },
     });
 
-    res.json({ offers });
+    const now = new Date();
+    res.json({ offers: offers.map(offer => ({ ...offer, currentDiscountedPrice: offer.dynamicPricing?.enabled && offer.pickupEnd > now ? currentPriceMinor(offer, now) / 100 : offer.discountedPrice })) });
   } catch (error) {
-    console.error(error);
+    console.error("Offer operation failed");
     res.status(500).json({ message: "Erreur serveur" });
   }
 };
 
 export const getAllOffers = async (req: AuthRequest, res: Response) => {
   try {
+    const now = new Date();
     const offers = await prisma.offer.findMany({
-      where: { quantity: { gt: 0 }, pickupEnd: { gt: new Date() } },
-      include: { merchant: true },
+      where: { quantity: { gt: 0 }, pickupEnd: { gt: now } },
+      include: { merchant: true, dynamicPricing: true },
       orderBy: { createdAt: "desc" },
     });
 
-    res.json({ offers });
+    res.json({ offers: offers.map(offer => publicOffer(offer, now)) });
   } catch (error) {
-    console.error(error);
+    console.error("Offer operation failed");
     res.status(500).json({ message: "Erreur serveur" });
   }
 };
@@ -223,7 +242,7 @@ export const deactivateOffer = async (req: AuthRequest, res: Response) => {
 
     res.json({ message: "Offre desactivee avec succes", offer: updatedOffer });
   } catch (error) {
-    console.error(error);
+    console.error("Offer operation failed");
     res.status(500).json({ message: "Erreur serveur" });
   }
 };
@@ -237,22 +256,45 @@ export const getNearbyOffers = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: "lat et lng requis" });
     }
 
+    const now = new Date();
     const offers = await prisma.offer.findMany({
-      where: { quantity: { gt: 0 }, pickupEnd: { gt: new Date() } },
-      include: { merchant: true },
+      where: { quantity: { gt: 0 }, pickupEnd: { gt: now } },
+      include: { merchant: true, dynamicPricing: true },
     });
 
     const offersWithDistance = offers
       .filter((offer) => offer.merchant.latitude && offer.merchant.longitude)
       .map((offer) => ({
-        ...offer,
+        ...publicOffer(offer, now),
         distanceKm: distanceKm(lat, lng, offer.merchant.latitude as number, offer.merchant.longitude as number),
       }))
       .sort((a, b) => a.distanceKm - b.distanceKm);
 
     res.json({ offers: offersWithDistance });
   } catch (error) {
-    console.error(error);
+    console.error("Offer operation failed");
     res.status(500).json({ message: "Erreur serveur" });
   }
+};
+
+export const updateDynamicPricing = async (req: AuthRequest, res: Response) => {
+  if (typeof req.body.enabled !== "boolean") return res.status(400).json({ message: "dynamic.invalid" });
+  try {
+    const result = await prisma.$transaction(async tx => {
+      const id = String(req.params.id);
+      await tx.$queryRaw`SELECT "id" FROM "Offer" WHERE "id" = ${id} FOR UPDATE`;
+      const offer = await tx.offer.findUnique({ where: { id }, include: { merchant: true, dynamicPricing: true } });
+      if (!offer || offer.merchant.ownerId !== req.userId) return { status: 404, message: "dynamic.unavailable" };
+      const now = await pricingDecisionTime(tx);
+      if (now >= offer.pickupStart) return { status: 409, message: "dynamic.locked" };
+      const startingPriceMinor = offerPriceMinor(offer.discountedPrice);
+      const minimumPriceMinor = req.body.enabled ? req.body.minimumPriceMinor : (offer.dynamicPricing?.minimumPriceMinor ?? startingPriceMinor);
+      validateDynamicConfiguration(startingPriceMinor, minimumPriceMinor);
+      await tx.offerDynamicPricing.upsert({ where: { offerId: id },
+        create: { offerId: id, enabled: req.body.enabled, startingPriceMinor, minimumPriceMinor, formulaVersion: 1 },
+        update: { enabled: req.body.enabled, startingPriceMinor, minimumPriceMinor } });
+      return { status: 200, message: "dynamic.saved" };
+    });
+    return res.status(result.status).json({ message: result.message });
+  } catch { return res.status(400).json({ message: "dynamic.invalid" }); }
 };

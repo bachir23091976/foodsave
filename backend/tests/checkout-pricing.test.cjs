@@ -59,7 +59,7 @@ if (require.main === module) {
       },
       offer:{findUnique:async()=>({id:'o',title:'Food',discountedPrice:state.price,quantity:state.quantity,pickupEnd:new Date(Date.now()+60000),merchant:{stripeAccountId:'acct',ownerId:'merchant'}}),updateMany:async()=>({count:state.quantity>0?(state.quantity--,1):0})},
       order:{findUnique:async()=>state.orders[0]||null,create:async({data})=>{const row={id:'order',pickupCode:'code',...data,pricingSnapshot:state.snapshot};state.orders.push(row);return row;}},
-      $queryRaw:async(strings,...values)=>strings.join('').includes('pg_advisory')?[]:[],
+      $queryRaw:async(strings,...values)=>strings.join('').includes('clock_timestamp')?[{nowMs:Date.now()}]:[],
     };
     db.$transaction=async fn=>{let done;const prev=tail;tail=new Promise(r=>done=r);await prev;try{return await fn(db);}finally{done();}};
     const provider={...h.session,checkout:{sessions:{retrieve:async()=>h.session,create:async(data,options)=>{state.creates.push({data,options});return {id:'cs',url:'https://checkout.stripe.com/test'};}}},accounts:{retrieve:async()=>({capabilities:{transfers:'active'},charges_enabled:true,payouts_enabled:true,requirements:{currently_due:[]}})}};

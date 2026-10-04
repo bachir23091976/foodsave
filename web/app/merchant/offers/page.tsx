@@ -17,6 +17,8 @@ interface Offer {
   imageUrl: string | null;
   originalPrice: number;
   discountedPrice: number;
+  currentDiscountedPrice?: number;
+  dynamicPricing?: { enabled: boolean; minimumPriceMinor: number; startingPriceMinor: number } | null;
   quantity: number;
   pickupStart: string;
   pickupEnd: string;
@@ -28,6 +30,10 @@ export default function MerchantOffersPage() {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [enabled, setEnabled] = useState(false);
+  const [minimum, setMinimum] = useState("");
+  const [saving, setSaving] = useState(false);
   const [deactivatingId, setDeactivatingId] = useState<string | null>(null);
 
   const loadOffers = () => {
@@ -91,6 +97,21 @@ export default function MerchantOffersPage() {
     }
   };
 
+  const savePricing = async (id: string) => {
+    if (saving) return;
+    if (enabled && (!/^\d+(?:\.\d{1,2})?$/.test(minimum) || Number(minimum) <= 0)) { setError("dynamic.invalid"); return; }
+    setSaving(true); setError("");
+    try {
+      const res = await fetch(API_URL + "/offers/" + id + "/dynamic-pricing", {
+        method: "PATCH", headers: { "Content-Type": "application/json", Authorization: "Bearer " + localStorage.getItem("token") },
+        body: JSON.stringify({ enabled, minimumPriceMinor: Math.round(Number(minimum) * 100) }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.message || "dynamic.invalid"); return; }
+      setEditingId(null); loadOffers();
+    } catch { setError("ui.unable_to_contact_the_server"); }
+    finally { setSaving(false); }
+  };
   const formatDateTime = (iso: string) => {
     const date = new Date(iso);
     return date.toLocaleString(intlLocale, {
@@ -112,7 +133,10 @@ export default function MerchantOffersPage() {
         <div className={s.offerBody}>
           <div className={s.cardTop}><h2>{offer.title}</h2><span className={s.badge + (offer.quantity > 0 ? " " + s.success : "")}>{offer.quantity > 0 ? count("offers.remaining", "offers.remainingPlural", offer.quantity) : t("ui.unavailable")}</span></div>
           {offer.description && <p className={s.muted} style={{ overflowWrap: "anywhere" }}>{offer.description}</p>}
-          <p className={s.price}><strong>{money(offer.discountedPrice)}</strong><del>{money(offer.originalPrice)}</del></p>
+          {offer.dynamicPricing && <p>{t("dynamic.start")}: {money(offer.dynamicPricing.startingPriceMinor / 100)} · {t("dynamic.minimum")}: {money(offer.dynamicPricing.minimumPriceMinor / 100)}</p>}
+          {Date.now() < Date.parse(offer.pickupStart) && <button type="button" className={ui.secondary} onClick={() => { setEditingId(offer.id); setEnabled(!!offer.dynamicPricing?.enabled); setMinimum(String((offer.dynamicPricing?.minimumPriceMinor ?? Math.round(offer.discountedPrice * 100)) / 100)); }}>{t("dynamic.edit")}</button>}
+          {editingId === offer.id && <div><label><input type="checkbox" checked={enabled} onChange={e => setEnabled(e.target.checked)} /> {t("dynamic.title")}</label>{enabled && <label>{t("dynamic.minimum")}<input type="number" min="0.01" step="0.01" max={offer.discountedPrice} value={minimum} onChange={e => setMinimum(e.target.value)} /></label>}<p>{t("dynamic.private")}</p><button type="button" className={ui.secondary} disabled={saving} onClick={() => void savePricing(offer.id)}>{t("dynamic.save")}</button></div>}
+          <p className={s.price}><strong>{money(offer.currentDiscountedPrice ?? offer.discountedPrice)}</strong><del>{money(offer.originalPrice)}</del></p>
           <p className={s.help}>{t("ui.pickup")}{" "}{formatDateTime(offer.pickupStart)} – {formatDateTime(offer.pickupEnd)}</p>
           <p className={s.help}>{t("ui.published_on")}{" "}{formatDateTime(offer.createdAt)}</p>
           {offer.quantity > 0 && <div className={s.actions}><button type="button" onClick={() => handleDeactivate(offer.id, offer.title)} disabled={deactivatingId === offer.id} className={s.dangerButton}>{deactivatingId === offer.id ? t("ui.deactivating") : t("ui.deactivate")}</button></div>}

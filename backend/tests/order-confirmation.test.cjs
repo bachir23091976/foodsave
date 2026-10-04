@@ -33,6 +33,8 @@ function paidSession(id) {
 
 function loadController(prisma, stripe, overrides = {}) {
   const dependencies = {
+    "../lib/dynamic-pricing": require("./dynamic-pricing-fixture.cjs").dynamic,
+    "../lib/offer-presentation": require("./dynamic-pricing-fixture.cjs").presentation,
     "../lib/order-expiration": require("./no-show-fixture.cjs"),
     "../lib/checkout-pricing": require("./checkout-pricing.test.cjs").pricing,
     // These pre-existing decision/race tests isolate provider pricing reads; the

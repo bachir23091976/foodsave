@@ -12,16 +12,18 @@ import { createNotification } from "./notification.controller";
 import { checkAndCreateReward } from "./loyalty.controller";
 import { PICKUP_GRACE_MS, reconcileNoShows, transitionOrder } from "../lib/order-expiration";
 
-import { checkoutPricing, offerPriceMinor, pricingSelect } from "../lib/checkout-pricing";
+import { currentPriceMinor, pricingDecisionTime } from "../lib/dynamic-pricing";
+import { customerOfferSelect } from "../lib/offer-presentation";
+import { checkoutPricing, pricingSelect } from "../lib/checkout-pricing";
 import { prepareCheckoutPricing, bindCheckoutPricing, PreparedPricing } from "../lib/checkout-pricing-snapshot";
 
 export const getCheckoutQuote = async (req: AuthRequest, res: Response) => {
   try {
     const offer = typeof req.query.offerId === "string"
-      ? await prisma.offer.findUnique({ where: { id: req.query.offerId } }) : null;
-    if (!offer || offer.quantity < 1 || offer.pickupEnd.getTime() < Date.now())
+      ? await prisma.offer.findUnique({ where: { id: req.query.offerId }, include: { dynamicPricing: true } }) : null;
+    if (!offer || offer.quantity < 1 || offer.pickupEnd.getTime() <= Date.now())
       return res.status(400).json({ message: "Offre indisponible" });
-    return res.json({ pricing: checkoutPricing(offerPriceMinor(offer.discountedPrice)) });
+    return res.json({ pricing: checkoutPricing(currentPriceMinor(offer, new Date())) });
   } catch { return res.status(400).json({ message: "Prix indisponible" }); }
 };
 const REFERRAL_DISCOUNT_PERCENT = 15;
@@ -58,7 +60,7 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
 
     const offer = await prisma.offer.findUnique({
       where: { id: offerId },
-      include: { merchant: true },
+      include: { merchant: true, dynamicPricing: true },
     });
 
     if (!offer) {
@@ -69,7 +71,7 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: "Cette offre n'est plus disponible" });
     }
 
-    if (offer.pickupEnd.getTime() < Date.now()) {
+    if (offer.pickupEnd.getTime() <= Date.now()) {
       return res.status(400).json({ message: "La fenetre de recuperation de cette offre est terminee" });
     }
 
@@ -77,7 +79,7 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: "Ce commerce n'a pas encore configure ses paiements" });
     }
 
-    const pricing = checkoutPricing(offerPriceMinor(offer.discountedPrice));
+    const pricing = checkoutPricing(currentPriceMinor(offer, new Date()));
     if (req.body.reviewedSubtotalMinor !== pricing.merchandiseSubtotalMinor || req.body.pricingVersion !== 1) {
       return res.status(409).json({ code: "PRICE_REVIEW_REQUIRED", pricing });
     }
@@ -87,10 +89,23 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
       return res.status(409).json({ message: "Ce commerce n'a pas encore configure ses paiements" });
     }
 
-    const snapshot = await prisma.checkoutPricingSnapshot.create({ data: {
-      ...pricing, userId: userId!, offerId: offer.id,
-      stripeDestinationAccountId: offer.merchant.stripeAccountId,
-    } });
+    const decision = await prisma.$transaction(async tx => {
+      await tx.$queryRaw`SELECT "id" FROM "Offer" WHERE "id" = ${offer.id} FOR UPDATE`;
+      const current = await tx.offer.findUnique({ where: { id: offer.id }, include: { merchant: true, dynamicPricing: true } });
+      const now = await pricingDecisionTime(tx);
+      if (!current || current.quantity < 1 || current.pickupEnd <= now || current.merchant.stripeAccountId !== offer.merchant.stripeAccountId)
+        return { kind: "UNAVAILABLE" as const };
+      const accepted = checkoutPricing(currentPriceMinor(current, now));
+      if (req.body.reviewedSubtotalMinor !== accepted.merchandiseSubtotalMinor || req.body.pricingVersion !== 1)
+        return { kind: "REVIEW" as const, pricing: accepted };
+      const snapshot = await tx.checkoutPricingSnapshot.create({ data: {
+        ...accepted, userId: userId!, offerId: current.id, stripeDestinationAccountId: current.merchant.stripeAccountId!,
+      } });
+      return { kind: "ACCEPTED" as const, snapshot };
+    });
+    if (decision.kind === "UNAVAILABLE") return res.status(400).json({ message: "Offre indisponible" });
+    if (decision.kind === "REVIEW") return res.status(409).json({ code: "PRICE_REVIEW_REQUIRED", pricing: decision.pricing });
+    const snapshot = decision.snapshot;
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       mode: "payment",
@@ -99,17 +114,17 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
           price_data: {
             currency: "cad",
             product_data: { name: offer.title },
-            unit_amount: pricing.merchandiseSubtotalMinor,
+            unit_amount: snapshot.merchandiseSubtotalMinor,
           },
           quantity: 1,
         },
         { price_data: { currency: "cad", product_data: { name: req.body.locale === "en"
-          ? "FoodSave service fee" : "Frais de service FoodSave" }, unit_amount: pricing.serviceFeeMinor }, quantity: 1 },
+          ? "FoodSave service fee" : "Frais de service FoodSave" }, unit_amount: snapshot.serviceFeeMinor }, quantity: 1 },
       ],
       payment_intent_data: {
-        application_fee_amount: pricing.merchantCommissionMinor + pricing.serviceFeeMinor,
+        application_fee_amount: snapshot.merchantCommissionMinor + snapshot.serviceFeeMinor,
         transfer_data: {
-          destination: offer.merchant.stripeAccountId,
+          destination: snapshot.stripeDestinationAccountId,
         },
       },
       metadata: {
@@ -452,7 +467,7 @@ export const getMyOrders = async (req: AuthRequest, res: Response) => {
       where: { userId },
       include: {
         pricingSnapshot: { select: pricingSelect },
-        offer: { include: { merchant: true } },
+        offer: { select: customerOfferSelect },
         customerCancellationRefund: { select: { refundStatus: true, updatedAt: true } },
       },
       orderBy: { createdAt: "desc" },
@@ -666,7 +681,7 @@ export const getMerchantOrders = async (req: AuthRequest, res: Response) => {
     const orders = await prisma.order.findMany({
       where: { offer: { merchantId: merchant.id } },
       include: {
-        offer: true,
+        offer: { select: customerOfferSelect },
         user: { select: { firstName: true, lastName: true, email: true } },
       },
       orderBy: { createdAt: "desc" },

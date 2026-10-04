@@ -38,7 +38,7 @@ test('frontend rejects past/reversed/equal windows',()=>{
 function harness() {
   const rows=[];
   const db={merchant:{findUnique:async()=>({id:'merchant'})},offer:{create:async({data})=>{rows.push(data);return data;},findMany:async({where})=>rows.filter(r=>r.quantity>where.quantity.gt&&r.pickupEnd>where.pickupEnd.gt)}};
-  const controller=load('../src/controllers/offer.controller.ts',{'../lib/prisma':{prisma:db},'../lib/pickup-time':backend});
+  const controller=load('../src/controllers/offer.controller.ts',{'../lib/prisma':{prisma:db},'../lib/pickup-time':backend,'../lib/checkout-pricing':require('./dynamic-pricing-fixture.cjs').pricing,'../lib/dynamic-pricing':require('./dynamic-pricing-fixture.cjs').dynamic,'../lib/offer-presentation':require('./dynamic-pricing-fixture.cjs').presentation});
   const response=()=>({code:200,status(n){this.code=n;return this;},json(body){this.body=body;return this;}});
   return {rows,controller,response};
 }

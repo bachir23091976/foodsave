@@ -19,7 +19,8 @@ for (const refund of [null, { refundStatus: "SUCCEEDED", updatedAt: "2026-09-12T
       const select = query.include.customerCancellationRefund.select;
       assert.deepEqual(Object.keys(select).sort(), ["refundStatus", "updatedAt"]);
       assert.ok(select.refundStatus && select.updatedAt);
-      assert.equal(query.include.offer.include.merchant, true);
+      assert.equal(query.include.offer.select.merchant.select.name, true);
+      assert.equal(query.include.offer.select.dynamicPricing, undefined);
       return [{ id: "owned-order", status: "CANCELLED", customerCancellationRefund:
         refund && Object.fromEntries(Object.keys(select).map(key => [key, refund[key]])) }];
     } } };
@@ -27,6 +28,8 @@ for (const refund of [null, { refundStatus: "SUCCEEDED", updatedAt: "2026-09-12T
     vm.runInNewContext(compiled, {
       module, exports: module.exports, process: { env: {} }, console,
       require(name) {
+        if(name === '../lib/dynamic-pricing') return require('./dynamic-pricing-fixture.cjs').dynamic;
+        if(name === '../lib/offer-presentation') return require('./dynamic-pricing-fixture.cjs').presentation;
         if (name === "../lib/order-expiration") return { reconcileNoShows: async (db,scope) => {
           assert.equal(db,prisma); assert.equal(scope.userId,"authenticated-customer");
         } };
