@@ -36,7 +36,7 @@ export default function Home() {
   useEffect(() => {
     fetch(API_URL + "/offers")
       .then((res) => { if (!res.ok) throw new Error("Offers unavailable"); return res.json(); })
-      .then((data) => setOffers((data.offers || []).slice(0, 3)))
+      .then((data) => setOffers((data.offers || []).slice(0, 8)))
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, []);
@@ -87,9 +87,10 @@ export default function Home() {
       {loading && <p role="status" className={s.empty}>{t("ui.finding_available_offers_2")}</p>}
       {error && <p role="alert" className={s.alert}>{t("ui.offers_are_temporarily_unavailable_check_the_offers_page")}</p>}
       {!loading && !error && offers.length === 0 && <div className={s.empty}><h3>{t("ui.theres_always_something_new_to_discover")}</h3><p>{t("ui.no_offers_right_now_new_offers_may_appear_throughout")}</p></div>}
+      {offers.some(offer => offer.dynamicPricingEnabled) && <p className={s.offerNotice}>{t("dynamic.customer")}</p>}
       <div className={s.offerGrid}>{offers.map((offer) => <article key={offer.id} className={s.card}>
-        <FoodSaveImage url={offer.imageUrl} alt={offer.title} variant="offer" merchantType={offer.merchant.type} />
-        <div className={s.cardBody}>{offer.dynamicPricingEnabled && <p>{t("dynamic.customer")}</p>}<h3>{offer.title}</h3><p className={s.merchant}>{offer.merchant.name} · {offer.merchant.city}</p><p className={s.price}><strong>{money(offer.discountedPrice)}</strong><del>{money(offer.originalPrice)}</del></p><Link href="/offers" className={s.secondary}>{t("ui.explore_offers_")}</Link></div>
+        <FoodSaveImage url={offer.imageUrl} alt={offer.title} variant="offer" merchantType={offer.merchant.type} className={s.offerImage} />
+        <div className={s.cardBody}><h3 title={offer.title}>{offer.title}</h3><p className={s.merchant} title={offer.merchant.name + " · " + offer.merchant.city}>{offer.merchant.name} · {offer.merchant.city}</p><p className={s.price}><strong>{money(offer.discountedPrice)}</strong><del>{money(offer.originalPrice)}</del></p><Link href="/offers" className={s.secondary}>{t("ui.explore_offers_")}</Link></div>
       </article>)}</div>
     </section>
 

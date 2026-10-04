@@ -320,15 +320,15 @@ export default function OffersPage() {
             {selectedCategory !== "TOUT" && <button type="button" className={s.secondary} style={{ marginTop: 22 }} onClick={() => setSelectedCategory("TOUT")}>{t("ui.view_all_categories")}</button>}
           </div>}
           {!loading && !error && filteredOffers.length > 0 && <p className={s.resultsLabel}>{count("offers.count", "offers.countPlural", filteredOffers.length)}</p>}
+          {filteredOffers.some(offer => offer.dynamicPricingEnabled) && <p className={s.offerNotice}>{t("dynamic.customer")}</p>}
           <div className={s.offerGrid}>{filteredOffers.map(offer => {
             const percent = Math.round(((offer.originalPrice - offer.discountedPrice) / offer.originalPrice) * 100);
             const isFavorite = favoriteMerchantIds.includes(offer.merchant.id);
             return <article key={offer.id} className={s.card}>
-              <FoodSaveImage url={offer.imageUrl} alt={offer.title} variant="offer" merchantType={offer.merchant.type} />
+              <FoodSaveImage url={offer.imageUrl} alt={offer.title} variant="offer" merchantType={offer.merchant.type} className={s.offerImage} />
               <div className={s.cardBody}>
-                <div className={s.cardTop}><div><h2>{offer.title}</h2><p className={s.merchant}>{offer.merchant.name} · {offer.merchant.city}{offer.distanceKm !== undefined && <span>· {number(offer.distanceKm, 1)} km</span>}</p></div><span className={s.badge}>−{percent} %</span></div>
-                {offer.description && <p className={s.muted} style={{ fontSize: 14, overflowWrap: "anywhere" }}>{offer.description}</p>}
-                {offer.dynamicPricingEnabled && <p>{t("dynamic.customer")}</p>}
+                <div className={s.cardTop}><div><h2 title={offer.title}>{offer.title}</h2><p className={s.merchant} title={offer.merchant.name + " · " + offer.merchant.city}>{offer.merchant.name} · {offer.merchant.city}{offer.distanceKm !== undefined && <span>· {number(offer.distanceKm, 1)} km</span>}</p></div><span className={s.badge}>−{percent} %</span></div>
+                {offer.description && <p className={s.offerDescription} title={offer.description}>{offer.description}</p>}
                 <div className={s.cardTop}><p className={s.price}><strong>{money(offer.discountedPrice)}</strong><del>{money(offer.originalPrice)}</del></p><button type="button" className={s.favorite} onClick={() => toggleFavorite(offer.merchant.id)} aria-pressed={isFavorite} aria-label={isFavorite ? t("ui.remove_from_favourites") : t("ui.add_to_favourites")}>{isFavorite ? "★" : "☆"}</button></div>
                 <p className={s.pickup}>{t("ui.pickup")}{" "}{formatTime(offer.pickupStart)} – {formatTime(offer.pickupEnd)}<br />{count("offers.available", "offers.availablePlural", offer.quantity)}</p>
                 <p className={s.muted} style={{ fontSize: 12 }}>{t("ui.free_cancellation_up_to_60_minutes_before_pickup")}</p>
