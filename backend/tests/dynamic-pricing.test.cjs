@@ -10,7 +10,7 @@ test('invalid config rejected',()=>{for(const args of [[0,1], [100,0],[100,101],
 for(const [a,b]of [['2026-03-08T01:00:00-05:00','2026-03-08T05:00:00-04:00'],['2026-11-01T00:00:00-04:00','2026-11-01T04:00:00-05:00']])test('DST real elapsed instants '+a,()=>{const o={...offer(),pickupStart:new Date(a),pickupEnd:new Date(b)};assert.equal(dynamic.currentPriceMinor(o,new Date(o.pickupStart.getTime()+(o.pickupEnd-o.pickupStart)/2)),600);});
 test('public serializer removes private config and nested merchant secrets',()=>{const json=JSON.stringify(presentation.publicOffer(offer(),new Date('2026-10-02T19:00Z')));for(const forbidden of ['minimumPriceMinor','startingPriceMinor','formulaVersion','ownerId','stripeAccountId','private'])assert.ok(!json.includes(forbidden));assert.equal(JSON.parse(json).discountedPrice,6);});
 function offerController(db){return load('controllers/offer.controller',{'../lib/prisma':{prisma:db},'../lib/pickup-time':load('lib/pickup-time'),'../lib/checkout-pricing':pricing,'../lib/dynamic-pricing':dynamic,'../lib/offer-presentation':presentation,'./notification.controller':{createNotification:async()=>{}}});}
-const res=()=>({code:200,status(n){this.code=n;return this;},json(body){this.body=body;return this;}});
+const res=()=>({code:200,setHeader(){},status(n){this.code=n;return this;},json(body){this.body=body;return this;}});
 test('creation initializes private configuration in the same nested offer write',async()=>{
  let writes=0;
  const db={merchant:{findUnique:async()=>({id:'m'})},offer:{create:async({data})=>{writes++;assert.equal(data.dynamicPricing.create.minimumPriceMinor,500);assert.equal(data.dynamicPricing.create.startingPriceMinor,800);return{id:'o'};}}};

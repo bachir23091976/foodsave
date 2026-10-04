@@ -2,7 +2,7 @@
 import { useLocale } from "../../lib/i18n/LocaleProvider";
 
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import MerchantShell from "../../components/merchant/MerchantShell";
 import s from "../../components/merchant/merchant.module.css";
 import ui from "../../components/public.module.css";
@@ -17,6 +17,7 @@ export default function NewOfferPage() {
   const [originalPrice, setOriginalPrice] = useState("");
   const [discountedPrice, setDiscountedPrice] = useState("");
   const [dynamicEnabled, setDynamicEnabled] = useState(false);
+  const [dynamicAvailable, setDynamicAvailable] = useState(false);
   const [minimum, setMinimum] = useState("");
   const [quantity, setQuantity] = useState("");
   const [pickupStart, setPickupStart] = useState("");
@@ -25,6 +26,15 @@ export default function NewOfferPage() {
   const [imagePreview, setImagePreview] = useState<string>("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    fetch(`${API_URL}/offers/capabilities`, { cache: "no-store" })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => { if (active) setDynamicAvailable(data?.dynamicPricingAvailable === true); })
+      .catch(() => { if (active) setDynamicAvailable(false); });
+    return () => { active = false; };
+  }, []);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -138,7 +148,7 @@ export default function NewOfferPage() {
           </section>
           <section className={s.panel}><fieldset className={s.formSection}><legend>{t("ui.02_price_and_quantity")}</legend><div className={s.form}>
             <div className={s.fieldRow}><label className={s.field} htmlFor="offer-original-price">{t("ui.original_price_cad")}<input id="offer-original-price" type="number" step="0.01" value={originalPrice} onChange={(e) => setOriginalPrice(e.target.value)} required /></label><label className={s.field} htmlFor="offer-discounted-price">{t("ui.reduced_price_cad")}<input id="offer-discounted-price" type="number" step="0.01" value={discountedPrice} onChange={(e) => setDiscountedPrice(e.target.value)} required /></label></div>
-            <label><input id="offer-dynamic" type="checkbox" checked={dynamicEnabled} onChange={e => setDynamicEnabled(e.target.checked)} /> {t("dynamic.title")}</label>
+            {dynamicAvailable && <label><input id="offer-dynamic" type="checkbox" checked={dynamicEnabled} onChange={e => setDynamicEnabled(e.target.checked)} /> {t("dynamic.title")}</label>}
             {dynamicEnabled && <><label className={s.field}>{t("dynamic.minimum")}<input id="offer-minimum" type="number" min="0.01" step="0.01" max={discountedPrice} required value={minimum} onChange={e => setMinimum(e.target.value)} /></label><p>{t("dynamic.private")}</p></>}
             <label className={s.field} htmlFor="offer-quantity">{t("ui.available_quantity")}<input id="offer-quantity" type="number" min="1" max="1000" value={quantity} onChange={(e) => setQuantity(e.target.value)} required /></label>
           </div></fieldset></section>

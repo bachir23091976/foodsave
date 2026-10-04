@@ -148,8 +148,9 @@ test("new offer retains quantities, categories, dates and numeric request fields
   const page = mount("new-offer", () => response({ message: "Offre créée" }));
   const html = page.render(); assert.ok(html.includes('min="1"')); assert.ok(html.includes('max="1000"')); assert.ok(html.includes('value="BOULANGERIE_PATISSERIE"'));
   for (const [id,value] of [["title","Pain"],["original-price","10.00"],["discounted-price","5.00"],["quantity","2"],["pickup-start","2099-09-15T16:00"],["pickup-end","2099-09-15T18:00"]]) page.change("offer-" + id, value);
-  await page.submit(); assert.equal(page.calls.length, 1);
-  assert.deepEqual(JSON.parse(page.calls[0].body), { title: "Pain", description: "", category: "PLATS_PREPARES", imageUrl: "", originalPrice: 10, discountedPrice: 5, quantity: 2, pickupStart: "2099-09-15T20:00:00.000Z", pickupEnd: "2099-09-15T22:00:00.000Z" });
+  await page.submit(); assert.equal(page.calls.length, 2);
+  assert.ok(page.calls[0].url.endsWith('/offers/capabilities'));
+  assert.deepEqual(JSON.parse(page.calls[1].body), { title: "Pain", description: "", category: "PLATS_PREPARES", imageUrl: "", originalPrice: 10, discountedPrice: 5, quantity: 2, pickupStart: "2099-09-15T20:00:00.000Z", pickupEnd: "2099-09-15T22:00:00.000Z" });
 });
 test("invalid pickup window is rejected before any upload or API submission", async () => {
   const page = mount("new-offer", () => { throw Error("No request expected"); });
@@ -157,7 +158,9 @@ test("invalid pickup window is rejected before any upload or API submission", as
   page.change("offer-pickup-start", "2099-09-15T18:00");
   page.change("offer-pickup-end", "2099-09-15T16:00");
   await page.submit();
-  assert.equal(page.calls.length, 0);
+  assert.equal(page.calls.length, 1);
+  assert.ok(page.calls[0].url.endsWith('/offers/capabilities'));
+  assert.equal(page.calls[0].method, undefined);
   assert.ok(page.render().includes("Choisissez des heures futures"));
 });
 test("merchant offer displays Ottawa pickup time even on a Tokyo device", async () => {
@@ -194,10 +197,21 @@ test("manual pickup preserves exact validation request; camera denial offers fal
 });
 
 for (const locale of ['fr','en']) test(locale+' dynamic creation keeps configuration owner-only',async()=>{
-  const page=mount('new-offer',()=>response({}),{locale});
+  const page=mount('new-offer',()=>response({dynamicPricingAvailable:true}),{locale});
+  await page.settle();
   page.change('offer-title','Fixture');page.change('offer-original-price','10');page.change('offer-discounted-price','8');page.change('offer-quantity','2');
   page.change('offer-pickup-start','2099-09-15T16:00');page.change('offer-pickup-end','2099-09-15T18:00');
   page.change('offer-dynamic',true);page.change('offer-minimum','5.01');
   const html=page.render();assert.ok(html.includes(require('./i18n-fixture.cjs').localeTools(locale).t('dynamic.private')));
   await page.submit();const call=page.calls.find(c=>c.method==='POST');assert.equal(JSON.parse(call.body).minimumPriceMinor,501);assert.equal(JSON.parse(call.body).dynamicPricingEnabled,true);
+});
+
+for(const locale of ['fr','en']) for(const state of ['off','old-backend','malformed','network']) test(locale+' creation gate fails closed: '+state,async()=>{
+ const page=mount('new-offer',()=>{if(state==='network')throw Error('Offline');return response(state==='off'?{dynamicPricingAvailable:false}:state==='malformed'?{dynamicPricingAvailable:'true'}:{},state==='old-backend'?404:200);},{locale});
+ const html=await page.settle();assert.ok(!html.includes('id="offer-dynamic"'));assert.ok(!html.includes('id="offer-minimum"'));assert.ok(html.includes('id="offer-discounted-price"'));
+});
+for(const enabled of [false,true]) test('merchant edit capability '+enabled,async()=>{
+ const tools=require('./i18n-fixture.cjs').localeTools('en');
+ const page=mount('offers',()=>response({dynamicPricingAvailable:enabled,offers:[{id:'o',title:'Fixture',originalPrice:10,discountedPrice:8,quantity:1,pickupStart:'2099-10-01T12:00:00Z',pickupEnd:'2099-10-01T14:00:00Z',createdAt:'2026-01-01T00:00:00Z'}]}),{locale:'en'});
+ const html=await page.settle();assert.equal(html.includes(tools.t('dynamic.edit')),enabled);
 });

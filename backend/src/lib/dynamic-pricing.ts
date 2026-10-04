@@ -3,6 +3,10 @@ import { offerPriceMinor } from "./checkout-pricing";
 
 type Configuration = { enabled: boolean; startingPriceMinor: number; minimumPriceMinor: number; formulaVersion: number };
 type PricedOffer = { discountedPrice: number; pickupStart: Date; pickupEnd: Date; dynamicPricing?: Configuration | null };
+// Activation only: never use this flag to reprice an existing dynamic offer.
+export function dynamicPricingEnabled(): boolean {
+  return process.env.FOODSAVE_DYNAMIC_PRICING_ENABLED === "true";
+}
 export function validateDynamicConfiguration(start: number, minimum: number, version = 1) {
   if (!Number.isSafeInteger(start) || !Number.isSafeInteger(minimum) || minimum <= 0 || minimum > start || start > 99_999_850 || version !== 1)
     throw Error("Invalid dynamic configuration");

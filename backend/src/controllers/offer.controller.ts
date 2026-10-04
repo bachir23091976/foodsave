@@ -5,7 +5,7 @@ import { AuthRequest } from "../middleware/auth.middleware";
 import { createNotification } from "./notification.controller";
 
 import { offerPriceMinor } from "../lib/checkout-pricing";
-import { validateDynamicConfiguration, pricingDecisionTime, currentPriceMinor } from "../lib/dynamic-pricing";
+import { validateDynamicConfiguration, pricingDecisionTime, currentPriceMinor, dynamicPricingEnabled } from "../lib/dynamic-pricing";
 import { publicOffer } from "../lib/offer-presentation";
 
 const NEARBY_RADIUS_KM = 5;
@@ -139,6 +139,7 @@ export const createOffer = async (req: AuthRequest, res: Response) => {
     if (req.body.dynamicPricingEnabled !== undefined && typeof req.body.dynamicPricingEnabled !== "boolean")
       return res.status(400).json({ message: "dynamic.invalid" });
     if (req.body.dynamicPricingEnabled) {
+      if (!dynamicPricingEnabled()) return res.status(503).json({ message: "dynamic.paused" });
       try {
         const startingPriceMinor = offerPriceMinor(discountedPriceNum);
         const minimumPriceMinor = req.body.minimumPriceMinor;
@@ -189,7 +190,8 @@ export const getMyOffers = async (req: AuthRequest, res: Response) => {
     });
 
     const now = new Date();
-    res.json({ offers: offers.map(offer => ({ ...offer, currentDiscountedPrice: offer.dynamicPricing?.enabled && offer.pickupEnd > now ? currentPriceMinor(offer, now) / 100 : offer.discountedPrice })) });
+    res.setHeader("Cache-Control", "no-store");
+    res.json({ dynamicPricingAvailable: dynamicPricingEnabled(), offers: offers.map(offer => ({ ...offer, currentDiscountedPrice: offer.dynamicPricing?.enabled && offer.pickupEnd > now ? currentPriceMinor(offer, now) / 100 : offer.discountedPrice })) });
   } catch (error) {
     console.error("Offer operation failed");
     res.status(500).json({ message: "Erreur serveur" });
@@ -278,6 +280,7 @@ export const getNearbyOffers = async (req: AuthRequest, res: Response) => {
 };
 
 export const updateDynamicPricing = async (req: AuthRequest, res: Response) => {
+  if (!dynamicPricingEnabled()) return res.status(503).json({ message: "dynamic.paused" });
   if (typeof req.body.enabled !== "boolean") return res.status(400).json({ message: "dynamic.invalid" });
   try {
     const result = await prisma.$transaction(async tx => {
@@ -297,4 +300,9 @@ export const updateDynamicPricing = async (req: AuthRequest, res: Response) => {
     });
     return res.status(result.status).json({ message: result.message });
   } catch { return res.status(400).json({ message: "dynamic.invalid" }); }
+};
+
+export const getOfferCapabilities = (_req: AuthRequest, res: Response) => {
+  res.setHeader("Cache-Control", "no-store");
+  return res.json({ dynamicPricingAvailable: dynamicPricingEnabled() });
 };

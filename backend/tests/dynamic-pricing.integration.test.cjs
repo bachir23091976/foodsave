@@ -12,6 +12,16 @@ test('dynamic pricing real PostgreSQL',async t=>{
  await t.test('configuration constraints reject invalid values',async()=>{for(const patch of [{minimumPriceMinor:0},{minimumPriceMinor:801},{startingPriceMinor:99999851},{formulaVersion:2}])await assert.rejects(()=>db.offerDynamicPricing.create({data:{...config,...patch}}));await db.offerDynamicPricing.create({data:config});});
  const offerController=client=>load('controllers/offer.controller',{'../lib/prisma':{prisma:client},'../lib/pickup-time':load('lib/pickup-time'),'../lib/checkout-pricing':pricing,'../lib/dynamic-pricing':dynamic,'../lib/offer-presentation':presentation,'./notification.controller':{createNotification:async()=>{}}});
  const response=()=>({code:200,status(n){this.code=n;return this;},json(body){this.body=body;return this;}});
+ await t.test('migrated database with gate OFF rejects activation and dynamic checkout without writes',async()=>{
+   const off=load('lib/dynamic-pricing',{'./checkout-pricing':pricing},{});
+   const controller=load('controllers/offer.controller',{'../lib/prisma':{prisma:db},'../lib/pickup-time':load('lib/pickup-time'),'../lib/checkout-pricing':pricing,'../lib/dynamic-pricing':off,'../lib/offer-presentation':presentation,'./notification.controller':{createNotification:async()=>{}}});
+   let r=response();await controller.updateDynamicPricing({userId:user.id,params:{id:offer.id},body:{enabled:true,minimumPriceMinor:100}},r);assert.equal(r.code,503);
+   assert.equal((await db.offerDynamicPricing.findUnique({where:{offerId:offer.id}})).minimumPriceMinor,500);
+   const count=await db.checkoutPricingSnapshot.count();
+   const orders=require('./order-confirmation.test.cjs').loadController(db,{}, {'../lib/dynamic-pricing':off});
+   r=response();await orders.createOrder({userId:user.id,body:{offerId:offer.id,reviewedSubtotalMinor:800,pricingVersion:1}},r);assert.equal(r.code,503);
+   assert.equal(await db.checkoutPricingSnapshot.count(),count);
+ });
  const provider={accounts:{retrieve:async()=>({capabilities:{transfers:'active'},charges_enabled:true,payouts_enabled:true,requirements:{currently_due:[]}})},checkout:{sessions:{create:async payload=>{snapshots.push(payload.metadata.pricingSnapshotId);assert.ok(!JSON.stringify(payload).includes('minimumPriceMinor'));return{id:'cs_'+randomUUID(),url:'https://checkout.stripe.com/fixture'};}}}};
  await t.test('owner-only edits and time freeze',async()=>{let r=response();await offerController(db).updateDynamicPricing({userId:'other',params:{id:offer.id},body:{enabled:true,minimumPriceMinor:300}},r);assert.equal(r.code,404);assert.equal((await db.offerDynamicPricing.findUnique({where:{offerId:offer.id}})).minimumPriceMinor,500);});
  await t.test('edit lock serializes real checkout decision and snapshot persists immutable price',async()=>{

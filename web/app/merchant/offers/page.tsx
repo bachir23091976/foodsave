@@ -34,6 +34,7 @@ export default function MerchantOffersPage() {
   const [enabled, setEnabled] = useState(false);
   const [minimum, setMinimum] = useState("");
   const [saving, setSaving] = useState(false);
+  const [dynamicAvailable, setDynamicAvailable] = useState(false);
   const [deactivatingId, setDeactivatingId] = useState<string | null>(null);
 
   const loadOffers = () => {
@@ -50,6 +51,7 @@ export default function MerchantOffersPage() {
     })
       .then((res) => { if (!res.ok) throw new Error("Offers unavailable"); return res.json(); })
       .then((data) => {
+        setDynamicAvailable(data.dynamicPricingAvailable === true);
         setOffers(data.offers || []);
         setLoading(false);
       })
@@ -134,7 +136,7 @@ export default function MerchantOffersPage() {
           <div className={s.cardTop}><h2>{offer.title}</h2><span className={s.badge + (offer.quantity > 0 ? " " + s.success : "")}>{offer.quantity > 0 ? count("offers.remaining", "offers.remainingPlural", offer.quantity) : t("ui.unavailable")}</span></div>
           {offer.description && <p className={s.muted} style={{ overflowWrap: "anywhere" }}>{offer.description}</p>}
           {offer.dynamicPricing && <p>{t("dynamic.start")}: {money(offer.dynamicPricing.startingPriceMinor / 100)} · {t("dynamic.minimum")}: {money(offer.dynamicPricing.minimumPriceMinor / 100)}</p>}
-          {Date.now() < Date.parse(offer.pickupStart) && <button type="button" className={ui.secondary} onClick={() => { setEditingId(offer.id); setEnabled(!!offer.dynamicPricing?.enabled); setMinimum(String((offer.dynamicPricing?.minimumPriceMinor ?? Math.round(offer.discountedPrice * 100)) / 100)); }}>{t("dynamic.edit")}</button>}
+          {dynamicAvailable && Date.now() < Date.parse(offer.pickupStart) && <button type="button" className={ui.secondary} onClick={() => { setEditingId(offer.id); setEnabled(!!offer.dynamicPricing?.enabled); setMinimum(String((offer.dynamicPricing?.minimumPriceMinor ?? Math.round(offer.discountedPrice * 100)) / 100)); }}>{t("dynamic.edit")}</button>}
           {editingId === offer.id && <div><label><input type="checkbox" checked={enabled} onChange={e => setEnabled(e.target.checked)} /> {t("dynamic.title")}</label>{enabled && <label>{t("dynamic.minimum")}<input type="number" min="0.01" step="0.01" max={offer.discountedPrice} value={minimum} onChange={e => setMinimum(e.target.value)} /></label>}<p>{t("dynamic.private")}</p><button type="button" className={ui.secondary} disabled={saving} onClick={() => void savePricing(offer.id)}>{t("dynamic.save")}</button></div>}
           <p className={s.price}><strong>{money(offer.currentDiscountedPrice ?? offer.discountedPrice)}</strong><del>{money(offer.originalPrice)}</del></p>
           <p className={s.help}>{t("ui.pickup")}{" "}{formatDateTime(offer.pickupStart)} – {formatDateTime(offer.pickupEnd)}</p>

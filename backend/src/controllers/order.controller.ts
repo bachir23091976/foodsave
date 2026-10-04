@@ -12,7 +12,7 @@ import { createNotification } from "./notification.controller";
 import { checkAndCreateReward } from "./loyalty.controller";
 import { PICKUP_GRACE_MS, reconcileNoShows, transitionOrder } from "../lib/order-expiration";
 
-import { currentPriceMinor, pricingDecisionTime } from "../lib/dynamic-pricing";
+import { currentPriceMinor, pricingDecisionTime, dynamicPricingEnabled } from "../lib/dynamic-pricing";
 import { customerOfferSelect } from "../lib/offer-presentation";
 import { checkoutPricing, pricingSelect } from "../lib/checkout-pricing";
 import { prepareCheckoutPricing, bindCheckoutPricing, PreparedPricing } from "../lib/checkout-pricing-snapshot";
@@ -23,6 +23,8 @@ export const getCheckoutQuote = async (req: AuthRequest, res: Response) => {
       ? await prisma.offer.findUnique({ where: { id: req.query.offerId }, include: { dynamicPricing: true } }) : null;
     if (!offer || offer.quantity < 1 || offer.pickupEnd.getTime() <= Date.now())
       return res.status(400).json({ message: "Offre indisponible" });
+    if (offer.dynamicPricing?.enabled && !dynamicPricingEnabled())
+      return res.status(503).json({ message: "dynamic.paused" });
     return res.json({ pricing: checkoutPricing(currentPriceMinor(offer, new Date())) });
   } catch { return res.status(400).json({ message: "Prix indisponible" }); }
 };
@@ -67,6 +69,9 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: "Offre introuvable" });
     }
 
+    if (offer.dynamicPricing?.enabled && !dynamicPricingEnabled())
+      return res.status(503).json({ message: "dynamic.paused" });
+
     if (offer.quantity < 1) {
       return res.status(400).json({ message: "Cette offre n'est plus disponible" });
     }
@@ -93,6 +98,8 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
       await tx.$queryRaw`SELECT "id" FROM "Offer" WHERE "id" = ${offer.id} FOR UPDATE`;
       const current = await tx.offer.findUnique({ where: { id: offer.id }, include: { merchant: true, dynamicPricing: true } });
       const now = await pricingDecisionTime(tx);
+      if (current?.dynamicPricing?.enabled && !dynamicPricingEnabled())
+        return { kind: "PAUSED" as const };
       if (!current || current.quantity < 1 || current.pickupEnd <= now || current.merchant.stripeAccountId !== offer.merchant.stripeAccountId)
         return { kind: "UNAVAILABLE" as const };
       const accepted = checkoutPricing(currentPriceMinor(current, now));
@@ -103,6 +110,7 @@ export const createOrder = async (req: AuthRequest, res: Response) => {
       } });
       return { kind: "ACCEPTED" as const, snapshot };
     });
+    if (decision.kind === "PAUSED") return res.status(503).json({ message: "dynamic.paused" });
     if (decision.kind === "UNAVAILABLE") return res.status(400).json({ message: "Offre indisponible" });
     if (decision.kind === "REVIEW") return res.status(409).json({ code: "PRICE_REVIEW_REQUIRED", pricing: decision.pricing });
     const snapshot = decision.snapshot;
@@ -747,4 +755,3 @@ export const validatePickup = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ message: "Erreur serveur" });
   }
 };
-

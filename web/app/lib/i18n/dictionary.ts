@@ -1,5 +1,6 @@
 // UI copy only. Never use these keys as API values or translate user-created content.
 export const fr = {
+  "dynamic.paused": "La tarification dynamique est temporairement indisponible. Veuillez réessayer plus tard.",
   "dynamic.title": "Tarification dynamique",
   "dynamic.minimum": "Prix minimum",
   "dynamic.private": "Ce minimum est privé et invisible aux clients. Le prix baisse en quatre paliers pendant le ramassage.",
@@ -568,6 +569,7 @@ export const fr = {
 } as const;
 export type MessageKey = keyof typeof fr;
 export const en: Record<MessageKey, string> = {
+  "dynamic.paused": "Dynamic pricing is temporarily unavailable. Please try again later.",
   "dynamic.title": "Dynamic pricing",
   "dynamic.minimum": "Minimum price",
   "dynamic.private": "This minimum is private and hidden from customers. The price decreases in four stages during pickup.",
