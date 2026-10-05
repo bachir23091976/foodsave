@@ -266,6 +266,8 @@ enum CustomerCancellationRefundStatus {
 }
 
 model CustomerCancellationRefund {
+  // Legacy table name retained; both actors use the same recovery protocol.
+  actor CancellationRefundActor @default(CUSTOMER)
   orderId String @id
   order Order @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   stripeSessionId String @unique
@@ -294,6 +296,7 @@ enum SoldOutRefundStatus {
 }
 
 model SoldOutResolution {
+  reason UnavailablePaymentReason @default(SOLD_OUT)
   stripeSessionId      String              @id
   paymentIntentId      String?
   refundId             String?             @unique
@@ -307,6 +310,16 @@ model SoldOutResolution {
   manualSettlement SoldOutManualSettlement?
 
   @@index([refundStatus, updatedAt])
+}
+
+enum CancellationRefundActor {
+  CUSTOMER
+  MERCHANT
+}
+
+enum UnavailablePaymentReason {
+  SOLD_OUT
+  PICKUP_EXPIRED
 }
 
 enum ManualSettlementMethod {

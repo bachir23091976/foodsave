@@ -66,10 +66,10 @@ function loadController(prisma, stripe, overrides = {}) {
   return module.exports;
 }
 
-function harness({ recoveryError, quantity = 1 } = {}) {
+function harness({ recoveryError, quantity = 1, now = new Date(), pickupEnd = new Date(now.getTime()+3600000) } = {}) {
   const state = { quantity, decrements: 0, orders: [], refunds: [], resolutions: new Map(),
     rollbacks: 0, recoveryReads: 0, commits: 0, calls: [], failCommit: 0, failAfterCommit: 0,
-    failStateWrite: false, listed: [], refundOutcome: "succeeded", stripeError: null, retrieveCalls: 0 };
+    failStateWrite: false, listed: [], refundOutcome: "succeeded", stripeError: null, retrieveCalls: 0, now, pickupEnd };
   let tail = Promise.resolve();
   const prisma = {
     async $transaction(callback, options) {
@@ -94,6 +94,8 @@ function harness({ recoveryError, quantity = 1 } = {}) {
               return [{ locked: 1 }];
             }
             assert.ok(locked && orderChecked, "order must be checked before resolution under lock");
+            if (sql.includes('FROM "Offer"') && sql.includes('FOR UPDATE')) return [{id:'offer'}];
+            if (sql.includes('clock_timestamp')) return [{nowMs:state.now.getTime()}];
             state.recoveryReads++;
             const row = state.resolutions.get(values[0]);
             return row ? [{ ...row }] : [];
@@ -114,9 +116,9 @@ function harness({ recoveryError, quantity = 1 } = {}) {
               row.recoveryOwnerToken = token; return 1;
             }
             if (sql.includes("INSERT INTO")) {
-              const [sessionId, paymentIntentId] = values;
+              const [sessionId, paymentIntentId, reason] = values;
               assert.equal(state.resolutions.has(sessionId), false);
-              state.resolutions.set(sessionId, { stripeSessionId: sessionId, paymentIntentId,
+              state.resolutions.set(sessionId, { stripeSessionId: sessionId, paymentIntentId, reason,
                 refundId: null, refundStatus: "NOT_REQUESTED", refundFirstAttemptAt: null });
               return 1;
             }
@@ -153,10 +155,10 @@ function harness({ recoveryError, quantity = 1 } = {}) {
             },
           },
           offer: {
-            async findUnique() { return { id: "offer", title: "Surplus", discountedPrice: 10, quantity: state.quantity, merchant: { ownerId: "merchant" } }; },
+            async findUnique() { return { id: "offer", title: "Surplus", discountedPrice: 10, quantity: state.quantity, pickupEnd:state.pickupEnd, merchant: { ownerId: "merchant" } }; },
             async updateMany(args) {
               assert.deepEqual(JSON.parse(JSON.stringify(args)), {
-                where: { id: "offer", quantity: { gt: 0 } }, data: { quantity: { decrement: 1 } },
+                where: { id: "offer", quantity: { gt: 0 }, pickupEnd:{gt:state.now.toISOString()} }, data: { quantity: { decrement: 1 } },
               });
               if (state.quantity === 0) return { count: 0 };
               state.quantity--; state.decrements++;
@@ -498,4 +500,4 @@ test("different sessions with sufficient stock remain independent purchases", as
   assert.equal(h.state.resolutions.size, 0);
 });
 }
-module.exports = { loadController, paidSession, response, deferred };
+module.exports = { loadController, paidSession, response, deferred, harness };

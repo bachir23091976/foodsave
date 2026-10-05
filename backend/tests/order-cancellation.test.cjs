@@ -84,13 +84,12 @@ for (const actor of ["customer", "merchant"]) {
       assert.ok(h.state.reason);
       const reason = h.state.reason;
       assert.equal(h.state.stock, outcome === "succeeded" ? 1 : 0);
-      assert.equal(h.state.stockAttempts, outcome === "succeeded" || (actor === "merchant" && outcome === "stock-error") ? 1 : 0);
+      assert.equal(h.state.stockAttempts, outcome === "succeeded" ? 1 : 0);
       const expectedCalls = ["lookup-error", "missing-payment"].includes(outcome) ? 0 : 1;
       assert.equal(h.state.refunds, expectedCalls);
       if (outcome === "succeeded") assert.equal(res.code, 200);
       else if (["pending", "requires_action"].includes(outcome)) assert.match(res.body.message, /incomplet/);
       else if (["failed", "canceled"].includes(outcome)) assert.match(res.body.message, /investigation/);
-      else if (outcome === "stock-error" && actor === "merchant") assert.match(res.body.message, /stock/);
       else assert.match(res.body.message, /incertain/);
       await h.cancel(actor);
       await h.cancel(actor === "customer" ? "merchant" : "customer");

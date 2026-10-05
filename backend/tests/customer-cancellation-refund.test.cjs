@@ -9,13 +9,15 @@ function loadService() {
   vm.runInNewContext(code, { module, exports: module.exports, require: name => {
     if (name === 'node:crypto') return require(name);
     if (name === '@prisma/client') return {};
+    if (name === './order-expiration') return require('./no-show-fixture.cjs');
+    if (name === './dynamic-pricing') return require('./dynamic-pricing-fixture.cjs').dynamic;
     throw Error('Unexpected dependency '+name);
   }});
   return module.exports;
 }
 function harness(status = 'succeeded') {
   const state = { order: { id: 'o', userId: 'u', offerId: 'f', stripeSessionId: 'cs', status: 'CONFIRMED', pricingSnapshot: {stripeSessionId:'cs',userId:'u',offerId:'f',customerTotalMinor:549,currency:'cad'} }, quantity: 1, row: null, calls: 0, failCreate: false };
-  const offer = { pickupStart: new Date(Date.now()+86400000) };
+  const offer = { pickupStart: new Date(Date.now()+86400000), pickupEnd: new Date(Date.now()+172800000), merchant: {ownerId:'m'} };
   const db = {
     order: { findUnique: async () => ({...state.order, offer}), updateMany: async ({where,data}) => {
       if(state.order.status!==where.status) return {count:0}; Object.assign(state.order,data);return {count:1};
@@ -25,8 +27,8 @@ function harness(status = 'succeeded') {
       findUnique: async () => state.row && {...state.row,order:{...state.order}},
       update: async ({data}) => {Object.assign(state.row,data); return {...state.row};},
     },
-    offer: {updateMany: async () => {if(state.quantity<=0)return {count:0};state.quantity++;return {count:1};}},
-    $queryRaw: async () => [],
+    offer: {updateMany: async ({where}) => {if(state.quantity<=0 || offer.pickupEnd<=where.pickupEnd.gt)return {count:0};state.quantity++;return {count:1};}},
+    $queryRaw: async strings => strings.join('').includes('clock_timestamp') ? [{nowMs:Date.now()}] : [],
   };
   let tail=Promise.resolve();
   db.$transaction=async fn=>{let done;const before=tail;tail=new Promise(r=>done=r);await before;
@@ -36,10 +38,10 @@ function harness(status = 'succeeded') {
     paymentIntents:{retrieve:async()=>({id:'pi',status:'succeeded',amount_received:549,currency:'cad'})},
     refunds:{list:async function*(){if(state.providerRefund)yield state.providerRefund;},create:async(data,options)=>{
       state.calls++;assert.equal(data.amount,undefined);assert.equal(data.reverse_transfer,true);assert.equal(data.refund_application_fee,true);
-      assert.equal(options.idempotencyKey,'customer_cancel_o');state.providerRefund=refund();
+      assert.equal(options.idempotencyKey,state.row.actor==='MERCHANT'?'merchant_cancel_o':'customer_cancel_o');state.providerRefund=refund();
       if(state.timeout)throw Error('response lost');return refund();
     }}};
-  return {state,db,provider,service:loadService().cancellationRefundService(db)};
+  return {state,offer,db,provider,service:loadService().cancellationRefundService(db)};
 }
 if(require.main===module){
 for(const status of ['succeeded','pending','requires_action','failed','canceled','other'])test(status+' persists and blocks repeat claims',async()=>{

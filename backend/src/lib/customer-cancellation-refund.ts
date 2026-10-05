@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { Prisma, PrismaClient, CustomerCancellationRefundStatus } from "@prisma/client";
 import type Stripe from "stripe";
+import { isOverdue, lockedOrder } from "./order-expiration";
+import { pricingDecisionTime } from "./dynamic-pricing";
 
 type Reads = {
   checkout: { sessions: Pick<Stripe["checkout"]["sessions"], "retrieve"> };
@@ -69,8 +71,13 @@ export function cancellationRefundService(db: PrismaClient) {
       if (status === "SUCCEEDED" && !inventoryRestored) {
         // Zero may mean explicit merchant deactivation. Never infer available
         // inventory from zero; leave it unchanged for audited investigation.
+        let inventoryNow = new Date();
+        if (row.actor === "MERCHANT") {
+          await tx.$queryRaw`SELECT "id" FROM "Offer" WHERE "id" = ${row.order.offerId} FOR UPDATE`;
+          inventoryNow = await pricingDecisionTime(tx);
+        }
         const restored = await tx.offer.updateMany({
-          where: { id: row.order.offerId, quantity: { gt: 0 }, pickupEnd: { gt: new Date() } },
+          where: { id: row.order.offerId, quantity: { gt: 0 }, pickupEnd: { gt: inventoryNow } },
           data: { quantity: { increment: 1 } },
         });
         inventoryRestored = restored.count === 1;
@@ -87,6 +94,26 @@ export function cancellationRefundService(db: PrismaClient) {
     });
   }
   return {
+    // Shared durable protocol; the legacy customer table/script also reconcile
+    // merchant obligations. A row is created in the cancellation transaction.
+    async claimMerchant(orderId: string, ownerId: string, reason: string) {
+      const token = randomUUID();
+      return locked(orderId, async tx => {
+        const { order, now } = await lockedOrder(tx, orderId);
+        check(order && order.offer.merchant.ownerId === ownerId, "Merchant ownership required");
+        if (isOverdue(order, now)) {
+          await tx.order.updateMany({ where: { id: orderId, status: "CONFIRMED" }, data: { status: "NO_SHOW" } });
+          return null; // Commit expiration; do not authorize a refund.
+        }
+        if (order.status !== "CONFIRMED" || !order.stripeSessionId) return null;
+        const changed = await tx.order.updateMany({ where: { id: orderId, status: "CONFIRMED" },
+          data: { status: "CANCELLED", cancellationReason: reason } });
+        check(changed.count === 1, "Cancellation already claimed");
+        await tx.customerCancellationRefund.create({ data: { orderId, stripeSessionId: order.stripeSessionId,
+          actor: "MERCHANT", recoveryOwnerToken: token, refundStatus: "UNKNOWN", firstAttemptAt: new Date() } });
+        return token;
+      });
+    },
     async claim(orderId: string, userId: string) {
       const token = randomUUID();
       return locked(orderId, async tx => {
@@ -122,7 +149,9 @@ export function cancellationRefundService(db: PrismaClient) {
             } });
           });
           refund = await provider.refunds.create({ payment_intent: found.paymentIntentId,
-            reverse_transfer: true, refund_application_fee: true }, { idempotencyKey: `customer_cancel_${orderId}` });
+            reverse_transfer: true, refund_application_fee: true }, {
+            idempotencyKey: `${row.actor === "MERCHANT" ? "merchant" : "customer"}_cancel_${orderId}`,
+          });
         }
         check(id(refund.payment_intent) === found.paymentIntentId && refund.amount === found.payment.amount_received &&
           refund.currency === found.payment.currency, "Refund response mismatch");

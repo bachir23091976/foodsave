@@ -353,28 +353,32 @@ async function confirmPaidSession(
     const existing = await tx.order.findUnique({ where: { stripeSessionId: session.id }, include: { pricingSnapshot: { select: pricingSelect } } });
     if (existing) return { kind: "EXISTING" as const, order: existing };
     if (await readResolution(tx, session.id)) return { kind: "REFUND" as const };
-    const offer = await tx.offer.findUnique({ where: { id: offerId }, include: { merchant: true } });
+    let offer = await tx.offer.findUnique({ where: { id: offerId }, include: { merchant: true } });
     if (!offer) return { kind: "MISSING" as const };
     if (!pricing) return { kind: "PRICING" as const };
+    // Serialize with availability changes and use time AFTER acquiring the lock.
+    await tx.$queryRaw`SELECT "id" FROM "Offer" WHERE "id" = ${offerId} FOR UPDATE`;
+    offer = await tx.offer.findUnique({ where: { id: offerId }, include: { merchant: true } });
+    if (!offer) return { kind: "MISSING" as const };
+    const now = await pricingDecisionTime(tx);
     const snapshot = await bindCheckoutPricing(tx, pricing);
-    const decremented = await tx.offer.updateMany({
-      where: { id: offerId, quantity: { gt: 0 } },
+    const expired = offer.pickupEnd <= now;
+    const decremented = expired ? { count: 0 } : await tx.offer.updateMany({
+      where: { id: offerId, quantity: { gt: 0 }, pickupEnd: { gt: now } },
       data: { quantity: { decrement: 1 } },
     });
     if (decremented.count === 0) {
       await tx.$executeRaw`
-        INSERT INTO "SoldOutResolution" ("stripeSessionId", "paymentIntentId", "updatedAt")
-        VALUES (${session.id}, ${paymentIntentId}, CURRENT_TIMESTAMP)
+        INSERT INTO "SoldOutResolution" ("stripeSessionId", "paymentIntentId", "reason", "updatedAt")
+        VALUES (${session.id}, ${paymentIntentId},
+          CAST(${expired ? "PICKUP_EXPIRED" : "SOLD_OUT"} AS "UnavailablePaymentReason"), CURRENT_TIMESTAMP)
       `;
       return { kind: "REFUND" as const }; // Commit, never roll back this decision.
     }
     const order = await tx.order.create({ data: {
       userId, offerId, totalPrice: snapshot.merchandiseSubtotalMinor / 100,
       pricingSnapshotId: snapshot.id,
-      // Phase 1 covers timely new reservations only. Late confirmation policy
-      // is deferred; never classify such a reservation as a customer no-show.
-      noShowEligibleAt: offer.pickupEnd && offer.pickupEnd.getTime() > Date.now()
-        ? new Date(offer.pickupEnd.getTime() + PICKUP_GRACE_MS) : null,
+      noShowEligibleAt: new Date(offer.pickupEnd.getTime() + PICKUP_GRACE_MS),
       status: "CONFIRMED", stripeSessionId: session.id,
     }, include: { pricingSnapshot: { select: pricingSelect } } });
     return { kind: "CREATED" as const, order, offer };
@@ -605,69 +609,41 @@ export const cancelOrderByMerchant = async (req: AuthRequest, res: Response) => 
       return res.status(400).json({ message: "Paiement Stripe introuvable" });
     }
 
-    const claimed = await transitionOrder(prisma, order.id, userId!, "CANCEL", cancellationReason);
+    const recovery = cancellationRefundService(prisma);
+    const token = await recovery.claimMerchant(order.id, userId!, cancellationReason);
 
-    if (!claimed) {
+    if (!token) {
       return res.status(409).json({ message: "Cette commande a deja ete traitee" });
     }
 
-    let refundSucceeded = false;
-
     try {
-      const session = await stripe.checkout.sessions.retrieve(order.stripeSessionId, {
-        expand: ["payment_intent"],
-      });
+      const refund = await recovery.attempt(order.id, token, stripe);
 
-      const paymentIntentId =
-        typeof session.payment_intent === "string"
-          ? session.payment_intent
-          : session.payment_intent?.id;
-
-      if (!paymentIntentId) {
-        throw new Error("PaymentIntent introuvable");
-      }
-
-      const refund = await stripe.refunds.create(
-        {
-          payment_intent: paymentIntentId,
-          reverse_transfer: true,
-          refund_application_fee: true,
-        },
-        { idempotencyKey: `merchant_cancel_${order.id}` }
-      );
-
-      if (refund.status !== "succeeded") {
-        const message = refund.status === "pending" || refund.status === "requires_action"
+      if (refund.refundStatus !== "SUCCEEDED") {
+        const message = ["PENDING", "REQUIRES_ACTION"].includes(refund.refundStatus)
           ? "Annulation acceptee. Le remboursement est incomplet et en cours de traitement."
-          : refund.status === "failed" || refund.status === "canceled"
+          : ["FAILED", "CANCELED", "NEEDS_REVIEW"].includes(refund.refundStatus)
           ? "Annulation acceptee. Le remboursement necessite une investigation."
           : "Annulation acceptee. Le resultat du remboursement est incertain et doit etre verifie.";
         return res.status(202).json({ message });
       }
-      refundSucceeded = true;
-
-      await prisma.offer.update({
-        where: { id: order.offerId },
-        data: { quantity: { increment: 1 } },
-      });
-
       await createNotification(
         order.userId,
         `Le commerce a annule votre commande ${order.offer.title}. Motif : ${cancellationReason}. Votre paiement a ete rembourse.`
-      ).catch((notificationError) => {
-        console.error("Erreur notification annulation commercant:", notificationError);
+      ).catch(() => {
+        console.error("Erreur notification annulation commercant");
       });
 
       return res.json({
-        message: "Commande annulee et client rembourse avec succes",
+        message: refund.inventoryRestored
+          ? "Commande annulee et client rembourse avec succes"
+          : "Commande annulee et remboursement reussi. Le stock doit etre verifie par FoodSave.",
       });
     } catch (error) {
       // An accepted cancellation never becomes fulfillable after provider uncertainty.
       console.error("Erreur annulation par commercant");
       return res.status(500).json({
-        message: refundSucceeded
-          ? "Le remboursement a reussi, mais le stock doit etre verifie par FoodSave."
-          : "Annulation acceptee. Le resultat du remboursement est incertain et doit etre verifie.",
+        message: "Annulation acceptee. Le resultat du remboursement est incertain et doit etre verifie.",
       });
     }
   } catch (error) {

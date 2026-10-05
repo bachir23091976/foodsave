@@ -2,6 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import Stripe from "stripe";
 import { cancellationRefundService } from "../lib/customer-cancellation-refund";
 
+// Legacy filename: reconciles CUSTOMER and MERCHANT records by Order ID.
 // Explicit operator invocation only. No dotenv, replacement refunds, manual
 // payment authorization, ownership takeover, order reactivation or bulk mode.
 export async function run(args: string[], env = process.env) {
